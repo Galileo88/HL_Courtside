@@ -111,7 +111,7 @@
     }
     const strongest=[...participants.values()].sort((x,y)=>(y.record.W??-1)-(x.record.W??-1)||(x.record.L??Infinity)-(y.record.L??Infinity));
     const lead=strongest.slice(0,Math.min(3,strongest.length)).map(x=>`${x.name} (${x.record.W}-${x.record.L})`).join(', ');
-    const paragraphs=[`The ${league.shortName||league.leagueName} ${roundLabel} is set with ${series.length} matchup${series.length===1?'':'s'}${formatText}. ${lead} bring the strongest regular-season records into this round, but from here the season is decided four wins at a time.`];
+    const paragraphs=[`The ${league.shortName||league.leagueName} ${roundLabel} is set with ${series.length} matchup${series.length===1?'':'s'}${formatText}. ${lead} bring the strongest regular-season records into this round, but from here every result changes the bracket.`];
 
     const closest=[...series].sort((x,y)=>x.gap-y.gap||((y.ar.W??0)+(y.br.W??0))-((x.ar.W??0)+(x.br.W??0)))[0];
     if(Number.isFinite(closest?.gap)){
@@ -156,8 +156,10 @@
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
           bracket:structuredClone(bracket||null)},createdAt:new Date().toISOString()};
       const teamScope=eventKey.startsWith('team-')||eventKey==='championship';
-      const seasonPlayers=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',teamScope?team.id:null)})).filter(x=>x.s&&(!featured||related.length!==1||x.p.id===featured.id||eventKey.startsWith('team-'))).sort((a,b)=>b.s.PTS-a.s.PTS);
-      s.seasonSnapshot.tables=[{label:'Regular-season team statistics',headers:['Team','W','L','PPG','Opp PPG','RPG','APG','FG%','3P%','FT%'],rows:related.map(t=>{const r=records.find(x=>x.team.id===t.id)?.year?.seasonStats;return r?.GP>0?[C.teamDisplay(t),r.W,r.L,...['PTS','OPP','REB','AST'].map(k=>avg(r,k)),pct(r,'FGM','FGA'),pct(r,'TPM','TPA'),pct(r,'FTM','FTA')]:null;}).filter(Boolean)},playerTable(related.length===1||eventKey==='championship'?'Regular-season player statistics':'Regular-season scoring leaders',related.length===1||eventKey==='championship'?seasonPlayers:seasonPlayers.slice(0,15))];
+      const awardStory=eventKey.startsWith('award-');
+      const seasonPlayers=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',teamScope?team.id:null)})).filter(x=>x.s&&(!featured||(awardStory?x.p.id===featured.id:related.length!==1||x.p.id===featured.id||eventKey.startsWith('team-')))).sort((a,b)=>b.s.PTS-a.s.PTS);
+      const individualTable=related.length===1||eventKey==='championship'||awardStory;
+      s.seasonSnapshot.tables=[{label:'Regular-season team statistics',headers:['Team','W','L','PPG','Opp PPG','RPG','APG','FG%','3P%','FT%'],rows:related.map(t=>{const r=records.find(x=>x.team.id===t.id)?.year?.seasonStats;return r?.GP>0?[C.teamDisplay(t),r.W,r.L,...['PTS','OPP','REB','AST'].map(k=>avg(r,k)),pct(r,'FGM','FGA'),pct(r,'TPM','TPA'),pct(r,'FTM','FTA')]:null;}).filter(Boolean)},playerTable(individualTable?'Regular-season player statistics':'Regular-season scoring leaders',individualTable?seasonPlayers:seasonPlayers.slice(0,15))];
       if(eventKey==='championship'||(featured&&(league.awards||[]).some(a=>eventKey.startsWith(`award-${a.id}-`)&&a.phase===3))){
         const postseason=[...players.values()].map(p=>({p,s:stats(p,league,year,'playoffs',eventKey==='championship'?team.id:null)})).filter(x=>x.s&&(eventKey==='championship'||x.p.id===featured?.id));
         if(postseason.length)s.seasonSnapshot.tables.push(playerTable('Playoff player statistics',postseason));
@@ -166,7 +168,7 @@
         s.statsPeriod=(league.awards||[]).find(a=>eventKey.startsWith(`award-${a.id}-`))?.phase===3?'finals':'season';
         s.seasonSnapshot.tables=s.seasonSnapshot.tables.filter(t=>!t.label.includes('team statistics'));
       }
-      const coach=C.coachForTeam(team);
+      const coach=eventKey.startsWith('award-')&&!related.length?null:C.coachForTeam(team);
       const record=records.find(r=>r.team.id===team.id)?.year;
       const postseason=postseasonOutcome(team.id,bracket,winner?.id,lookup.teams);
       s.coach=coach;s.seasonOutcome=outcome(record,winner?.id===team.id,postseason);
@@ -210,7 +212,7 @@
         const s=stats(p,league,year,award.phase===3?'finals':'season')||stats(p,league,year,award.phase===3?'playoffs':'season');
         const team=lookup.teams.get(p.tid);
         add(`award-${award.id}-${p.id}`,'Award announcement',`${C.playerDisplay(p)} wins ${award.name}`,
-          [`${C.playerDisplay(p)} takes home ${league.leagueName}’s ${year} ${award.name} award.`,...(s?[`${C.playerDisplay(p)} averaged ${line(s)} over ${s.GP} ${award.phase===3?'postseason':'regular-season'} ${s.GP===1?'appearance':'appearances'}.`]:[])],team?[team]:teams,
+          [`${C.playerDisplay(p)} takes home ${league.leagueName}’s ${year} ${award.name} award.`,...(s?[`${C.playerDisplay(p)} averaged ${line(s)} over ${s.GP} ${award.phase===3?'postseason':'regular-season'} ${s.GP===1?'appearance':'appearances'}.`]:[])],team?[team]:[],
           ['Award','Winner','Year'],[[award.name,C.playerDisplay(p),year]],team?p:null,120);
       }
     }
