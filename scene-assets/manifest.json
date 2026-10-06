@@ -1,0 +1,584 @@
+[
+  {
+    "file": "basketball.png",
+    "texture": 67,
+    "sourceName": "basketball",
+    "sourceFile": "sharedassets0.assets",
+    "width": 32,
+    "height": 64
+  },
+  {
+    "file": "shooting.png",
+    "texture": 104,
+    "sourceName": "shooting",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 256
+  },
+  {
+    "file": "coach-tie.png",
+    "texture": 194,
+    "sourceName": "coach_tie",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "file": "press-background.png",
+    "texture": 226,
+    "sourceName": "press_background",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "coach-undershirt.png",
+    "texture": 234,
+    "sourceName": "coach_undershirt",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "file": "announce-table-graphic.png",
+    "texture": 320,
+    "sourceName": "announce_table_graphic",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 32
+  },
+  {
+    "file": "dunking.png",
+    "texture": 380,
+    "sourceName": "two_hand_dunk",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 128
+  },
+  {
+    "file": "passing-arms.png",
+    "texture": 405,
+    "sourceName": "pass_arms",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "staff-idle.png",
+    "texture": 475,
+    "sourceName": "idle",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "idle-with-ball.png",
+    "texture": 563,
+    "sourceName": "idle_with_ball",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "passing.png",
+    "texture": 566,
+    "sourceName": "pass",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "shooting-arms.png",
+    "texture": 615,
+    "sourceName": "shooting_arms",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 256
+  },
+  {
+    "file": "press-table.png",
+    "texture": 674,
+    "sourceName": "press_table",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 32
+  },
+  {
+    "file": "staff-idle-alt.png",
+    "texture": 787,
+    "sourceName": "idle",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "dunking-arms.png",
+    "texture": 830,
+    "sourceName": "two_hand_dunk_arms",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 128
+  },
+  {
+    "file": "ball-seams.png",
+    "texture": 924,
+    "sourceName": "lined_ball",
+    "sourceFile": "sharedassets0.assets",
+    "width": 8,
+    "height": 8
+  },
+  {
+    "file": "coach-jacket.png",
+    "texture": 958,
+    "sourceName": "coach_jacket",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "file": "idle-with-ball-arms.png",
+    "texture": 991,
+    "sourceName": "idle_with_ball_arms",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "file": "dribbling.png",
+    "texture": 1056,
+    "sourceName": "dribbling",
+    "sourceFile": "sharedassets0.assets",
+    "width": 128,
+    "height": 256
+  },
+  {
+    "file": "flight-ball.png",
+    "texture": 75,
+    "sourceName": "basketball",
+    "sourceFile": "sharedassets1.assets",
+    "width": 8,
+    "height": 8
+  },
+  {
+    "file": "announce-table.png",
+    "texture": 85,
+    "sourceName": "announce_table",
+    "sourceFile": "sharedassets1.assets",
+    "width": 128,
+    "height": 32
+  },
+  {
+    "file": "jersey-numbers.png",
+    "sourceFile": "sharedassets0.assets",
+    "width": 320,
+    "height": 352,
+    "numbers": [
+      {
+        "number": 0,
+        "texture": 470
+      },
+      {
+        "number": 1,
+        "texture": 672
+      },
+      {
+        "number": 2,
+        "texture": 601
+      },
+      {
+        "number": 3,
+        "texture": 1068
+      },
+      {
+        "number": 4,
+        "texture": 114
+      },
+      {
+        "number": 5,
+        "texture": 629
+      },
+      {
+        "number": 6,
+        "texture": 790
+      },
+      {
+        "number": 7,
+        "texture": 876
+      },
+      {
+        "number": 8,
+        "texture": 539
+      },
+      {
+        "number": 9,
+        "texture": 917
+      },
+      {
+        "number": 10,
+        "texture": 54
+      },
+      {
+        "number": 11,
+        "texture": 874
+      },
+      {
+        "number": 12,
+        "texture": 340
+      },
+      {
+        "number": 13,
+        "texture": 127
+      },
+      {
+        "number": 14,
+        "texture": 573
+      },
+      {
+        "number": 15,
+        "texture": 153
+      },
+      {
+        "number": 16,
+        "texture": 675
+      },
+      {
+        "number": 17,
+        "texture": 720
+      },
+      {
+        "number": 18,
+        "texture": 519
+      },
+      {
+        "number": 19,
+        "texture": 707
+      },
+      {
+        "number": 20,
+        "texture": 1085
+      },
+      {
+        "number": 21,
+        "texture": 350
+      },
+      {
+        "number": 22,
+        "texture": 97
+      },
+      {
+        "number": 23,
+        "texture": 87
+      },
+      {
+        "number": 24,
+        "texture": 63
+      },
+      {
+        "number": 25,
+        "texture": 789
+      },
+      {
+        "number": 26,
+        "texture": 326
+      },
+      {
+        "number": 27,
+        "texture": 462
+      },
+      {
+        "number": 28,
+        "texture": 154
+      },
+      {
+        "number": 29,
+        "texture": 997
+      },
+      {
+        "number": 30,
+        "texture": 863
+      },
+      {
+        "number": 31,
+        "texture": 538
+      },
+      {
+        "number": 32,
+        "texture": 181
+      },
+      {
+        "number": 33,
+        "texture": 551
+      },
+      {
+        "number": 34,
+        "texture": 763
+      },
+      {
+        "number": 35,
+        "texture": 51
+      },
+      {
+        "number": 36,
+        "texture": 176
+      },
+      {
+        "number": 37,
+        "texture": 494
+      },
+      {
+        "number": 38,
+        "texture": 359
+      },
+      {
+        "number": 39,
+        "texture": 781
+      },
+      {
+        "number": 40,
+        "texture": 774
+      },
+      {
+        "number": 41,
+        "texture": 784
+      },
+      {
+        "number": 42,
+        "texture": 821
+      },
+      {
+        "number": 43,
+        "texture": 416
+      },
+      {
+        "number": 44,
+        "texture": 437
+      },
+      {
+        "number": 45,
+        "texture": 976
+      },
+      {
+        "number": 46,
+        "texture": 594
+      },
+      {
+        "number": 47,
+        "texture": 44
+      },
+      {
+        "number": 48,
+        "texture": 247
+      },
+      {
+        "number": 49,
+        "texture": 496
+      },
+      {
+        "number": 50,
+        "texture": 543
+      },
+      {
+        "number": 51,
+        "texture": 273
+      },
+      {
+        "number": 52,
+        "texture": 332
+      },
+      {
+        "number": 53,
+        "texture": 409
+      },
+      {
+        "number": 54,
+        "texture": 920
+      },
+      {
+        "number": 55,
+        "texture": 988
+      },
+      {
+        "number": 56,
+        "texture": 851
+      },
+      {
+        "number": 57,
+        "texture": 897
+      },
+      {
+        "number": 58,
+        "texture": 381
+      },
+      {
+        "number": 59,
+        "texture": 121
+      },
+      {
+        "number": 60,
+        "texture": 432
+      },
+      {
+        "number": 61,
+        "texture": 163
+      },
+      {
+        "number": 62,
+        "texture": 862
+      },
+      {
+        "number": 63,
+        "texture": 528
+      },
+      {
+        "number": 64,
+        "texture": 825
+      },
+      {
+        "number": 65,
+        "texture": 78
+      },
+      {
+        "number": 66,
+        "texture": 590
+      },
+      {
+        "number": 67,
+        "texture": 555
+      },
+      {
+        "number": 68,
+        "texture": 402
+      },
+      {
+        "number": 69,
+        "texture": 1083
+      },
+      {
+        "number": 70,
+        "texture": 133
+      },
+      {
+        "number": 71,
+        "texture": 440
+      },
+      {
+        "number": 72,
+        "texture": 811
+      },
+      {
+        "number": 73,
+        "texture": 99
+      },
+      {
+        "number": 74,
+        "texture": 651
+      },
+      {
+        "number": 75,
+        "texture": 694
+      },
+      {
+        "number": 76,
+        "texture": 998
+      },
+      {
+        "number": 77,
+        "texture": 595
+      },
+      {
+        "number": 78,
+        "texture": 118
+      },
+      {
+        "number": 79,
+        "texture": 692
+      },
+      {
+        "number": 80,
+        "texture": 903
+      },
+      {
+        "number": 81,
+        "texture": 606
+      },
+      {
+        "number": 82,
+        "texture": 33
+      },
+      {
+        "number": 83,
+        "texture": 764
+      },
+      {
+        "number": 84,
+        "texture": 196
+      },
+      {
+        "number": 85,
+        "texture": 179
+      },
+      {
+        "number": 86,
+        "texture": 1072
+      },
+      {
+        "number": 87,
+        "texture": 109
+      },
+      {
+        "number": 88,
+        "texture": 1078
+      },
+      {
+        "number": 89,
+        "texture": 300
+      },
+      {
+        "number": 90,
+        "texture": 633
+      },
+      {
+        "number": 91,
+        "texture": 636
+      },
+      {
+        "number": 92,
+        "texture": 687
+      },
+      {
+        "number": 93,
+        "texture": 1058
+      },
+      {
+        "number": 94,
+        "texture": 1039
+      },
+      {
+        "number": 95,
+        "texture": 517
+      },
+      {
+        "number": 96,
+        "texture": 806
+      },
+      {
+        "number": 97,
+        "texture": 702
+      },
+      {
+        "number": 98,
+        "texture": 184
+      },
+      {
+        "number": 99,
+        "texture": 661
+      },
+      {
+        "number": 100,
+        "texture": 412
+      }
+    ],
+    "bodyPixelsPerUnit": 32,
+    "numberPixelsPerUnit": 64
+  }
+]

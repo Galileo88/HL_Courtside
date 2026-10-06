@@ -1,94 +1,112 @@
-# HoopWire MVP
+# HoopWire
 
-A dependency-free, browser-only prototype for generating offline sports-news stories from Hoop Land save files.
+An offline browser newsroom for Hoop Land saves. Use the local preview server for reliable image composition and browser storage. No API or account is needed. Custom court and advertisement URLs require a connection when composing images; archived images remain available offline.
 
-## What this first version does
+For a stable local browser address, run `node scripts/serve.cjs` and visit `http://127.0.0.1:8123`. Keep using that address to access the same browser archive.
 
-- Loads a Hoop Land JSON save locally in the browser.
-- Supports multiple leagues in one save.
-- Divides the Hoop Land schedule into selectable 7-day weeks.
-- Uses Hoop Land's built-in game news rating plus game context to rank stories.
-- Provides Major, Standard, and Full coverage levels.
-- Creates deterministic game-recap headlines and at least 3 article paragraphs.
-- Can insert fictional player quotes that are intentionally generic enough not to contradict known game data.
-- Uses the save's player-of-the-game ID.
-- Uses exact player box-score stats only when the selected game is the player's latest team game in the save; older historical game box scores are not preserved reliably in the sample save.
-- Stores generated story IDs and article text in browser localStorage.
-- Skips already-generated stories, preventing duplicate game stories when a week is revisited.
-- Works without an API, model, database, or internet connection.
+## Daily coverage
 
-## Run it
+Season milestones are generated automatically on upload alongside daily recaps. Once every team's saved regular-season record reaches the configured schedule length, HoopWire adds a league review, team reviews, final records and total-stat leaders. Award stories require a winner explicitly recorded for this league and year; statistical leaders do not predict awards. Active playoff brackets generate round matchup previews, excluding byes. Recorded team championships or a completed final bracket produce championship reviews and confirmed postseason awards. A save uploaded after these milestones can catch up on the available records, but cannot reconstruct overwritten daily box scores.
 
-The app has no dependencies.
+Milestone articles have stable league/year/event identities, preserving their original text, images and fact tables across later uploads. They are filed on the latest completed schedule day when first discovered. HoopWire TV reads them again and displays season facts in place of a game box score. Their records, award evidence and brackets are included in archive backups; no audio recording is stored.
 
-1. Open `index.html` in a modern browser.
-2. Click **Load Hoop Land save**.
-3. Choose the league, week, and coverage level.
-4. Click **Generate new stories**.
+Upload a Hoop Land JSON save after a game day. HoopWire immediately opens the newsroom and automatically generates Full coverage for the latest completed day in each league, with fictional quotes enabled. There are no league, coverage, quote, or generation options on upload. Archived text and images stay intact across repeated uploads.
 
-If your browser restricts storage when opening local files directly, run a tiny local server instead:
+Generation uses one-based day labels. A rest day does not advance the target. Later uploads on a partially played day add newly completed fixtures. Future placeholders, tied results, invalid teams, mismatched winners, and explicitly in-progress games are excluded. Coverage scoring retains its original context calculation; Full coverage includes every eligible completed fixture.
 
-```bash
-python -m http.server 8080
+The opening screen contains only the save-upload card. Uploading automatically opens the newsroom; there are no Newsroom or Archive cards. It follows the dark grid, blue panels, and cyan outlines of [Hoop League Studio](https://galileo88.github.io/Hoop-League-Studio/). Newsroom requires a loaded save. Archive and TV require saved stories for the active league; unavailable destinations are disabled and direct links return to the opening screen. Backup import is available inside the archive after entering HoopWire.
+
+## Player-of-the-game stats
+
+Verified award coverage always includes points, rebounds, and assists, including zero values. Positive steals and blocks and valid shooting lines are added when available. Fictional quotes accompany verified stats; they are enabled automatically for new coverage.
+
+Hoop Land preserves each player's latest box score rather than a historical game-by-game archive. On every upload, HoopWire captures box scores only when the player's team has a unique latest completed game on its latest day, the stats contain one game played and valid core counts, and roster points add up to that game's team score. Same-day multiple games are treated as ambiguous. The sample's per-game `POTG` counter is unused and is not used to establish the match.
+
+If stats cannot be verified, the recap stays focused on the teams: it does not name or quote the player of the game or put them in a headline. Uploading saves daily preserves available stats; uploading after several days cannot recover box scores already overwritten by the game.
+
+## Story images
+
+Generation automatically varies the attacking basket between left and right using the story's seed. There is no side selector. Player positions, facing directions, camera crops, and flight balls follow that basket, while custom court artwork and jersey numbers remain readable. The selected side is archived with scene inputs; later uploads do not reroll it. Use image refresh to apply this variety to existing stories.
+
+Hoop structures and player bodies share ground-depth ordering. Rear players draw behind the hoop, front players draw ahead of it, and shadows remain on the floor. Airborne players sort by their ground position. Dunk scenes retain the original front-facing pose with more clearance from the rim. Released balls use the native lined-ball sprite, including interior seams; highlight and shadow values match that sprite's standard palette and adapt to saved ball colors.
+
+Action images select deterministically among drives, close-up ball handling, dunk approaches, three-point shots, passes, and close-up passes. Each has its own player layout and camera crop. The three-point shooter stands beyond the native arc; dunkers have space before the rim. Released shots and passes use the game's separate flight-ball sprite near the release point. They are composed illustrations and do not establish that a particular play occurred.
+
+The ball palette is captured from the league's selected `gameballs[settings.gameBall]`, including `pri`, `sec`, `ter`, and `outline`. Source sprites use five encoded ball colors, including a darker primary shade; the outer-edge marker uses the saved outline instead of orange. Ball colors stay independent of player skin and accessories. Historical fixtures do not retain their ball choice, so these illustrations use the uploaded league's current selection. Missing settings use the save's standard orange/brown palette. Existing asset files are preserved by the extraction script so hand-edited artwork is not overwritten.
+
+Numbers use Hoop Land's native jersey sprites at its body-to-number scale (32 versus 64 pixels per unit). Action compositions retain the finer number layer until the final 2x image, avoiding lost digits during an intermediate downscale. Attackers face the right-hand hoop and defenders face them; jersey text remains readable when players turn.
+
+Each new article has one deterministic still image composed locally from exported Hoop Land textures. Verified player stories get an automatic mix of interview and action scenes, independently of stat availability. Team-only stories use action scenes. Captions distinguish composed illustrations from captured gameplay.
+
+Interview scenes place the featured player between a teammate and the team's head coach, when available, behind a table aligned to their hips. Jersey numbers use readable pixel glyphs. Coaches use the game's staff body and suit layers, with appearance and suit colors from `team.frontOffice.staff` (the unique team-matching person with `pos: 1`). Fictional coach quotes use that head coach's name and are included automatically for new stories. Re-generating latest-day coverage can add coach coverage to earlier articles from the current template.
+
+Action scenes use equally scaled player sprites on the native 1024 × 512 court, with a 2x camera crop rather than giant players on a flattened court. Scenes include up to three players per team from saved rosters, with no referee sprites. Basketball colors have a separate orange palette that is unaffected by accessory or skin colors. Jersey numbers are smaller and centered within the chest. Player appearance, accessories, jersey numbers, team colors, and uniform colors come from the save. Uniform selection defaults to the team's first home or away slot because historical fixtures do not retain actual uniform choices.
+
+The home team's court surface patterns, colors, line settings, court text, and hoop colors are reproduced. Its `court.overlayURL` is loaded with canvas-safe CORS and applied at `overlayLayer`, matching the custom-league court layout. Optional logo settings are also supported. If an image is unavailable, the save's built-in court layout is used and the caption reports the fallback. Neither the save nor its contents are uploaded to the image host.
+
+Player/team inputs, custom-court load results, and final PNGs are saved with articles. Later uploads do not change archived images. **Refresh this day's images** explicitly applies the updated scene renderer without changing article text, statistics, or creation dates. Loading the matching latest-day save lets that refresh add teammates/coaches to older scene inputs; it does not invent missing historical participants.
+
+## HoopWire TV
+
+The HoopWire opening screen handles save uploads. The newsroom displays current coverage without upload controls. The selected league’s **[League Name] Archive** contains an expandable team → year → day list, with actions to read historical stories or watch the corresponding TV episode. Reset Archive confirms before atomically removing only the selected league’s stories, snapshots, studios, and results. Other leagues and the original legacy recovery copy are preserved.
+
+Uploading another league changes the visible archive scope to the league identities in that save. Previous league data remains stored but hidden, including after a reload. Loading the original league restores access. League identity is a fingerprint of the league name, starting year, and team IDs/names; seasons and games are separate beneath that identity. Identical identity fields represent the same league. Renaming those fields can change the identity. The archive export button exports only the selected league.
+
+The **HoopWire TV** tab automatically plays the selected day's stories, then advances to the next story. Its visible buttons are **Previous Story**, **Next Story**, **Pause** (or **Resume** while paused), and **Mute voices**. Below the studio is a box score with archived team logo URLs and verified player stats; it does not display article text or story headlines. A scrolling final-results ticker runs inside the bottom of the studio, using completed games saved for that league, year, and day. Results are preserved across uploads and included in backups. Hover or focus pauses scrolling; reduced-motion preferences show a manually scrollable results strip. Missing historical player stats are labeled unavailable. Logos that cannot load are omitted while team names remain visible.
+
+The four hosts are exclusive HoopWire characters: Maya Brooks, Jordan Price, Andre Cole, and Nina Reyes. They have fixed individual appearances and suits made from game sprite layers. Saved league announcers are never used or renamed as HoopWire hosts.
+
+The studio uses Hoop Land's announcer desk and advertisement graphic, with the loaded league's first configured `frontOffice.adsURL` ad atlas. Sponsor windows fit the artwork's proportions. Studio PNGs, a host-free backdrop, and host/ad inputs are archived per league and season and included in backups, so the TV view works without a loaded save or connection afterward.
+
+Hosts discuss archived stories in speech bubbles using locally bundled [animalese.js](https://github.com/Acedio/animalese.js). Maya and Nina have higher voices than Jordan and Andre, with a distinct pitch for each host. Only the speaking host bobs, behind the desk foreground. Pausing or leaving TV stops playback and movement. **Mute voices** on the TV page saves an audio preference for future visits. Reduced-motion preferences disable bobbing. If browser autoplay restrictions or unavailable samples prevent audio, the discussion continues with silent speech bubbles.
+
+The library and samples are pinned to an upstream revision in `vendor/animalese/UPSTREAM.txt`. The bundled code is MIT licensed, RIFFWAVE is public domain, and Josh Simmons's voice samples are credited under CC BY 4.0 in the TV view and bundled license file.
+
+`player-renderer.js`, `player-assets/`, and `court/` adapt the existing HoopLeagueStudio player/court preview work. `scene-assets/manifest.json` records the additional source textures. To re-extract scene textures for the inspected game build, install UnityPy and Pillow in a development environment and run:
+
+```text
+python scripts/extract-scene-assets.py "C:/Program Files (x86)/Steam/steamapps/common/Hoop Land/Hoop Land_Data/data.unity3d"
 ```
 
-Then visit `http://localhost:8080`.
+The extraction reads the installed game and writes only project scene assets. The browser needs no Python or asset-extraction packages.
 
-The save file never needs to leave your machine.
+## Persistent archive and backups
 
-## Story IDs
-
-Game stories use this general identity:
+Articles, verified stat snapshots, league labels, scene inputs, and PNG blobs live in IndexedDB (`hoopwire.daily.v1`). Story IDs retain the original form:
 
 ```text
 <save fingerprint>:<season>:game:<gId>
 ```
 
-The fingerprint is derived from the league name, starting year, and team identities. This reduces collisions between different Hoop Land universes while allowing later exports of the same universe to recognize stories already generated.
+Loading another save or season does not clear the archive. The archive is available before loading a save. Existing stories are preserved; a current-template team recap on the latest day can be upgraded when verified stats become available. Its original quote preference and creation date are retained. Older migrated articles keep their original text.
 
-## Coverage scoring
+The original `hoopwire.archive.v1` localStorage archive migrates into season/day categories in an atomic transaction, with its original localStorage copy retained for recovery. Legacy archives without league labels get a placeholder label until a matching save is loaded.
 
-The prototype starts with Hoop Land's own game-news `rating` and adds bonuses for:
+**Export archive** downloads a JSON backup containing images and snapshots. **Import archive** validates and merges that backup without replacing existing records. A failed write or invalid import does not report success or partially replace archived data.
 
-- close games
-- large margins
-- likely upsets
-- non-regular-season game types
+Browser storage belongs to the browser and site origin. Keep exported backups when moving browsers/computers, changing the local server address, or clearing browser data.
 
-Default thresholds:
+## Development checks
 
-- Major: 80+
-- Standard: 65+
-- Full: 0+
+```text
+node tests/core.test.cjs
+node tests/browser.cjs
+node tests/scenes.cjs [path-to-custom-save.json]
+node tests/broadcast.cjs [path-to-custom-save.json]
+```
 
-These values are intentionally easy to tune in `app.js`.
+The browser checks require Playwright resolvable through Node's package lookup (or `NODE_PATH`) and an installed Edge browser. Set `HOOPWIRE_BROWSER=chrome` to use Chrome instead. They use temporary isolated profiles, without touching user browser data. The main browser suite starts a temporary local server; scene checks use the running preview at port 8123 (override with `HOOPWIRE_URL`). An optional real custom save verifies its actual remote courts and advertisements.
 
-## Important limitation discovered in the supplied save
+Checks cover completed-game validation, zero stats, absent/ambiguous box scores, sample-save award recipients, coach identity and quote toggles, frozen articles and images across uploads, current-day upgrades, archive reload without a save, migration, backup round trips including TV studios, invalid imports, transactional rollback, storage failures, custom court/advertisement URLs, exclusive hosts, group interviews, image refreshes, TV controls, and mobile layout. Browser screenshots are written to ignored `artifacts/`.
 
-The schedule preserves historical results, player-of-the-game IDs, and after-game team records. Player objects contain a `gameStats` object, but it represents the player's latest game rather than a complete historical box-score archive.
+Season reviews read year-specific team and player statistics directly from the uploaded save. Team features use only that team’s player stints; league leaders combine stints within the same league and year. Articles and TV include per-game averages, shooting percentages and counting totals. Re-uploading a save preserves previously archived season stories, their text, dates and composed images.
 
-Because of that, HoopWire only prints a player stat line when it can conservatively identify the selected game as that player's team's latest completed game. For older games it still names the player of the game, but does not invent their stat line.
+In-season coverage uses `records-coverage.js`: current game recaps can include season-to-date averages and totals plus league-scoped career totals from the uploaded player histories. Record watches compare with prior-season totals and career leaders in those histories; they expire for a completed regular season and use stable event IDs. Matched current game stats establish milestone crossings. Native `league.records` entries establish league and team player single-game marks, including retained record entries when the full box score is unavailable. Regular-season, playoff and Finals record books remain separate. No sample league names, years or results are built into generation.
 
-## Recommended next development steps
+Team scoring season highs and lows require the complete regular-season schedule to date. Personal career-high stories use the save’s high fields. A high-only record book cannot establish personal lows; those are not inferred from high lists or incomplete archived box scores. Historical leader comparisons are limited to player history retained in the uploaded save. Archived articles preserve their source evidence, text and image; they never supply cumulative stat totals.
 
-1. Add transaction, injury, contract, award, and standings story generators from `season.news`.
-2. Add weekly roundup and power-ranking templates.
-3. Add an editable template library in a separate JSON file.
-4. Move the archive from localStorage to IndexedDB for a larger long-term newsroom archive.
-5. Add export/import for the generated news archive.
-6. Add team/player pages and filtering.
-7. Add a template preview/editor so phrasing can be customized without changing JavaScript.
+Game-generated news is also a source of stories. `news-coverage.js` uses the NewsData event types verified from the installed game's metadata: signings, releases, waivers, completed trades, injuries and returns, draft selections/declarations, commitments, contract options/extensions, trade requests, retirement announcements and completed retirements, Hall of Fame inductions, jersey retirements, and coach hires/releases/firings/retirements. It resolves player identities from rosters, free agents, retirees and Hall of Fame entries, and coaches from staff/coach records. Unknown events or missing identities are not guessed. Salary units and injury diagnoses are not inferred.
 
-## Article time perspective
+The news window follows the upload's current phase and latest completed day through the current day, including rest days; a phase whose day counter has reset uses its current day. Original event date/phase/payload are preserved, and articles are filed on the reporting day. News flags such as `read` do not change story identity. Game-result news remains represented by game recaps; award and championship announcements share milestone IDs to avoid duplicate stories. These articles and their illustrations participate in TV, archives and backups alongside daily coverage.
 
-Template version 2 treats every article as if it is being published immediately after the event.
-
-Preferred phrasing includes:
-
-- "The win improved Drift to 9-18."
-- "The Spartans fell to 11-17."
-- "Drift moved to 9-18 with the victory."
-
-Retrospective phrases such as "at that point in the season," "had won 9 of 27 games," and "left the matchup at 11-17" are intentionally avoided.
-
-Existing archived game stories created with the earlier template version are automatically eligible to be regenerated with the current wording.
+Season quotes reflect the saved winning percentage and confirmed championships. These editorial changes apply only to newly generated stories; existing archived stories are not revised. Articles contain selected statistics in prose, without league or roster stat tables. TV season facts are limited to five rows; complete source snapshots remain internal archive evidence.

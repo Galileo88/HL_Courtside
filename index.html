@@ -6,69 +6,67 @@
   <title>HoopWire — Hoop Land News Generator</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body class="entry-screen">
   <header class="topbar">
-    <div class="brand">HOOPWIRE</div>
+    <a class="brand" href="#welcome" aria-label="HoopWire main menu">HOOPWIRE</a>
     <div class="tagline">OFFLINE HOOP LAND NEWSROOM</div>
   </header>
 
   <nav class="nav">
-    <span>News</span>
-    <span>Scores</span>
-    <span>Standings</span>
-    <span>Archive</span>
+    <a href="#newsroom">Home</a>
+    <span id="leagueButtons" class="league-navigation"></span>
+    <a href="#tv">HoopWire TV</a>
+    <a href="#archive">Archive</a>
   </nav>
 
   <main class="shell">
-    <section class="panel setup">
-      <h1>Generate weekly coverage</h1>
-      <p class="muted">Your save stays in your browser. No API or internet connection is required.</p>
+    <section id="welcome" class="setup landing">
+      <header class="menu-intro">
+        <div class="menu-wordmark"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#254f85" stroke="#fff" stroke-width="3"/><path d="M68 8A46 46 0 0 1 91 70L69 89C87 53 81 28 68 8Z" fill="#cc1634"/><g fill="none" stroke="#fff" stroke-width="3"><path d="M9 29C42 15 65 24 92 43M7 60C37 39 58 34 92 35M26 89C57 55 64 35 69 9M59 94C79 66 76 36 51 4"/><circle cx="50" cy="50" r="46"/></g></svg><span>HOOPWIRE</span></div>
+        <h1>The daily desk</h1>
+        <p>News and broadcasts for your Hoop Land league</p>
+      </header>
+      <div class="menu-grid">
+        <article class="menu-card load-card">
+          <svg class="menu-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 21v7h22v-7M16 23V4M9 11l7-7 7 7"/></svg>
+          <h2>Load save</h2><p>Upload your latest save to open the newsroom. Full coverage is created automatically.</p>
+          <div class="file-row"><label class="file-button">Choose save <span aria-hidden="true">↑</span><input id="saveFile" type="file" accept=".json,*/*" disabled /></label><span id="fileName">No save loaded</span></div>
+        </article>
 
-      <div class="file-row">
-        <label class="file-button">
-          Load Hoop Land save
-          <input id="saveFile" type="file" accept=".json,*/*" />
-        </label>
-        <span id="fileName" class="muted">No save loaded</span>
+
       </div>
-
-      <div class="controls">
-        <label>
-          League
-          <select id="leagueSelect" disabled></select>
-        </label>
-
-        <label>
-          Week
-          <select id="weekSelect" disabled></select>
-        </label>
-
-        <label>
-          Coverage
-          <select id="coverageSelect" disabled>
-            <option value="major">Major stories</option>
-            <option value="standard" selected>Standard coverage</option>
-            <option value="full">Full coverage</option>
-          </select>
-        </label>
-
-        <label class="check">
-          <input id="quoteToggle" type="checkbox" checked disabled />
-          Include fictional quotes
-        </label>
-      </div>
-
-      <div id="weekSummary" class="summary hidden"></div>
-
-      <div class="actions">
-        <button id="generateButton" class="primary" disabled>Generate new stories</button>
-        <button id="clearWeekButton" disabled>Remove this week's archived stories</button>
-      </div>
+      <div class="menu-options">
+      <p class="tv-voice-credit">Voices: <a href="https://github.com/Acedio/animalese.js">animalese.js by Josh Simmons</a> · samples <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p></div>
     </section>
+    <section id="newsroom" class="newsroom-heading hidden"><div><span class="landing-kicker">THE DAILY WIRE</span><h1>Newsroom</h1><p id="newsroomDay" class="muted"></p></div><div class="newsroom-tools"><div id="newsroomLeagueLabel" hidden><select id="newsroomLeague" hidden disabled></select></div><a class="text-action" href="#welcome">Update coverage</a></div></section>
+    <section id="status" class="status hidden" role="status"></section>
 
-    <section id="status" class="status hidden"></section>
+    <section id="archive" class="panel archive-panel">
+      <div class="archive-heading"><div><h1 id="archiveTitle">League Archive</h1><p class="muted">Choose a team, year, and game day.</p></div><button id="resetArchive" disabled>Reset Archive</button></div>
+      <div id="archiveLeagueSwitch" class="archive-league-switch" hidden><button id="previousArchiveLeague" aria-label="Previous league">←</button><button id="nextArchiveLeague" aria-label="Next league">→</button></div>
+      <div id="archiveTree" class="archive-tree"></div>
+      <div hidden><select id="archiveLeague"></select><select id="archiveSeason"></select><select id="archiveDay"></select><select id="archiveTeam"><option value="">All teams</option></select></div>
+      <div class="actions"><button id="exportButton" disabled>Export archive</button><label class="file-button">Import archive<input id="importFile" type="file" accept=".json" disabled /></label><button id="refreshImagesButton" hidden disabled>Refresh images</button></div>
+    </section>
+    <section id="historicalStories" class="newsroom-heading hidden"><div><span class="landing-kicker">FROM THE ARCHIVE</span><h1 id="historicalTitle">Saved stories</h1></div><a class="text-action" href="#archive">Back to archive</a></section>
+    <dialog id="resetDialog"><h2 id="resetTitle">Reset league archive?</h2><p id="resetDescription"></p><div class="actions"><button id="cancelReset">Cancel</button><button id="confirmReset" class="primary">Reset Archive</button></div></dialog>
 
     <section id="feed" class="feed"></section>
+    <section id="tv" class="tv-panel hidden">
+      <div class="tv-title"><span class="tv-badge">THE DAILY DESK</span><h1>HoopWire TV</h1></div>
+      <figure class="tv-studio"><div id="tvStage" class="tv-stage"><img id="tvStudio" width="960" height="540" alt="" hidden /><div id="tvLiveHosts" class="tv-live-hosts" aria-hidden="true"></div><img id="tvDeskForeground" class="tv-desk-foreground" width="960" height="540" alt="" aria-hidden="true" hidden /><div id="tvBubbles" class="tv-bubbles" aria-live="polite"></div><div id="tvTicker" class="tv-results-ticker" hidden></div></div><figcaption id="tvStudioCaption" class="sr-only"></figcaption></figure>
+      <div id="tvHosts" hidden></div>
+      <div class="tv-controls tv-playback">
+        <button id="tvPrevious" disabled>Previous Story</button>
+        <button id="tvPlay" disabled>Pause</button>
+        <button id="tvNext" disabled>Next Story</button>
+        <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" /><button id="tvMute" class="tv-audio-button" aria-pressed="false" aria-label="Mute voices" title="Mute voices"><span aria-hidden="true">🔊</span></button>
+      </div>
+      <div hidden><button id="tvLinePrevious">Previous line</button><button id="tvLineNext">Next line</button><select id="tvStorySelect"></select><div id="tvTranscript"></div></div>
+      <span id="tvDiscussionStatus" class="sr-only" role="status"></span>
+      <div id="tvSegment" class="tv-segment" aria-live="polite"></div>
+
+    </section>
   </main>
 
   <template id="articleTemplate">
@@ -76,10 +74,26 @@
       <div class="article-meta"></div>
       <h2 class="article-headline"></h2>
       <div class="article-byline">HoopWire Staff</div>
+      <figure class="article-image">
+        <img width="768" height="432" alt="" />
+        <figcaption></figcaption>
+      </figure>
       <div class="article-body"></div>
     </article>
   </template>
 
+  <script src="core.js"></script>
+  <script src="season-coverage.js"></script>
+  <script src="records-coverage.js"></script>
+  <script src="news-coverage.js"></script>
+  <script src="archive.js"></script>
+  <script src="player-renderer.js"></script>
+  <script src="court-renderer.js"></script>
+  <script src="scenes.js"></script>
+  <script src="tv.js"></script>
+  <script src="vendor/animalese/riffwave.js"></script>
+  <script src="vendor/animalese/animalese.js"></script>
+  <script src="broadcast.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

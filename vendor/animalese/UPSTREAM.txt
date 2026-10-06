@@ -1,0 +1,4 @@
+https://github.com/Acedio/animalese.js
+Commit: 6f18a909df12cdddab59438640ac8019b78fac2f
+Code: MIT; riffwave.js: Public Domain; animalese.wav: CC BY 4.0, Josh Simmons.
+Local change: Animalese loader accepts an error callback and validates sample loading.
