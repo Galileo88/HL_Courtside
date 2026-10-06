@@ -28,6 +28,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Check JavaScript syntax
+        run: |
+          for file in *.js; do
+            node --check "$file"
+          done
+
+      - name: Run unit tests
+        run: node --test tests/*.test.cjs
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
