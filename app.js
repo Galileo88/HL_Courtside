@@ -228,7 +228,7 @@ branch.append(summary);
     }));
     stories.push(...composed);
     const milestoneIds=new Set();
-    const milestones=[...window.HoopWireSeason.candidates(league),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);return !state.stories.has(x.story.id);});
+    const milestones=[...window.HoopWireSeason.candidates(league),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);const existing=state.stories.get(x.story.id);return !existing||Number(x.story.editorialVersion||0)>Number(existing.editorialVersion||0);});
     // Compose in small batches to keep long season uploads responsive.
     for(let i=0;i<milestones.length;i+=4){
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
