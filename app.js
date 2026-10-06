@@ -356,7 +356,7 @@ branch.append(summary);
     }
     return box;
   }
-  function renderTV() {
+  function renderTV(startEpisode=false) {
     window.HoopWireBroadcast?.stop();
     for(const url of state.tvUrls) URL.revokeObjectURL(url);
     state.tvUrls = [];
@@ -381,7 +381,7 @@ branch.append(summary);
     options(el.tvStorySelect,stories.map((s,i)=>[i,s.headline]),previousIndex);
     el.tvSegment.replaceChildren();
     const story=stories[previousIndex],tvStory=story?tvStoryFromCurrentSave(story):null;
-    window.HoopWireBroadcast?.mount(tvStory,studio,location.hash==="#tv");
+    window.HoopWireBroadcast?.mount(tvStory,studio,startEpisode);
     if(tvStory) {
       const title=document.createElement("h2");title.textContent=tvStory.kind==='season'?"Season facts":"Box score";el.tvSegment.append(title);
       el.tvSegment.appendChild(boxScore(tvStory));
@@ -429,9 +429,9 @@ branch.append(summary);
   el.archiveTeam.addEventListener("change",()=>{render();renderTV();controls();});
   el.archiveDay.addEventListener("change",() => {render();renderTV();controls();});
   el.refreshImagesButton.addEventListener("click",() => run(refreshImages));
-  el.tvStorySelect.addEventListener("change",renderTV);
-  el.tvPrevious.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)-1);renderTV();});
-  el.tvNext.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)+1);renderTV();});
+  el.tvStorySelect.addEventListener("change",()=>renderTV(true));
+  el.tvPrevious.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)-1);renderTV(true);});
+  el.tvNext.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)+1);renderTV(true);});
   window.addEventListener("hashchange",view);
   el.exportButton.addEventListener("click", () => run(async () => {
     const backup = await archive.exportData(el.archiveLeague.value);
