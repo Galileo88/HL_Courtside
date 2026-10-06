@@ -345,15 +345,23 @@ branch.append(summary);
     box.append(scoreRow);
     const liveSnaps=currentSaveSnapshots(story);
     const snaps=liveSnaps.length?liveSnaps:[...state.snapshots.values()].filter(s=>s.fingerprint===story.fingerprint&&String(s.season)===String(story.season)&&s.gid===story.gid);
+    const highlights=document.createElement('div');highlights.className='tv-postgame-highlights';
     for(const team of teams){
-      const heading=document.createElement('h3');heading.textContent=team.name;box.append(heading);
-      const rows=snaps.filter(s=>s.team.id===team.id).sort((a,b)=>b.stats.PTS-a.stats.PTS);
-      if(!rows.length){const note=document.createElement('p');note.className='muted';note.textContent='Verified player box scores were not preserved for this team.';box.append(note);continue;}
-      const wrap=document.createElement('div');wrap.className='box-table-scroll';const table=document.createElement('table');const caption=document.createElement('caption');caption.textContent=`${team.name} verified player stats`;caption.className='sr-only';table.append(caption);
-      const head=document.createElement('thead'),hr=document.createElement('tr');for(const text of ['Player','PTS','REB','AST','STL','BLK','FG','3PT','FT']){const th=document.createElement('th');th.scope='col';th.textContent=text;hr.append(th);}head.append(hr);table.append(head);
-      const body=document.createElement('tbody');
-      for(const snap of rows){const row=document.createElement('tr'),stats=snap.stats;for(const value of [C.playerDisplay(snap.player),stats.PTS,stats.REB,stats.AST,stats.STL,stats.BLK,...[['FGM','FGA'],['TPM','TPA'],['FTM','FTA']].map(([m,a])=>stats[m]!=null&&stats[a]!=null?`${stats[m]}-${stats[a]}`:'—')]){const cell=document.createElement('td');cell.dataset.label=['Player','PTS','REB','AST','STL','BLK','FG','3PT','FT'][row.children.length];cell.textContent=value ?? '—';row.append(cell);}body.append(row);}table.append(body);wrap.append(table);box.append(wrap);
+      const rows=snaps.filter(s=>s.team.id===team.id&&C.validStats(s.stats)).sort((a,b)=>b.stats.PTS-a.stats.PTS||a.pid-b.pid);
+      const snap=rows.find(s=>s.pid===story.playerId)||rows[0];
+      const card=document.createElement('section');card.className='tv-postgame-player';
+      const label=document.createElement('span');label.className='tv-postgame-label';label.textContent=`${team.name} · ${snap?.pid===story.playerId?'Player of the game':'Scoring leader'}`;
+      card.append(label);
+      if(!snap){label.textContent=team.name;const note=document.createElement('p');note.className='muted';note.textContent='Player stats unavailable.';card.append(note);highlights.append(card);continue;}
+      const name=document.createElement('h3');name.textContent=C.playerDisplay(snap.player);card.append(name);
+      card.append(tvStatGrid(['Player','PTS','REB','AST','STL','BLK'],[name.textContent,snap.stats.PTS,snap.stats.REB,snap.stats.AST,snap.stats.STL,snap.stats.BLK]));
+      const shooting=[];
+      for(const [m,a,label] of [['FGM','FGA','FG'],['TPM','TPA','3PT']])if(Number.isInteger(snap.stats[m])&&Number.isInteger(snap.stats[a])&&snap.stats[a]>0&&snap.stats[m]>=0&&snap.stats[m]<=snap.stats[a])shooting.push(`${snap.stats[m]}–${snap.stats[a]} ${label}`);
+      if(Number.isInteger(snap.stats.TO)&&snap.stats.TO>=0)shooting.push(`${snap.stats.TO} TO`);
+      if(shooting.length){const line=document.createElement('p');line.className='tv-postgame-shooting';line.textContent=shooting.join(' · ');card.append(line);}
+      highlights.append(card);
     }
+    box.append(highlights);
     return box;
   }
   function tvStoryKicker(story) {

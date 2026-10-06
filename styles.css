@@ -803,6 +803,18 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-story-details .box-score thead {
   background:#123961;
 }
+.tv-postgame-highlights { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:18px; }
+.tv-postgame-player { min-width:0; padding:16px; background:#091b30; border-left:3px solid #ee3546; }
+.tv-postgame-label { display:block; color:#8fb4d3; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; overflow-wrap:anywhere; }
+.tv-story-details .tv-postgame-player h3 { margin:8px 0 14px; font-size:20px; overflow-wrap:anywhere; }
+.tv-postgame-player .tv-stat-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+.tv-postgame-player .tv-stat-card { border:0; padding:8px 4px; background:#102b47; }
+.tv-postgame-shooting { margin:12px 0 0; color:#b9d9f4; font-size:12px; font-variant-numeric:tabular-nums; }
+@media(max-width:600px) {
+  .tv-postgame-highlights { grid-template-columns:1fr; }
+  .tv-story-details .tv-postgame-player h3 { font-size:18px; }
+  .tv-postgame-player { padding:12px; }
+}
 .tv-playback {
   grid-template-columns:minmax(0,1fr) minmax(110px,160px) minmax(0,1fr) 52px;
   gap:8px;

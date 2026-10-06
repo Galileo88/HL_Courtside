@@ -56,6 +56,8 @@ The **HoopWire TV** tab automatically plays the selected day's stories, then adv
 
 The four hosts are exclusive HoopWire characters: Maya Brooks, Jordan Price, Andre Cole, and Nina Reyes. They have fixed individual appearances and suits made from game sprite layers. Saved league announcers are never used or renamed as HoopWire hosts.
 
+TV postgame graphics show the final score and one featured player per team: the verified player of the game where applicable, otherwise the scoring leader. Each card shows points, rebounds, assists, steals and blocks, with a compact shooting line when available. Missing player stats are labeled unavailable. Full roster box-score tables are omitted from this broadcast section; verified snapshots remain preserved in the archive.
+
 The studio uses Hoop Land's announcer desk and advertisement graphic, with the loaded league's first configured `frontOffice.adsURL` ad atlas. Sponsor windows fit the artwork's proportions. Studio PNGs, a host-free backdrop, and host/ad inputs are archived per league and season and included in backups, so the TV view works without a loaded save or connection afterward.
 
 Hosts discuss archived stories in speech bubbles using locally bundled [animalese.js](https://github.com/Acedio/animalese.js). Maya and Nina have higher voices than Jordan and Andre, with a distinct pitch for each host. Only the speaking host bobs, behind the desk foreground. Pausing or leaving TV stops playback and movement. **Mute voices** on the TV page saves an audio preference for future visits. Reduced-motion preferences disable bobbing. If browser autoplay restrictions or unavailable samples prevent audio, the discussion continues with silent speech bubbles.
