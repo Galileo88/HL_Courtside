@@ -5,7 +5,7 @@
   const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
   const pitches=[1.25,.83,.65,1.45];
   const introSrc='assets/hoopwire-tv-intro.mp3',introDelayMs=1000;
-  let turns=[],hosts=[],line=0,running=false,audio=null,timer=null,epoch=0,samples=null,needsIntro=true;
+  let turns=[],hosts=[],line=0,running=false,audio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
   function chunks(text) {
     const result=[];let part='';
     for(const word of String(text).split(/\s+/)){if(part.length+word.length>160){result.push(part);part='';}part+=(part?' ':'')+word;}
@@ -44,7 +44,8 @@
     if(!el.tvStagePlay)return;
     const available=turns.length>0;
     let label='Play episode';
-    if(available&&!needsIntro)label=line>=turns.length-1?'Replay episode':'Resume episode';
+    if(available&&completed)label='Replay episode';
+    else if(available&&!needsIntro)label='Resume episode';
     el.tvStagePlay.disabled=!available;
     el.tvStagePlay.hidden=running||!available;
     el.tvStagePlay.setAttribute('aria-label',label.replace('episode','HoopWire TV episode'));
@@ -54,7 +55,7 @@
   function stop() {
     epoch++;running=false;clearTimeout(timer);timer=null;
     if(audio){audio.onended=audio.onerror=null;audio.pause();audio.removeAttribute('src');audio=null;}
-    talking(false);el.tvPlay.textContent='Resume';updateStagePlay();
+    talking(false);el.tvPlay.textContent=completed?'Replay':needsIntro?'Play':'Resume';updateStagePlay();
   }
   function beginHosts(token) {
     if(token!==epoch||!running)return;
@@ -81,7 +82,7 @@
   }
   function startPlayback() {
     if(!turns.length)return;
-    if(!needsIntro&&line>=turns.length-1){line=0;needsIntro=true;}
+    if(completed){line=0;needsIntro=true;completed=false;}
     running=true;updateStagePlay();show();
     if(needsIntro)playIntro();
     else playLine();
@@ -96,14 +97,14 @@
       el.tvDiscussionStatus.textContent=`Line ${line+1} of ${turns.length}`;
     }else el.tvDiscussionStatus.textContent='Choose a story to start the discussion.';
     el.tvPlay.disabled=!turn;el.tvLinePrevious.disabled=!turn||line===0;el.tvLineNext.disabled=!turn||line===turns.length-1;
-    el.tvPlay.textContent=running?'Pause':'Resume';
+    el.tvPlay.textContent=running?'Pause':completed?'Replay':needsIntro?'Play':'Resume';
     for(const [i,p] of [...el.tvTranscript.children].entries())p.classList.toggle('current-line',i===line);
     updateStagePlay();
   }
   function advance(token) {
     if(token!==epoch||!running)return;
     talking(false);
-    if(line>=turns.length-1){stop();el.tvDiscussionStatus.textContent='Discussion complete. Choose the next story when you are ready.';return;}
+    if(line>=turns.length-1){completed=true;stop();el.tvDiscussionStatus.textContent='Discussion complete. Choose the next story when you are ready.';return;}
     timer=setTimeout(()=>{if(token!==epoch||!running)return;line++;show();playLine();},450);
   }
   async function playLine() {
@@ -122,7 +123,7 @@
     }catch(error){if(token!==epoch||!running)return;audio?.pause();audio=null;el.tvDiscussionStatus.textContent='Voice unavailable; continuing with speech bubbles.';talking(true);timer=setTimeout(()=>advance(token),Math.max(2500,Math.min(8500,turn.text.length*45)));}
   }
   function mount(story,studio,autoplay=false) {
-    stop();line=0;needsIntro=true;turns=discussion(story);hosts=studio?.inputs.announcers || HoopWireTV.inputs({teams:[]}).announcers;
+    stop();line=0;needsIntro=true;completed=false;turns=discussion(story);hosts=studio?.inputs.announcers || HoopWireTV.inputs({teams:[]}).announcers;
     el.tvLiveHosts.replaceChildren();el.tvTranscript.replaceChildren();
     if(studio?.backdropBlob)hosts.forEach((person,i)=>{
       const slot=document.createElement('div');slot.className='tv-live-host';slot.dataset.host=i;slot.style.left=`${(70+i*220)/960*100}%`;
@@ -136,8 +137,8 @@
   }
   el.tvPlay.addEventListener('click',()=>{if(running){stop();show();return;}startPlayback();});
   el.tvStagePlay.addEventListener('click',startPlayback);
-  el.tvLinePrevious.addEventListener('click',()=>{stop();needsIntro=false;line=Math.max(0,line-1);show();});
-  el.tvLineNext.addEventListener('click',()=>{stop();needsIntro=false;line=Math.min(turns.length-1,line+1);show();});
+  el.tvLinePrevious.addEventListener('click',()=>{stop();completed=false;needsIntro=false;line=Math.max(0,line-1);show();});
+  el.tvLineNext.addEventListener('click',()=>{stop();completed=false;needsIntro=false;line=Math.min(turns.length-1,line+1);show();});
   function muteLabel() {
     const label=el.tvVoice.checked?'Mute voices':'Unmute voices';
     const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent=el.tvVoice.checked?'🔊':'🔇';
