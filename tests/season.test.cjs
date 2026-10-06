@@ -19,7 +19,8 @@ test('coach and player season quotes reflect winning records and championships',
 });
 test('playoff disappointment overrides regular-season success without confusing champions',()=>{
  const coach={fn:'Casey',ln:'Coach'},player={fn:'Alex',ln:'Star'};
- for(const result of ['missed','eliminated','runnerup','injury'])assert.match(S.quoteLines('test',{W:60,L:22},false,coach,player,result).join(' '),/disappoint|hurts|frustrat|bitter|hate|hard/i);
+ const patterns={missed:/standard|did not do enough|playoffs from home|games we let get away/i,eliminated:/disappoint|hurts/i,runnerup:/hurts|bitter|hard/i,injury:/frustrat|hate|disappoint/i};
+ for(const result of ['missed','eliminated','runnerup','injury'])assert.match(S.quoteLines('test',{W:60,L:22},false,coach,player,result).join(' '),patterns[result]);
  const teams=new Map([[1,{}],[2,{}],[3,{}],[4,{}]]),bracket={rounds:[{series:[{topSeed:1,lowerSeed:2,winner:1},{topSeed:3,lowerSeed:0,winner:3}]},{series:[{topSeed:1,lowerSeed:3,winner:1}]}]};
  assert.equal(S.postseasonOutcome(1,bracket,1,teams),'champion');assert.equal(S.postseasonOutcome(3,bracket,1,teams),'runnerup');assert.equal(S.postseasonOutcome(2,bracket,1,teams),'eliminated');assert.equal(S.postseasonOutcome(4,bracket,1,teams),'missed');
 });
