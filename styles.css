@@ -596,3 +596,233 @@ a[aria-disabled="true"]:hover { background:inherit; }
   }
   .tv-stage-play-label { font-size:12px; }
 }
+
+
+/* Broadcast lower-third / story graphics. The TV view should read like a show, not an admin report. */
+.tv-segment {
+  margin-top:18px;
+  padding:0;
+  border-top:0;
+  background:transparent;
+}
+.tv-story-details {
+  overflow:hidden;
+  border:1px solid #2d5f8d;
+  border-top:4px solid #ee3546;
+  border-radius:4px;
+  background:linear-gradient(145deg,#0b2038 0%,#0d2e50 58%,#0a2037 100%);
+  box-shadow:0 12px 30px #020b144d;
+}
+.tv-story-header {
+  position:relative;
+  padding:22px 24px 20px;
+  border-bottom:1px solid #315579;
+  background:linear-gradient(90deg,#102f50 0%,#0b2038 72%);
+}
+.tv-story-header::after {
+  content:'';
+  position:absolute;
+  right:0;
+  bottom:0;
+  width:28%;
+  height:3px;
+  background:#79fff4;
+  opacity:.8;
+}
+.tv-story-kicker {
+  display:inline-block;
+  margin-bottom:9px;
+  color:#79fff4;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.tv-story-header h2 {
+  max-width:900px;
+  margin:0;
+  color:#fff;
+  font-size:clamp(24px,3.6vw,42px);
+  line-height:1.03;
+  letter-spacing:-.025em;
+  text-wrap:balance;
+}
+.tv-season-graphic,
+.tv-story-details .box-score {
+  padding:20px 24px 24px;
+}
+.tv-feature-name {
+  margin-bottom:14px;
+  color:#b9d9f4;
+  font-size:14px;
+  font-weight:800;
+}
+.tv-stat-grid {
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+}
+.tv-stat-card {
+  min-width:0;
+  padding:15px 12px 13px;
+  border:1px solid #315579;
+  background:#091b30;
+  text-align:center;
+}
+.tv-stat-card strong {
+  display:block;
+  color:#fff;
+  font-size:clamp(22px,3vw,32px);
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.tv-stat-card span {
+  display:block;
+  margin-top:7px;
+  color:#8fb4d3;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.tv-matchup-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.tv-matchup-card {
+  min-width:0;
+  padding:15px 16px;
+  border-left:3px solid #238bce;
+  background:#091b30;
+}
+.tv-matchup-teams {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:9px;
+}
+.tv-matchup-teams strong {
+  min-width:0;
+  color:#fff;
+  font-size:15px;
+  overflow-wrap:anywhere;
+}
+.tv-matchup-teams strong:last-child { text-align:right; }
+.tv-matchup-teams span {
+  color:#79fff4;
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+}
+.tv-matchup-card small {
+  display:block;
+  margin-top:8px;
+  color:#8fb4d3;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.tv-fact-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.tv-fact-card {
+  min-width:0;
+  padding:16px;
+  border:1px solid #315579;
+  background:#091b30;
+}
+.tv-fact-card > strong {
+  display:block;
+  margin-bottom:12px;
+  color:#fff;
+  font-size:16px;
+  line-height:1.25;
+}
+.tv-fact-values {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 18px;
+}
+.tv-fact-values span {
+  display:grid;
+  gap:2px;
+}
+.tv-fact-values small {
+  color:#8fb4d3;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.tv-fact-values b {
+  color:#f0f7ff;
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+}
+.tv-story-details .box-result {
+  margin-bottom:10px;
+  color:#79fff4;
+  letter-spacing:.1em;
+}
+.tv-story-details .scoreboard {
+  margin:0 0 16px;
+  padding:14px;
+  border:1px solid #315579;
+  background:#091b30;
+}
+.tv-story-details .box-score h3 {
+  margin:20px 0 8px;
+  color:#fff;
+  font-size:14px;
+}
+.tv-story-details .box-score table {
+  background:#091b30;
+}
+.tv-story-details .box-score thead {
+  background:#123961;
+}
+.tv-playback {
+  grid-template-columns:minmax(0,1fr) minmax(110px,160px) minmax(0,1fr) 52px;
+  gap:8px;
+  margin:12px 0 18px;
+}
+.tv-playback button {
+  min-height:44px;
+}
+.tv-playback .tv-audio-button {
+  padding:8px;
+}
+@media(max-width:760px) {
+  .tv-stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .tv-fact-grid { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .tv-panel { padding:14px; }
+  .tv-story-header { padding:17px 16px 15px; }
+  .tv-story-header h2 {
+    font-size:clamp(23px,7.4vw,31px);
+    line-height:1.05;
+  }
+  .tv-season-graphic,
+  .tv-story-details .box-score { padding:14px 16px 18px; }
+  .tv-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .tv-stat-card { padding:13px 9px 11px; }
+  .tv-stat-card strong { font-size:24px; }
+  .tv-matchup-grid { grid-template-columns:1fr; gap:8px; }
+  .tv-matchup-card { padding:13px 12px; }
+  .tv-matchup-teams strong { font-size:14px; }
+  .tv-playback {
+    grid-template-columns:1fr 1fr 46px;
+  }
+  #tvPlay {
+    grid-column:1 / -1;
+    grid-row:1;
+  }
+  #tvPrevious { grid-column:1; }
+  #tvNext { grid-column:2; }
+  #tvMute { grid-column:3; }
+}
