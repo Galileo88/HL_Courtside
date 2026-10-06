@@ -193,7 +193,9 @@ branch.append(summary);
         gameResults[year][dayIndex+1][game.gId] ||= {gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore}};
       }
       leagues.push({id:fingerprint, name:league.leagueName || "League",studios,gameResults});
-      snapshots.push(...C.captureSnapshots(league,fingerprint).filter(s => !state.snapshots.has(s.id)));
+      // The active save is authoritative for its current verified player box scores.
+      // Rewriting the same snapshot id refreshes stale browser-archive values.
+      snapshots.push(...C.captureSnapshots(league,fingerprint));
     }
     await archive.write({snapshots,leagues,meta:[{id:"active-leagues",ids:state.scope}]});
     state.raw = parsed; state.leagueIndex = 0;
@@ -209,7 +211,7 @@ branch.append(summary);
     const league=selectedLeague();
     archiveNavigation(C.buildFingerprint(league),C.seasonYear(league),C.buildLookups(league).latestDay+1);
     view();
-    status(`Save loaded. Archived ${total} new or upgraded stories across ${parsed.seasonLeagues.length} leagues. Preserved ${snapshots.length} new verified player box scores.`);
+    status(`Save loaded. Archived ${total} new or upgraded stories across ${parsed.seasonLeagues.length} leagues. Refreshed ${snapshots.length} verified player box scores from this save.`);
 
   }
   async function generate() {
@@ -285,6 +287,11 @@ branch.append(summary);
     }
     render();renderTV();
   }
+  function currentSaveSnapshots(story) {
+    const league=(state.raw?.seasonLeagues||[]).find(l=>C.buildFingerprint(l)===story.fingerprint&&String(C.seasonYear(l))===String(story.season));
+    if(!league)return [];
+    return C.captureSnapshots(league,story.fingerprint).filter(s=>s.gid===story.gid);
+  }
   function boxScore(story) {
     const box=document.createElement('div');box.className='box-score';
     if(story.kind==='season'){
@@ -311,7 +318,8 @@ branch.append(summary);
       const score=document.createElement('b');score.textContent=team.score ?? '—';side.append(name,score);scoreRow.append(side);
     }
     box.append(scoreRow);
-    const snaps=[...state.snapshots.values()].filter(s=>s.fingerprint===story.fingerprint&&String(s.season)===String(story.season)&&s.gid===story.gid);
+    const liveSnaps=currentSaveSnapshots(story);
+    const snaps=liveSnaps.length?liveSnaps:[...state.snapshots.values()].filter(s=>s.fingerprint===story.fingerprint&&String(s.season)===String(story.season)&&s.gid===story.gid);
     for(const team of teams){
       const heading=document.createElement('h3');heading.textContent=team.name;box.append(heading);
       const rows=snaps.filter(s=>s.team.id===team.id).sort((a,b)=>b.stats.PTS-a.stats.PTS);
