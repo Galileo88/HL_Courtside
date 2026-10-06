@@ -12,11 +12,14 @@
   }
   function discussion(story) {
     if(!story)return [];
+    const scripted=window.HoopWireBroadcastContent?.script(story)||[
+      {speaker:0,text:`Here's the latest from HoopWire: ${story.headline}.`},
+      {speaker:1,text:'The headline is only the start. The important question is what changes from here.'},
+      {speaker:2,text:'That is what we will be watching when the next game or league decision arrives.'},
+      {speaker:3,text:'More from around the league is coming up on HoopWire TV.'}
+    ];
     const result=[];
-    const add=(speaker,text)=>chunks(text).forEach(text=>result.push({speaker,text}));
-    add(0,`Welcome to HoopWire TV. ${story.headline}. Jordan, take us through it.`);
-    (story.paragraphs || []).forEach((text,i)=>add((i+1)%4,text));
-    add(3,'Stay with us. More from around the league is coming up on HoopWire TV.');
+    for(const turn of scripted)chunks(turn.text).forEach(text=>result.push({speaker:turn.speaker,text}));
     return result;
   }
   function spoken(text) {
