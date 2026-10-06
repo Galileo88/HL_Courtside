@@ -36,3 +36,43 @@ test('62-20 and 64-18 teams still in the playoffs always receive proud season qu
  }
  for(let i=0;i<50;i++)assert.doesNotMatch(S.quoteLines(String(i),{W:62,L:20},false,{fn:'Coach'},null).join(' '),/disappoint|fictional|do better/i);
 });
+
+
+test('playoff previews summarize the round instead of repeating every matchup',()=>{
+ const teams=[1,2,3,4].map((id,i)=>({id,name:['Breakers','Flyers','Stags','Foundry'][i]}));
+ const records=[
+  {team:teams[0],year:{seasonStats:{GP:82,W:64,L:18,PTS:9069,OPP:7954}}},
+  {team:teams[1],year:{seasonStats:{GP:82,W:44,L:38,PTS:8200,OPP:7921}}},
+  {team:teams[2],year:{seasonStats:{GP:82,W:57,L:25,PTS:8249,OPP:7872}}},
+  {team:teams[3],year:{seasonStats:{GP:82,W:53,L:29,PTS:8060,OPP:7946}}}
+ ];
+ const lookup={teams:new Map(teams.map(t=>[t.id,t]))};
+ const active=[{topSeed:1,lowerSeed:2,firstTo:4},{topSeed:3,lowerSeed:4,firstTo:4}];
+ const paragraphs=S.playoffPreviewParagraphs(active,records,lookup,{shortName:'HL',leagueName:'Hoop League'},0);
+ assert.ok(paragraphs.length<=3);
+ assert.match(paragraphs[0],/postseason opener|matchups/i);
+ assert.match(paragraphs.join(' '),/tightest pairing/i);
+ assert.match(paragraphs.join(' '),/highest-scoring offense/i);
+ assert.doesNotMatch(paragraphs.join(' '),/meet .* in a best-of-7 series.*meet .* in a best-of-7 series/i);
+});
+
+test('missed-playoff coach and player quotes have different perspectives',()=>{
+ const lines=S.quoteLines('missed',{W:40,L:42},false,{fn:'Tracy',ln:'Poole'},{fn:'Chester',ln:'Barnes'},'missed');
+ assert.equal(lines.length,2);
+ assert.match(lines[0],/standard|record|identity|consistency|all of us/i);
+ assert.match(lines[1],/home|summer|games|I have to|next season/i);
+ assert.doesNotMatch(lines[0],/watching the playoffs from home|all summer|I have to come back/i);
+});
+
+test('award stories stay focused on the winner and coach quotes discuss the winner',()=>{
+ const l=fixture();
+ l.teams[0].frontOffice={staff:[{id:50,tid:1,pos:1,fn:'Tracy',ln:'Poole'}]};
+ const story=S.candidates(l).find(x=>x.story.eventKey==='award-2-1').story;
+ const text=story.paragraphs.join(' ');
+ const coachLine=story.paragraphs.find(p=>/head coach/.test(p));
+ assert.match(text,/Player 1/);
+ assert.doesNotMatch(text,/playoffs|postseason|standings|missing|record says|regular-season record/i);
+ assert.ok(coachLine);
+ assert.match(coachLine,/Player 1/);
+ assert.match(coachLine,/award|recognition|honor|recognized/i);
+});
