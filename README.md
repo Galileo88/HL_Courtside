@@ -60,6 +60,8 @@ The studio uses Hoop Land's announcer desk and advertisement graphic, with the l
 
 Hosts discuss archived stories in speech bubbles using locally bundled [animalese.js](https://github.com/Acedio/animalese.js). Maya and Nina have higher voices than Jordan and Andre, with a distinct pitch for each host. Only the speaking host bobs, behind the desk foreground. Pausing or leaving TV stops playback and movement. **Mute voices** on the TV page saves an audio preference for future visits. Reduced-motion preferences disable bobbing. If browser autoplay restrictions or unavailable samples prevent audio, the discussion continues with silent speech bubbles.
 
+Episodes open with the supplied HoopWire TV logo, red diagonal panels, a motion grid and a final wipe into the studio. The animation follows the theme's actual playback position and reveals the hosts only when the music ends. Speech bubbles are empty and hidden until the show starts. Pausing freezes both music and graphics; resuming continues from the same position. Changing stories cancels the opening. The existing mute control also mutes the theme. Unavailable theme audio uses an 8.5-second silent opening; reduced-motion preferences use a static logo slate for the same playback period.
+
 The library and samples are pinned to an upstream revision in `vendor/animalese/UPSTREAM.txt`. The bundled code is MIT licensed, RIFFWAVE is public domain, and Josh Simmons's voice samples are credited under CC BY 4.0 in the TV view and bundled license file.
 
 `player-renderer.js`, `player-assets/`, and `court/` adapt the existing HoopLeagueStudio player/court preview work. `scene-assets/manifest.json` records the additional source textures. To re-extract scene textures for the inspected game build, install UnityPy and Pillow in a development environment and run:
@@ -95,6 +97,7 @@ node tests/scenes.cjs [path-to-custom-save.json]
 node tests/broadcast.cjs [path-to-custom-save.json]
 node tests/broadcast-content.test.cjs
 node tests/dialogue-browser.cjs
+node tests/intro-browser.cjs
 ```
 
 The browser checks require Playwright resolvable through Node's package lookup (or `NODE_PATH`) and an installed Edge browser. Set `HOOPWIRE_BROWSER=chrome` to use Chrome instead. They use temporary isolated profiles, without touching user browser data. The main browser suite starts a temporary local server; scene checks use the running preview at port 8123 (override with `HOOPWIRE_URL`). An optional real custom save verifies its actual remote courts and advertisements.
