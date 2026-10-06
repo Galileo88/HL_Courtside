@@ -287,10 +287,35 @@ branch.append(summary);
     }
     render();renderTV();
   }
+  function currentLeagueForStory(story) {
+    return (state.raw?.seasonLeagues||[]).find(l=>C.buildFingerprint(l)===story.fingerprint&&String(C.seasonYear(l))===String(story.season))||null;
+  }
   function currentSaveSnapshots(story) {
-    const league=(state.raw?.seasonLeagues||[]).find(l=>C.buildFingerprint(l)===story.fingerprint&&String(C.seasonYear(l))===String(story.season));
+    const league=currentLeagueForStory(story);
     if(!league)return [];
     return C.captureSnapshots(league,story.fingerprint).filter(s=>s.gid===story.gid);
+  }
+  function tvStoryFromCurrentSave(story) {
+    const live=structuredClone(story),league=currentLeagueForStory(story);
+    if(!league)return live;
+    if(live.gameSummary){
+      const snaps=currentSaveSnapshots(story);
+      const snap=snaps.find(s=>s.pid===live.playerId)||(snaps.length===1?snaps[0]:null);
+      if(snap){
+        live.playerId=snap.pid;
+        live.playerStats=structuredClone(snap.stats);
+      }
+    }
+    const featured=live.seasonSnapshot?.featuredPlayer;
+    if(featured?.id!=null){
+      const player=C.buildLookups(league).players.get(featured.id);
+      if(player){
+        featured.regularStats=window.HoopWireSeason.stats(player,league,story.season,'season');
+        featured.playoffStats=window.HoopWireSeason.stats(player,league,story.season,'playoffs');
+        featured.finalsStats=window.HoopWireSeason.stats(player,league,story.season,'finals');
+      }
+    }
+    return live;
   }
   function boxScore(story) {
     const box=document.createElement('div');box.className='box-score';
@@ -355,11 +380,11 @@ branch.append(summary);
     const previousIndex = Math.min(Number(el.tvStorySelect.value || 0),Math.max(0,stories.length-1));
     options(el.tvStorySelect,stories.map((s,i)=>[i,s.headline]),previousIndex);
     el.tvSegment.replaceChildren();
-    const story=stories[previousIndex];
-    window.HoopWireBroadcast?.mount(story,studio,location.hash==="#tv");
-    if(story) {
-      const title=document.createElement("h2");title.textContent=story.kind==='season'?"Season facts":"Box score";el.tvSegment.append(title);
-      el.tvSegment.appendChild(boxScore(story));
+    const story=stories[previousIndex],tvStory=story?tvStoryFromCurrentSave(story):null;
+    window.HoopWireBroadcast?.mount(tvStory,studio,location.hash==="#tv");
+    if(tvStory) {
+      const title=document.createElement("h2");title.textContent=tvStory.kind==='season'?"Season facts":"Box score";el.tvSegment.append(title);
+      el.tvSegment.appendChild(boxScore(tvStory));
     } else el.tvSegment.textContent="Choose an archived day with stories to start the broadcast.";
     const results=new Map(Object.values(league?.gameResults?.[el.archiveSeason.value]?.[el.archiveDay.value] || {}).map(g=>[g.gid,g]));
     for(const article of state.stories.values())if(article.fingerprint===league?.id&&String(article.season)===el.archiveSeason.value&&article.day===Number(el.archiveDay.value)&&article.gameSummary&&!results.has(article.gid))results.set(article.gid,{gid:article.gid,...article.gameSummary});
