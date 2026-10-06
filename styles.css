@@ -538,3 +538,61 @@ a[aria-disabled="true"]:hover { background:inherit; }
     font-size:17px;
   }
 }
+
+
+/* HoopWire TV behaves like a paused video until the user starts the episode. */
+.tv-stage-play {
+  position:absolute;
+  inset:0;
+  z-index:20;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+  height:100%;
+  border:0;
+  border-radius:0;
+  background:rgba(3,16,28,.48);
+  color:#fff;
+  cursor:pointer;
+  margin:0;
+  padding:0;
+}
+.tv-stage-play[hidden] { display:none; }
+.tv-stage-play:hover,
+.tv-stage-play:focus-visible { background:rgba(3,16,28,.58); }
+.tv-stage-play:focus-visible {
+  outline:3px solid #79fff4;
+  outline-offset:-6px;
+}
+.tv-stage-play-icon {
+  display:grid;
+  place-items:center;
+  width:88px;
+  height:88px;
+  padding-left:6px;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:rgba(13,57,113,.9);
+  box-shadow:0 8px 24px #0008;
+  font-size:38px;
+  line-height:1;
+}
+.tv-stage-play-label {
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  text-shadow:0 2px 4px #000;
+}
+@media(max-width:600px) {
+  .tv-stage-play { gap:8px; }
+  .tv-stage-play-icon {
+    width:68px;
+    height:68px;
+    font-size:30px;
+  }
+  .tv-stage-play-label { font-size:12px; }
+}
