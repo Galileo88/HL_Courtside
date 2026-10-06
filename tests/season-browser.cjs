@@ -20,7 +20,7 @@ await page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{con
 original=await backup();await page.reload();await ready();await upload();assert.deepEqual(await backup(),original);
 
 assert.equal(await page.locator('.article-body table').count(),0);
-await page.locator('.nav a[href="#tv"]').click();assert.equal(await page.locator('#tvSegment h2').textContent(),'Season facts');assert.ok(await page.locator('#tvSegment table tbody tr').count()<=5);assert.equal(await page.locator('#tvSegment table').count(),1);await page.screenshot({path:path.join(root,'artifacts/season-tv.png'),fullPage:true});
+await page.locator('.nav a[href="#tv"]').click();assert.ok(await page.locator('#tvSegment .tv-story-kicker').count()>0);assert.notEqual(await page.locator('#tvSegment h2').textContent(),'Season facts');assert.ok(await page.locator('#tvSegment .tv-stat-grid,#tvSegment .tv-matchup-grid,#tvSegment .tv-fact-grid').count()>0);await page.screenshot({path:path.join(root,'artifacts/season-tv.png'),fullPage:true});
 await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(root,'artifacts/season-tv-mobile.png'),fullPage:true});
 assert.ok(await page.locator('#tvSegment,.box-table-scroll').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)));
 await page.locator('.nav a[href="#newsroom"]').click();await page.locator('.article-body p').first().evaluate(p=>p.append(' '+ 'LongPlayerName'.repeat(12)));
