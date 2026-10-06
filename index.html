@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HoopWire — Hoop Land News Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">HOOPWIRE</div>
+    <div class="tagline">OFFLINE HOOP LAND NEWSROOM</div>
+  </header>
+
+  <nav class="nav">
+    <span>News</span>
+    <span>Scores</span>
+    <span>Standings</span>
+    <span>Archive</span>
+  </nav>
+
+  <main class="shell">
+    <section class="panel setup">
+      <h1>Generate weekly coverage</h1>
+      <p class="muted">Your save stays in your browser. No API or internet connection is required.</p>
+
+      <div class="file-row">
+        <label class="file-button">
+          Load Hoop Land save
+          <input id="saveFile" type="file" accept=".json,*/*" />
+        </label>
+        <span id="fileName" class="muted">No save loaded</span>
+      </div>
+
+      <div class="controls">
+        <label>
+          League
+          <select id="leagueSelect" disabled></select>
+        </label>
+
+        <label>
+          Week
+          <select id="weekSelect" disabled></select>
+        </label>
+
+        <label>
+          Coverage
+          <select id="coverageSelect" disabled>
+            <option value="major">Major stories</option>
+            <option value="standard" selected>Standard coverage</option>
+            <option value="full">Full coverage</option>
+          </select>
+        </label>
+
+        <label class="check">
+          <input id="quoteToggle" type="checkbox" checked disabled />
+          Include fictional quotes
+        </label>
+      </div>
+
+      <div id="weekSummary" class="summary hidden"></div>
+
+      <div class="actions">
+        <button id="generateButton" class="primary" disabled>Generate new stories</button>
+        <button id="clearWeekButton" disabled>Remove this week's archived stories</button>
+      </div>
+    </section>
+
+    <section id="status" class="status hidden"></section>
+
+    <section id="feed" class="feed"></section>
+  </main>
+
+  <template id="articleTemplate">
+    <article class="article-card">
+      <div class="article-meta"></div>
+      <h2 class="article-headline"></h2>
+      <div class="article-byline">HoopWire Staff</div>
+      <div class="article-body"></div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
