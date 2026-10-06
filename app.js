@@ -432,9 +432,6 @@ branch.append(summary);
   el.tvStorySelect.addEventListener("change",renderTV);
   el.tvPrevious.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)-1);renderTV();});
   el.tvNext.addEventListener("click",()=>{el.tvStorySelect.value=String(Number(el.tvStorySelect.value)+1);renderTV();});
-  window.addEventListener('hoopwire:discussionended',()=>{
-    if(location.hash==='#tv' && Number(el.tvStorySelect.value)<selectedStories().length-1){el.tvStorySelect.value=String(Number(el.tvStorySelect.value)+1);renderTV();}
-  });
   window.addEventListener("hashchange",view);
   el.exportButton.addEventListener("click", () => run(async () => {
     const backup = await archive.exportData(el.archiveLeague.value);
