@@ -1,7 +1,7 @@
 /* Local, fact-based host discussions with Animalese voices. */
 (() => {
   'use strict';
-  const ids=['tvMute','tvPlay','tvLinePrevious','tvLineNext','tvVoice','tvDiscussionStatus','tvLiveHosts','tvBubbles','tvTranscript','tvStage'];
+  const ids=['tvMute','tvPlay','tvLinePrevious','tvLineNext','tvVoice','tvDiscussionStatus','tvLiveHosts','tvBubbles','tvTranscript','tvStage','tvStagePlay'];
   const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
   const pitches=[1.25,.83,.65,1.45];
   const introSrc='assets/hoopwire-tv-intro.mp3',introDelayMs=1000;
@@ -40,10 +40,21 @@
     for(const host of el.tvLiveHosts.children)host.classList.toggle('is-speaking',value&&Number(host.dataset.host)===turns[line]?.speaker);
     el.tvStage.classList.toggle('is-talking',value);
   }
+  function updateStagePlay() {
+    if(!el.tvStagePlay)return;
+    const available=turns.length>0;
+    let label='Play episode';
+    if(available&&!needsIntro)label=line>=turns.length-1?'Replay episode':'Resume episode';
+    el.tvStagePlay.disabled=!available;
+    el.tvStagePlay.hidden=running||!available;
+    el.tvStagePlay.setAttribute('aria-label',label.replace('episode','HoopWire TV episode'));
+    const text=el.tvStagePlay.querySelector('.tv-stage-play-label');
+    if(text)text.textContent=label;
+  }
   function stop() {
     epoch++;running=false;clearTimeout(timer);timer=null;
     if(audio){audio.onended=audio.onerror=null;audio.pause();audio.removeAttribute('src');audio=null;}
-    talking(false);el.tvPlay.textContent='Resume';
+    talking(false);el.tvPlay.textContent='Resume';updateStagePlay();
   }
   function beginHosts(token) {
     if(token!==epoch||!running)return;
@@ -70,7 +81,8 @@
   }
   function startPlayback() {
     if(!turns.length)return;
-    running=true;show();
+    if(!needsIntro&&line>=turns.length-1){line=0;needsIntro=true;}
+    running=true;updateStagePlay();show();
     if(needsIntro)playIntro();
     else playLine();
   }
@@ -86,6 +98,7 @@
     el.tvPlay.disabled=!turn;el.tvLinePrevious.disabled=!turn||line===0;el.tvLineNext.disabled=!turn||line===turns.length-1;
     el.tvPlay.textContent=running?'Pause':'Resume';
     for(const [i,p] of [...el.tvTranscript.children].entries())p.classList.toggle('current-line',i===line);
+    updateStagePlay();
   }
   function advance(token) {
     if(token!==epoch||!running)return;
@@ -121,7 +134,8 @@
     show();
     if(autoplay&&turns.length)startPlayback();
   }
-  el.tvPlay.addEventListener('click',()=>{if(running){stop();show();return;}if(!turns.length)return;if(line===turns.length-1){line=0;needsIntro=true;}startPlayback();});
+  el.tvPlay.addEventListener('click',()=>{if(running){stop();show();return;}startPlayback();});
+  el.tvStagePlay.addEventListener('click',startPlayback);
   el.tvLinePrevious.addEventListener('click',()=>{stop();needsIntro=false;line=Math.max(0,line-1);show();});
   el.tvLineNext.addEventListener('click',()=>{stop();needsIntro=false;line=Math.min(turns.length-1,line+1);show();});
   function muteLabel() {
