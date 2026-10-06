@@ -356,6 +356,74 @@ branch.append(summary);
     }
     return box;
   }
+  function tvStoryKicker(story) {
+    if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return 'AWARD SPOTLIGHT';
+    if(story.eventKey?.startsWith('playoff-round-')||story.type==='Playoff preview')return 'PLAYOFF DESK';
+    if(story.eventKey==='championship'||story.type==='Championship review')return 'CHAMPIONSHIP DESK';
+    if(story.type==='Regular-season review'||story.type==='Team season review'||story.type==='Season leaders')return 'SEASON WRAP';
+    if(story.gameSummary)return 'POSTGAME';
+    return 'HOOPWIRE DESK';
+  }
+  function tvStatGrid(headers,row,preferred=null) {
+    const grid=document.createElement('div');grid.className='tv-stat-grid';
+    const choices=(preferred||headers.map((_,i)=>i)).filter(i=>i>0&&i<headers.length&&row[i]!=null&&row[i]!=='—').slice(0,6);
+    for(const i of choices){
+      const card=document.createElement('div');card.className='tv-stat-card';
+      const value=document.createElement('strong');value.textContent=row[i];
+      const label=document.createElement('span');label.textContent=headers[i];
+      card.append(value,label);grid.append(card);
+    }
+    return grid;
+  }
+  function tvSeasonGraphic(story) {
+    const shell=document.createElement('div');shell.className='tv-season-graphic';
+    const facts=window.HoopWireSeason.factsForStory(story),headers=facts.headers||[],rows=facts.rows||[];
+    if(story.eventKey?.startsWith('award-')&&rows[0]){
+      const featured=story.seasonSnapshot?.featuredPlayer?.name||rows[0][0];
+      const name=document.createElement('div');name.className='tv-feature-name';name.textContent=featured;shell.append(name);
+      const preferred=['GP','PPG','RPG','APG','FG%','3P%'].map(label=>headers.indexOf(label)).filter(i=>i>0);
+      shell.append(tvStatGrid(headers,rows[0],preferred));
+      return shell;
+    }
+    if(story.eventKey?.startsWith('playoff-round-')){
+      const grid=document.createElement('div');grid.className='tv-matchup-grid';
+      for(const row of (story.seasonSnapshot?.rows||[])){
+        const card=document.createElement('div');card.className='tv-matchup-card';
+        const teams=document.createElement('div');teams.className='tv-matchup-teams';
+        const a=document.createElement('strong');a.textContent=row[0];
+        const vs=document.createElement('span');vs.textContent='vs';
+        const b=document.createElement('strong');b.textContent=row[1];
+        teams.append(a,vs,b);card.append(teams);
+        if(row[2]){const format=document.createElement('small');format.textContent=row[2];card.append(format);}
+        grid.append(card);
+      }
+      shell.append(grid);return shell;
+    }
+    const grid=document.createElement('div');grid.className='tv-fact-grid';
+    for(const row of rows.slice(0,6)){
+      const card=document.createElement('div');card.className='tv-fact-card';
+      const title=document.createElement('strong');title.textContent=row[0]??story.headline;card.append(title);
+      const details=document.createElement('div');details.className='tv-fact-values';
+      for(let i=1;i<Math.min(headers.length,row.length);i++){
+        if(row[i]==null||row[i]==='—')continue;
+        const item=document.createElement('span');
+        const label=document.createElement('small');label.textContent=headers[i];
+        const value=document.createElement('b');value.textContent=row[i];
+        item.append(label,value);details.append(item);
+      }
+      card.append(details);grid.append(card);
+    }
+    shell.append(grid);return shell;
+  }
+  function tvStoryPanel(story) {
+    const panel=document.createElement('section');panel.className='tv-story-details';
+    const header=document.createElement('header');header.className='tv-story-header';
+    const kicker=document.createElement('span');kicker.className='tv-story-kicker';kicker.textContent=tvStoryKicker(story);
+    const title=document.createElement('h2');title.textContent=story.headline;
+    header.append(kicker,title);panel.append(header);
+    panel.append(story.kind==='season'?tvSeasonGraphic(story):boxScore(story));
+    return panel;
+  }
   function renderTV() {
     window.HoopWireBroadcast?.stop();
     for(const url of state.tvUrls) URL.revokeObjectURL(url);
@@ -382,10 +450,8 @@ branch.append(summary);
     el.tvSegment.replaceChildren();
     const story=stories[previousIndex],tvStory=story?tvStoryFromCurrentSave(story):null;
     window.HoopWireBroadcast?.mount(tvStory,studio,false);
-    if(tvStory) {
-      const title=document.createElement("h2");title.textContent=tvStory.kind==='season'?"Season facts":"Box score";el.tvSegment.append(title);
-      el.tvSegment.appendChild(boxScore(tvStory));
-    } else el.tvSegment.textContent="Choose an archived day with stories to start the broadcast.";
+    if(tvStory) el.tvSegment.appendChild(tvStoryPanel(tvStory));
+    else el.tvSegment.textContent="Choose an archived day with stories to start the broadcast.";
     const results=new Map(Object.values(league?.gameResults?.[el.archiveSeason.value]?.[el.archiveDay.value] || {}).map(g=>[g.gid,g]));
     for(const article of state.stories.values())if(article.fingerprint===league?.id&&String(article.season)===el.archiveSeason.value&&article.day===Number(el.archiveDay.value)&&article.gameSummary&&!results.has(article.gid))results.set(article.gid,{gid:article.gid,...article.gameSummary});
     el.tvTicker.replaceChildren();el.tvTicker.hidden=!studio?.imageBlob||!results.size;
