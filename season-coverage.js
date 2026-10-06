@@ -9,15 +9,24 @@
     const entries=(player.stats||[]).filter(s=>s.league===league.leagueType&&s.yr===year).flatMap(s=>s[period]||[]).filter(s=>teamId===null||s.tid===teamId);
     if(!entries.length||entries.some(s=>['GP','PTS','REB','AST'].some(k=>!Number.isInteger(s[k])||s[k]<0)))return null;
     const result={};for(const k of keys)if(entries.every(s=>Number.isFinite(s[k])&&s[k]>=0))result[k]=entries.reduce((n,s)=>n+s[k],0);
+    // Native MIN[0] is total playing time in seconds; the other slots split positions.
+    if(entries.every(s=>Array.isArray(s.MIN)&&Number.isFinite(s.MIN[0])&&s.MIN[0]>=0))result.MIN=entries.reduce((n,s)=>n+s.MIN[0]/60,0);
     return result.GP>0?result:null;
   }
   function avg(s,k){return Number.isFinite(s?.[k])&&s.GP>0?(s[k]/s.GP).toFixed(1):'—';}
   function pct(s,m,a){return Number.isFinite(s?.[m])&&s[a]>0?`${(100*s[m]/s[a]).toFixed(1)}%`:'—';}
-  function line(s){return `${avg(s,'PTS')} points, ${avg(s,'REB')} rebounds and ${avg(s,'AST')} assists per game${s.FGA>0?`, shooting ${pct(s,'FGM','FGA')} from the field`:''}${s.TPA>0?` and ${pct(s,'TPM','TPA')} from three`:''}`;}
+  function line(s){return `${avg(s,'PTS')} points, ${avg(s,'REB')} rebounds and ${avg(s,'AST')} assists per game${Number.isFinite(s.MIN)?` in ${avg(s,'MIN')} minutes a night`:''}${s.FGA>0?`, shooting ${pct(s,'FGM','FGA')} from the field`:''}${s.TPA>0?` and ${pct(s,'TPM','TPA')} from three`:''}`;}
   function teamLine(name,s){return s?.GP>0&&Number.isFinite(s.PTS)&&Number.isFinite(s.OPP)?`${name} averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')} a night${s.FGA>0?`, shooting ${pct(s,'FGM','FGA')} from the floor`:''}${s.TPA>0?` and ${pct(s,'TPM','TPA')} from deep`:''}.`:'';}
   function playerTable(label,items){return {label,headers:['Player','GP','PPG','RPG','APG','SPG','BPG','FG%','3P%','FT%','PTS','REB','AST'],rows:items.map(({p,s})=>[C.playerDisplay(p),s.GP,...['PTS','REB','AST','STL','BLK'].map(k=>avg(s,k)),pct(s,'FGM','FGA'),pct(s,'TPM','TPA'),pct(s,'FTM','FTA'),s.PTS,s.REB,s.AST])};}
   function factsForStory(story){
     const snapshot=story.seasonSnapshot;
+    if(story.type==='Team season review'){
+      const table=snapshot?.tables?.find(t=>t.label==='Regular-season player statistics');
+      if(table){const headers=['Player','GP','PPG','RPG','APG','SPG','BPG'];const indexes=headers.map(h=>table.headers.indexOf(h));return {headers,rows:table.rows.slice(0,5).map(r=>indexes.map(i=>i>=0?r[i]:'—'))};}
+      // Older archives may retain only the counting-stat rows.
+      if(snapshot?.headers?.includes('GP')){const old=snapshot.headers,index=old.indexOf('GP'),categories=['PTS','REB','AST','STL','BLK'].filter(k=>old.includes(k));return {headers:['Player','GP',...categories.map(k=>({PTS:'PPG',REB:'RPG',AST:'APG',STL:'SPG',BLK:'BPG'})[k])],rows:(snapshot.rows||[]).slice(0,5).map(r=>[r[0],r[index],...categories.map(k=>r[index]>0&&typeof r[old.indexOf(k)]==='number'?(r[old.indexOf(k)]/r[index]).toFixed(1):'—')])};}
+    }
+    if(story.type==='Season leaders')return {headers:['Category','Player','Per game'],rows:(snapshot?.rows||[]).slice(0,5).map(r=>[({PTS:'Points',REB:'Rebounds',AST:'Assists',STL:'Steals',BLK:'Blocks'})[r[0]]||r[0],r[1],r[3]>0?(r[2]/r[3]).toFixed(1):'—'])};
     if(story.eventKey?.startsWith('award-')&&snapshot?.featuredPlayer){
       const person=snapshot.featuredPlayer;
       const postseason=story.statsPeriod==='finals'||snapshot.tables?.some(t=>t.label==='Playoff player statistics');
@@ -157,7 +166,7 @@
           bracket:structuredClone(bracket||null)},createdAt:new Date().toISOString()};
       const teamScope=eventKey.startsWith('team-')||eventKey==='championship';
       const awardStory=eventKey.startsWith('award-');
-      const seasonPlayers=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',teamScope?team.id:null)})).filter(x=>x.s&&(!featured||(awardStory?x.p.id===featured.id:related.length!==1||x.p.id===featured.id||eventKey.startsWith('team-')))).sort((a,b)=>b.s.PTS-a.s.PTS);
+      const seasonPlayers=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',teamScope?team.id:null)})).filter(x=>x.s&&(!featured||(awardStory?x.p.id===featured.id:related.length!==1||x.p.id===featured.id||eventKey.startsWith('team-')))).sort((a,b)=>b.s.PTS/b.s.GP-a.s.PTS/a.s.GP);
       const individualTable=related.length===1||eventKey==='championship'||awardStory;
       s.seasonSnapshot.tables=[{label:'Regular-season team statistics',headers:['Team','W','L','PPG','Opp PPG','RPG','APG','FG%','3P%','FT%'],rows:related.map(t=>{const r=records.find(x=>x.team.id===t.id)?.year?.seasonStats;return r?.GP>0?[C.teamDisplay(t),r.W,r.L,...['PTS','OPP','REB','AST'].map(k=>avg(r,k)),pct(r,'FGM','FGA'),pct(r,'TPM','TPA'),pct(r,'FTM','FTA')]:null;}).filter(Boolean)},playerTable(individualTable?'Regular-season player statistics':'Regular-season scoring leaders',individualTable?seasonPlayers:seasonPlayers.slice(0,15))];
       if(eventKey==='championship'||(featured&&(league.awards||[]).some(a=>eventKey.startsWith(`award-${a.id}-`)&&a.phase===3))){
@@ -188,12 +197,12 @@
       const leaderRows=[];
       for(const k of ['PTS','REB','AST','STL','BLK']){
         const eligible=totals.filter(x=>Number.isFinite(x.s[k]));if(!eligible.length)continue;
-        const max=Math.max(...eligible.map(x=>x.s[k]));for(const x of eligible.filter(x=>x.s[k]===max))leaderRows.push([k,C.playerDisplay(x.p),max,x.s.GP]);
+        const max=Math.max(...eligible.map(x=>x.s[k]/x.s.GP));for(const x of eligible.filter(x=>x.s[k]/x.s.GP===max))leaderRows.push([k,C.playerDisplay(x.p),x.s[k],x.s.GP]);
       }
       if(leaderRows.length)add('leaders','Season leaders',`${year} ${league.shortName||'league'} statistical leaders`,
-        leaderRows.map(r=>`${r[1]} ${leaderRows.filter(x=>x[0]===r[0]).length>1?'shared the league lead':'led the league'} in total ${{PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks'}[r[0]]} with ${r[2]}, averaging ${(r[2]/r[3]).toFixed(1)} over ${r[3]} appearances.`),teams,['Category','Player','Total','GP'],leaderRows);
+        leaderRows.map(r=>`${r[1]} ${leaderRows.filter(x=>x[0]===r[0]).length>1?'shared the league lead':'led the league'} with ${(r[2]/r[3]).toFixed(1)} ${{PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks'}[r[0]]} per game.`),teams,['Category','Player','Total','GP'],leaderRows);
       for(const r of records){
-        const leaders=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',r.team.id)})).filter(x=>x.s).sort((a,b)=>b.s.PTS-a.s.PTS);
+        const leaders=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',r.team.id)})).filter(x=>x.s).sort((a,b)=>b.s.PTS/b.s.GP-a.s.PTS/a.s.GP);
         const p=leaders[0],record=r.year.seasonStats;
         const scoringRank=1+records.filter(x=>x.year.seasonStats.PTS/x.year.seasonStats.GP>record.PTS/record.GP).length;
         const defendingRank=1+records.filter(x=>x.year.seasonStats.OPP/x.year.seasonStats.GP<record.OPP/record.GP).length;
@@ -201,7 +210,7 @@
         const analysis=margin===null?'':`${C.teamDisplay(r.team)} ${margin>=0?'outscored opponents by':'were outscored by'} ${Math.abs(margin).toFixed(1)} points a night, ranking No. ${scoringRank} in scoring and No. ${defendingRank} in fewest points allowed.`;
         add(`team-${r.team.id}-regular`,'Team season review',`${C.teamDisplay(r.team)}: ${record.W>record.L?'a winning season in review':record.W===record.L?'a .500 season in review':'a difficult season in review'}`,
           [`${C.teamDisplay(r.team)} ${record.W>record.L?'closed the regular season at':record.W===record.L?'split the regular season at':'end a difficult regular season at'} ${record.W}-${record.L}${entrants.has(r.team.id)?', with a place in the playoff field':''}.`,teamLine(C.teamDisplay(r.team),record),analysis,
-            ...(p?[`${C.playerDisplay(p.p)} led the team in total scoring with ${p.s.PTS} points, averaging ${line(p.s)} in ${p.s.GP} appearances.`]:[])],[r.team],
+            ...(p?[`${C.playerDisplay(p.p)} led the team in scoring, averaging ${line(p.s)}.`]:[])],[r.team],
           ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,90);
       }
     }

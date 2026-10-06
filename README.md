@@ -93,6 +93,8 @@ node tests/core.test.cjs
 node tests/browser.cjs
 node tests/scenes.cjs [path-to-custom-save.json]
 node tests/broadcast.cjs [path-to-custom-save.json]
+node tests/broadcast-content.test.cjs
+node tests/dialogue-browser.cjs
 ```
 
 The browser checks require Playwright resolvable through Node's package lookup (or `NODE_PATH`) and an installed Edge browser. Set `HOOPWIRE_BROWSER=chrome` to use Chrome instead. They use temporary isolated profiles, without touching user browser data. The main browser suite starts a temporary local server; scene checks use the running preview at port 8123 (override with `HOOPWIRE_URL`). An optional real custom save verifies its actual remote courts and advertisements.
@@ -110,3 +112,7 @@ Game-generated news is also a source of stories. `news-coverage.js` uses the New
 The news window follows the upload's current phase and latest completed day through the current day, including rest days; a phase whose day counter has reset uses its current day. Original event date/phase/payload are preserved, and articles are filed on the reporting day. News flags such as `read` do not change story identity. Game-result news remains represented by game recaps; award and championship announcements share milestone IDs to avoid duplicate stories. These articles and their illustrations participate in TV, archives and backups alongside daily coverage.
 
 Season quotes reflect the saved winning percentage and confirmed championships. These editorial changes apply only to newly generated stories; existing archived stories are not revised. Articles contain selected statistics in prose, without league or roster stat tables. TV season facts are limited to five rows; complete source snapshots remain internal archive evidence.
+
+Routine season reporting leads with per-game averages (points, rebounds, assists and available minutes) and shooting percentages. Scoring leaders are ranked by points per game; category leaders use their respective per-game averages, across the player histories present in the save. Full counting totals are used for record watches, milestone crossings and record comparisons. Native playing-time totals are converted from seconds before reporting minutes per game. Team features use team-specific stints. Existing archived articles retain their original text; TV builds the revised discussion when a story is opened.
+
+TV hosts introduce the result, name the verified player and react to specific scoring, shooting, rebounding or passing numbers. Double-doubles and triple-doubles require the verified counts. Brief news items use the actual report rather than padding every story with four generic reactions. Editorial references include [ESPN's Wembanyama statistical feature](https://www.espn.com/nba/story/_/id/39515346/victor-wembanyama-triple-double-numbers), [ESPN's Nuggets–Magic recap](https://www.espn.com/nba/recap/_/gameId/401810232), and [NBA.com's reporting on Inside the NBA's panel conversations](https://www.nba.com/news/charles-barkley-round-mound-of-profound-sound). Dialogue is original and does not invent observed plays from a box score.

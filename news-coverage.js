@@ -71,7 +71,7 @@
         if(!headline)continue;
         if(!coachEvent){
           const career=R.history(player,league);
-          if(career&&[16,17,22,25].includes(event.type)){paragraphs.push(`${name}'s ${league.shortName||league.leagueName} regular-season career spans ${career.GP} games, ${career.PTS} points, ${career.REB} rebounds and ${career.AST} assists.`);rows.push(['Career points',career.PTS,'Regular season'],['Career rebounds',career.REB,'Regular season'],['Career assists',career.AST,'Regular season']);}
+          if(career&&[16,17,22,25].includes(event.type)){paragraphs.push(`${name} averaged ${(career.PTS/career.GP).toFixed(1)} points, ${(career.REB/career.GP).toFixed(1)} rebounds and ${(career.AST/career.GP).toFixed(1)} assists per game over ${career.GP} regular-season games in ${league.shortName||league.leagueName}.`);rows.push(['Career PPG',(career.PTS/career.GP).toFixed(1),'Regular season'],['Career RPG',(career.REB/career.GP).toFixed(1),'Regular season'],['Career APG',(career.AST/career.GP).toFixed(1),'Regular season']);}
         }
         rows.unshift(['Event',type,name]);
       }

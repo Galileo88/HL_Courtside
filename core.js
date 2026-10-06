@@ -423,6 +423,7 @@
       leagueName: ctx.leagueName,
       playerStats: ctx.potgStats ? structuredClone(ctx.potgStats) : null,
       playerId: ctx.potg?.id ?? null,
+      playerName: ctx.potgStats ? ctx.potgName : null,
       gameSummary: {home: {id:ctx.home.id,name:teamDisplay(ctx.home),logoURL:ctx.home.logoURL || null,score:ctx.game.homeScore},
         away: {id:ctx.away.id,name:teamDisplay(ctx.away),logoURL:ctx.away.logoURL || null,score:ctx.game.awayScore}},
       quotesEnabled,

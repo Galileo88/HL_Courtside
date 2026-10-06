@@ -1,0 +1,47 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const B=require('../broadcast-content'),S=require('../season-coverage');
+const text=s=>B.script(s).map(t=>t.text).join(' ');
+const game={id:'example',headline:'Example game',gameSummary:{home:{name:'Stars',score:110},away:{name:'Moons',score:108}},playerName:'Alex Star',playerStats:{PTS:28,REB:10,AST:11,FGM:9,FGA:15,TPM:3,TPA:6,FTM:7,FTA:8}};
+test('studio names the player, uses basketball terms and does not invent a deciding play',()=>{
+ const s=text(game);assert.match(s,/Stars .* Moons, 110 to 108/);assert.match(s,/Alex Star finished with 28 points, 10 rebounds and 11 assists/);assert.match(s,/triple-double/);assert.match(s,/9 for 15 from the field/);assert.doesNotMatch(s,/created separation|context matters|buzzer|fourth quarter|game-winning/);
+ assert.ok(B.script(game).every(t=>t.speaker>=0&&t.speaker<=3));
+});
+test('zero stats stay factual, missing shooting is omitted and steals/blocks count toward double-doubles',()=>{
+ const s={...game,playerStats:{PTS:0,REB:0,AST:0}};assert.match(text(s),/0 points, 0 rebounds and 0 assists/);assert.doesNotMatch(text(s),/double|from the field/);
+ s.playerStats={PTS:12,REB:1,AST:0,BLK:10};assert.match(text(s),/double-double/);assert.match(text(s),/10 blocks/);
+ s.playerStats={PTS:12,REB:1,AST:0,FGM:8,FGA:4};assert.doesNotMatch(text(s),/8 for 4/);
+});
+test('season coverage uses per-game rates and correct award period without falling back to regular season',()=>{
+ const s={type:'Award announcement',eventKey:'award-1-1',headline:'Alex wins Finals MVP',statsPeriod:'finals',seasonSnapshot:{rows:[['Finals MVP','Alex']],featuredPlayer:{name:'Alex',regularStats:{GP:82,PTS:2000,REB:800,AST:400},finalsStats:{GP:5,PTS:150,REB:50,AST:25,MIN:175}}}};
+ assert.match(text(s),/30\.0 points, 10\.0 rebounds and 5\.0 assists/);assert.match(text(s),/35\.0 minutes a game/);assert.doesNotMatch(text(s),/2000|150 points/);
+ delete s.seasonSnapshot.featuredPlayer.finalsStats;assert.doesNotMatch(text(s),/averaged|24\.4/);
+});
+test('bracket comparisons keep ties and later rounds accurate',()=>{
+ const s={type:'Playoff preview',eventKey:'playoff-round-2',relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{rows:[['Stars','Moons','Single elimination']],teamRecords:[{teamId:1,record:{seasonStats:{W:60,L:22}}},{teamId:2,record:{seasonStats:{W:60,L:22}}}]}};
+ assert.match(text(s),/Round 2/);assert.match(text(s),/share the best record/);assert.match(text(s),/same number of wins/);assert.match(text(s),/no Game 2/);assert.doesNotMatch(text(s),/regular season gives way/);
+});
+test('brief news uses actual reporting and does not manufacture a panel argument or a quote',()=>{
+ const s={type:'Injury return',headline:'Alex returns',paragraphs:['Alex is available to play for Stars.','“I feel great,” Alex said.']};assert.match(text(s),/available to play/);assert.doesNotMatch(text(s),/missing minutes|I feel great|context|next decision/);assert.equal(B.script(s).length,2);
+});
+test('native playing time converts total seconds once, across team stints',()=>{
+ const player={stats:[{league:0,yr:1,season:[{GP:2,PTS:20,REB:4,AST:6,MIN:[1200,600,600,0,0,0]},{GP:1,PTS:10,REB:2,AST:3,MIN:[600,600,0,0,0,0]}]}]};
+ assert.equal(S.stats(player,{leagueType:0},1).MIN,30);assert.equal(S.stats(player,{leagueType:0},1).GP,3);
+ delete player.stats[0].season[1].MIN;assert.equal(S.stats(player,{leagueType:0},1).MIN,undefined);
+});
+test('a poor shooting night gets criticism and a strong shooting night gets specific praise',()=>{
+ const poor={...game,playerStats:{PTS:20,REB:2,AST:1,FGM:5,FGA:20}};
+ assert.match(text(poor),/25\.0 percent.*better shooting/);assert.doesNotMatch(text(poor),/efficient night/);
+ const strong={...game,playerStats:{PTS:20,REB:2,AST:7,FGM:8,FGA:10}};
+ assert.match(text(strong),/80\.0 percent/);assert.match(text(strong),/looking at those 7 assists/);
+ const legacy={...game,playerName:null,paragraphs:['Alex Star was named player of the game after finishing with 28 points.']};
+ assert.match(text(legacy),/Alex Star finished/);
+});
+test('league leaders rank per-game production rather than total points and TV displays rates',()=>{
+ const league={leagueName:'Test',leagueType:0,season:{currentYear:1,totalGames:2,schedule:[]},teams:[
+  {id:1,name:'Stars',season:[{yr:1,seasonStats:{GP:2,W:2,L:0}}],roster:[{id:1,tid:1,fn:'Alex',stats:[{league:0,yr:1,season:[{tid:1,GP:1,PTS:30,REB:10,AST:2}]}]}]},
+  {id:2,name:'Moons',season:[{yr:1,seasonStats:{GP:2,W:0,L:2}}],roster:[{id:2,tid:2,fn:'Sam',stats:[{league:0,yr:1,season:[{tid:2,GP:2,PTS:50,REB:12,AST:2}]}]}]}
+ ]};
+ const s=S.candidates(league).find(x=>x.story.type==='Season leaders').story;
+ assert.match(s.paragraphs[0],/Alex.*30\.0 points per game/);assert.doesNotMatch(s.paragraphs.join(' '),/total|50 points/);
+ const facts=S.factsForStory(s);assert.deepEqual(facts.rows[0],['Points','Alex','30.0']);assert.ok(!facts.headers.includes('Total'));
+});

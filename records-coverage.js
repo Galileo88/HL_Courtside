@@ -38,8 +38,7 @@
     const d=data(league),snap=d.snapshots.find(s=>s.pid===story.playerId&&s.gid===story.gid);
     const facts=snap&&contextFor(d,snap);if(!facts)return story;
     const {player,season,career,period}=facts,stage=period==='season'?'regular season':'playoffs';
-    story.paragraphs.push(`${C.playerDisplay(player)} is averaging ${(season.PTS/season.GP).toFixed(1)} points, ${(season.REB/season.GP).toFixed(1)} rebounds and ${(season.AST/season.GP).toFixed(1)} assists in the ${stage}. That brings the season totals to ${season.PTS} points, ${season.REB} rebounds and ${season.AST} assists.`);
-    if(career.GP>season.GP)story.paragraphs.push(`${C.playerDisplay(player)} now has ${career.PTS} career ${stage} points in ${league.shortName||league.leagueName}, along with ${career.REB} rebounds and ${career.AST} assists.`);
+    story.paragraphs.push(`${C.playerDisplay(player)} is averaging ${(season.PTS/season.GP).toFixed(1)} points, ${(season.REB/season.GP).toFixed(1)} rebounds and ${(season.AST/season.GP).toFixed(1)} assists per game in the ${stage}${Number.isFinite(season.MIN)?`, playing ${(season.MIN/season.GP).toFixed(1)} minutes a night`:''}.`);
     story.cumulativeStats=structuredClone({season,career,period,year:d.year,leagueType:league.leagueType});
     story.statContextVersion=1;return story;
   }
