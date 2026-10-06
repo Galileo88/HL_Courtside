@@ -289,8 +289,12 @@ branch.append(summary);
     const box=document.createElement('div');box.className='box-score';
     if(story.kind==='season'){
       const facts=window.HoopWireSeason.factsForStory(story);
-      const wrap=document.createElement('div');wrap.className='box-table-scroll';
-      const table=document.createElement('table'),caption=document.createElement('caption');caption.textContent=`${story.type} · ${story.season}`;table.append(caption);
+      const meta=document.createElement('div');meta.className='season-facts-meta';
+      const type=document.createElement('strong');type.textContent=story.type;
+      const year=document.createElement('span');year.textContent=String(story.season);
+      meta.append(type,year);box.append(meta);
+      const wrap=document.createElement('div');wrap.className='box-table-scroll season-facts-scroll';
+      const table=document.createElement('table');table.className='season-facts-table';
       const head=document.createElement('thead'),hr=document.createElement('tr');
       for(const text of facts.headers){const th=document.createElement('th');th.scope='col';th.textContent=text;hr.append(th);}head.append(hr);table.append(head);
       const body=document.createElement('tbody');for(const values of facts.rows){const tr=document.createElement('tr');for(const [i,value] of values.entries()){const td=document.createElement('td');td.dataset.label=facts.headers[i];td.textContent=value;tr.append(td);}body.append(tr);}table.append(body);wrap.append(table);box.append(wrap);return box;
