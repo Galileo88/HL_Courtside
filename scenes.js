@@ -56,7 +56,7 @@
     const saved = structuredClone(scene);
     const enriched = context ? inputs(context,story.id) : {};
     const action=actionDesign(story.id);
-    return {...saved,version:15,seed:story.id,attackDirection:action.side,action,interview:interviewDesign(story.id,saved.interview?.variant),
+    return {...saved,version:16,seed:story.id,attackDirection:action.side,action,interview:interviewDesign(story.id,saved.interview?.variant),
       ball:saved.ball || enriched.ball || {pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'},
       teammates:saved.teammates || enriched.teammates || [],
       opponents:saved.opponents || enriched.opponents || (saved.opponentPlayer ? [saved.opponentPlayer] : []),
@@ -72,7 +72,7 @@
     const featured = ctx.potg || ctx.scenePlayer;
     const teammates = (liveTeam?.roster || []).filter(p => p.id !== featured?.id).sort((a,b) => a.id-b.id).slice(0,2).map(playerSnapshot);
     const action=actionDesign(id);
-    return {version:15,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
+    return {version:16,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
       pose:action.pose,
       player:playerSnapshot(ctx.potg || ctx.scenePlayer),team:teamSnapshot(team),opponent:teamSnapshot(opponent),
       opponentPlayer:playerSnapshot(opponent?.roster?.[0]),
@@ -130,9 +130,11 @@
     if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
       const press=stage.getContext('2d');press.imageSmoothingEnabled=false;
-      const backdrop=await window.HoopWirePressBackdrop.render(art['press-background'],scene.team,scene.pressLogoData,{scale:4,league:scene.league,leagueData:scene.pressLeagueLogoData});
-      sceneInputs={...scene,pressLogoData:backdrop.logoData,pressLogoStatus:backdrop.status,pressLeagueLogoData:backdrop.leagueLogoData,pressLeagueLogoStatus:backdrop.leagueStatus};
       const design=interviewDesign(scene.seed,scene.interview?.variant||'group'),variant=design.variant;
+      // A wall tile spans twice its pixel size in the world; render it at the
+      // camera's zoom so the logos land on screen without being resampled.
+      const backdrop=await window.HoopWirePressBackdrop.render(art['press-background'],scene.team,scene.pressLogoData,{scale:2*canvas.width/design.camera[2],league:scene.league,leagueData:scene.pressLeagueLogoData});
+      sceneInputs={...scene,pressLogoData:backdrop.logoData,pressLogoStatus:backdrop.status,pressLeagueLogoData:backdrop.leagueLogoData,pressLeagueLogoStatus:backdrop.leagueStatus};
       window.HoopWirePressBackdrop.paint(ctx,backdrop,design.camera);
       const left=scene.teammates?.[0],right=scene.coach||scene.teammates?.[1];
       if(variant==='group'){
@@ -187,7 +189,7 @@
       imageAlt:caption(scene),imageCaption:caption(scene)};
   }
   async function refreshFraming(stories,leagues=[]){
-    const pending=stories.filter(s=>(s.sceneInputs?.kind==='interview'&&((s.sceneInputs.version||0)<15||leagues.some(l=>l.id===s.fingerprint&&l.logoURL&&l.logoURL!==s.sceneInputs.league?.logoURL)))||(s.sceneInputs?.kind==='action'&&(s.sceneInputs.version||0)<10)),updated=[];
+    const pending=stories.filter(s=>(s.sceneInputs?.kind==='interview'&&((s.sceneInputs.version||0)<16||leagues.some(l=>l.id===s.fingerprint&&l.logoURL&&l.logoURL!==s.sceneInputs.league?.logoURL)))||(s.sceneInputs?.kind==='action'&&(s.sceneInputs.version||0)<10)),updated=[];
     for(let i=0;i<pending.length;i+=4){
       updated.push(...await Promise.all(pending.slice(i,i+4).map(async story=>{
         const scene=upgrade(story.sceneInputs,story),league=leagues.find(l=>l.id===story.fingerprint);

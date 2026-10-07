@@ -109,7 +109,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   assert.match(await page.locator('#status').textContent(),/^Refreshed/);
   const refreshed=(await getStories(page)).find(s=>s.id===original.id);
   assert.deepEqual(refreshed.paragraphs,original.paragraphs);assert.deepEqual(refreshed.playerStats,original.playerStats);assert.equal(refreshed.createdAt,original.createdAt);
-  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,15);
+  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,16);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tv').screenshot({path:path.join(root,'artifacts/tv-with-ads.png')});
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(root,'artifacts/tv-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

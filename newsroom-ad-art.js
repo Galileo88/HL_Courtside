@@ -10,6 +10,7 @@
     window.HoopWirePlayer.draw(sprite,person,team,0,0,suit?'suit-standing':'idle',facing);
     ctx.drawImage(sprite,x,y,32*scale,42*scale);return sprite;
   }
+  const burger=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src='scene-assets/burger.png';});
   async function compose(product,hosts){
     await HoopWirePlayer.ready();const canvas=document.createElement('canvas');canvas.width=300;canvas.height=180;
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
@@ -47,9 +48,15 @@
       ctx.fillStyle='#172f49';ctx.fillRect(23,117,254,38);ctx.fillStyle='#ef314c';ctx.fillRect(23,137,51,18);ctx.fillStyle='#ffffff';ctx.font='bold 9px Arial';ctx.fillText('ON AIR',29,149);
       ctx.fillStyle='#728397';ctx.fillRect(103,168,94,5);ctx.fillRect(144,162,12,10);
     }else if(product==='food'){
-      ctx.fillStyle='#70252a';ctx.fillRect(0,0,300,180);ctx.fillStyle='#dca458';ctx.fillRect(0,136,300,44);ctx.fillStyle='#e1ad41';ctx.fillRect(0,17,300,6);
-      actor(ctx,hosts[0],21,17,3.4,{color:'C39224'});actor(ctx,hosts[1],176,18,3.4,{color:'C39224',facing:'right'});
-      ctx.fillStyle='#49343a';ctx.fillRect(128,112,44,5);ctx.fillRect(148,117,4,38);ctx.fillStyle='#ffb123';ctx.fillRect(135,102,10,10);ctx.fillRect(155,100,9,12);
+      // Royal rays behind the table, two players turned toward the burger.
+      ctx.fillStyle='#70252a';ctx.fillRect(0,0,300,180);
+      ctx.fillStyle='#7f2d31';for(let i=0;i<16;i+=2){const a=Math.PI*i/16,b=Math.PI*(i+1)/16;ctx.beginPath();ctx.moveTo(150,136);ctx.lineTo(150-Math.cos(a)*340,136-Math.sin(a)*340);ctx.lineTo(150-Math.cos(b)*340,136-Math.sin(b)*340);ctx.fill();}
+      const glow=ctx.createRadialGradient(150,96,4,150,96,70);glow.addColorStop(0,'rgba(255,205,96,.45)');glow.addColorStop(1,'rgba(255,205,96,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,300,180);
+      ctx.fillStyle='#e1ad41';ctx.fillRect(0,12,300,4);ctx.fillStyle='#dca458';ctx.fillRect(0,136,300,44);ctx.fillStyle='#c48c45';ctx.fillRect(0,136,300,3);
+      ctx.fillStyle='rgba(73,30,24,.35)';[[64,158,34],[236,158,34],[150,157,34]].forEach(([x,y,w])=>{ctx.beginPath();ctx.ellipse(x,y,w,5,0,0,Math.PI*2);ctx.fill();});
+      actor(ctx,hosts[0],12,24,3.4,{color:'C39224',facing:'right'});actor(ctx,hosts[1],180,24,3.4,{color:'C39224'});
+      await burger.then(image=>ctx.drawImage(image,118,53,64,104)).catch(()=>{});
+      ctx.fillStyle='#ffe6a3';[[110,46],[190,54],[134,30],[170,38]].forEach(([x,y])=>{ctx.fillRect(x,y-2,2,6);ctx.fillRect(x-2,y,6,2);});
     }else if(product==='apparel'){
       const light=ctx.createRadialGradient(231,62,10,231,62,170);light.addColorStop(0,'#354635');light.addColorStop(1,'#101a17');ctx.fillStyle=light;ctx.fillRect(0,0,300,180);
       ctx.strokeStyle='#71935c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,157);ctx.lineTo(300,157);ctx.ellipse(231,169,64,14,0,0,Math.PI*2);ctx.stroke();
