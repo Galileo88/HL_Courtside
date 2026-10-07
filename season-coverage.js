@@ -90,13 +90,74 @@
     });
     const teamRows=topTeams.map(t=>[t.name,`${t.s.W}-${t.s.L}`,avg(t.s,'PTS'),avg(t.s,'OPP'),pct(t.s,'FGM','FGA')]);
     return [
-      {label:'Top three players',headers:['Player','PPG','RPG','APG','SPG','BPG','FG%'],rows:playerRows,items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},
+      ...(playerRows.length?[{label:'Top three players',headers:['Player','PPG','RPG','APG','SPG','BPG','FG%'],rows:playerRows,items:playerLines}]:[]),
       {label:'Top three teams',headers:['Team','Record','PPG','Opp PPG','FG%'],rows:teamRows,items:teamLines}
     ];
   }
+  function repairSeasonReviews(stories,leagues=[]){
+    const sources=new Map(),key=s=>`${s.fingerprint}:${s.season}`;
+    const usable=s=>s?.seasonSnapshot?.mvpAward&&s.seasonSnapshot.reviewPlayers?.length&&s.seasonSnapshot.scheduledGames>0;
+    for(const story of stories)if(story.type==='Regular-season review'&&usable(story))sources.set(key(story),story);
+    const fresh=new Map(),updated=[];
+    for(const story of stories){
+      if(story.type!=='Regular-season review'||usable(story))continue;
+      let source=sources.get(key(story));
+      if(!source){
+        const league=leagues.find(l=>C.buildFingerprint(l)===story.fingerprint&&String(C.seasonYear(l))===String(story.season));
+        if(league){
+          if(!fresh.has(key(story)))fresh.set(key(story),candidates(league,leagues).find(x=>x.story.eventKey==='regular-wrap')?.story);
+          source=fresh.get(key(story));
+        }
+      }
+      if(!usable(source))continue;
+      const repaired=structuredClone(story),snapshot=repaired.seasonSnapshot||={};
+      for(const field of ['mvpAward','reviewPlayers','scheduledGames','year','gameMinutes'])
+        if(source.seasonSnapshot[field]!==undefined)snapshot[field]=structuredClone(source.seasonSnapshot[field]);
+      repaired.paragraphs=seasonReviewArticle(repaired);updated.push(repaired);
+    }
+    return updated;
+  }
   function seasonReviewArticle(story){
-    const groups=seasonReviewLists(story);
-    return groups.length?groups.flatMap(group=>group.items):story.paragraphs||[];
+    const teams=(story.seasonSnapshot?.teamRecords||[]).map(x=>({name:(story.relatedTeams||[]).find(t=>t.id===x.teamId)?.name,s:x.record?.seasonStats||x.record}))
+      .filter(t=>t.name&&Number.isInteger(t.s?.W)&&t.s.W>=0&&Number.isInteger(t.s?.L)&&t.s.L>=0)
+      .sort((a,b)=>b.s.W-a.s.W||a.s.L-b.s.L);
+    if(!teams.length)return story.paragraphs||[];
+    const paragraphs=[],first=teams[0],players=mvpRace(story.seasonSnapshot);
+    for(const [i,t] of teams.slice(0,3).entries()){
+      const s=t.s,games=s.W+s.L,winning=games?s.W/games:0;
+      let text;
+      if(!i){
+        const tied=teams.filter(x=>x.s.W===s.W&&x.s.L===s.L);
+        text=tied.length>1?`${tied.map(x=>x.name).join(' and ')} finished level at ${s.W}-${s.L}. There is no separating those seasons by record alone.`:
+          `${t.name} set the pace in wins, finishing ${s.W}-${s.L}. ${winning>=.75?'That is an outstanding regular season. Winning that often earns a team the right to be taken seriously.':winning>.5?'They gave themselves plenty to be proud of. The wins are the strongest argument for the season they put together.':'Even at the top of this group, the record leaves room to improve.'}`;
+      }else{
+        const gap=first.s.W-s.W;
+        text=`${t.name} finished ${s.W}-${s.L}. ${gap===0?'They matched the leading win total, so they belong in the same conversation.':gap<=3?`Only ${gap} ${gap===1?'win separates':'wins separate'} them from ${first.name}. That is a small enough gap to keep the comparison interesting.`:`They finished ${gap} wins short of ${first.name}. ${winning>.5?'A good season in its own right, but there was another level above them.':'That is a reminder of how much ground they still have to make up.'}`}`;
+      }
+      if(s.GP>0&&Number.isFinite(s.PTS)&&s.PTS>=0&&Number.isFinite(s.OPP)&&s.OPP>=0){
+        const margin=(s.PTS-s.OPP)/s.GP;
+        text+=` They averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')}. ${margin>0?(winning>.5?'The scoring backs up the winning record:':'There is something to build on despite the record:')+` they outscored opponents by ${margin.toFixed(1)} a game.`:margin<0?(winning>.5?'The concern is the scoring gap. Despite the wins,':'The problem shows up on the scoreboard:')+` they were outscored by ${Math.abs(margin).toFixed(1)} a game.`:'Scoring and points allowed finished even. There was little cushion in those numbers.'}`;
+      }
+      paragraphs.push(text);
+    }
+    for(const [i,p] of players.entries()){
+      const s=p.s,secondary=['AST','REB'].filter(k=>Number.isFinite(s[k])&&s[k]>0).sort((a,b)=>s[b]-s[a])[0];
+      const won=(p.mvpWins||[]).includes(story.seasonSnapshot?.year);
+      let text=`${won?`${p.name} won the ${story.seasonSnapshot?.mvpAward?.name||'MVP award'}`:`${p.name} ${i===0?'leads':'is part of'} the MVP race`}, averaging ${avg(s,'PTS')} points${secondary?` and ${avg(s,secondary)} ${secondary==='AST'?'assists':'rebounds'}`:''}.`;
+      if(s.FGA>0&&s.FGM>=0&&s.FGM<=s.FGA){
+        text+=` ${pct(s,'FGM','FGA')} shooting from the field ${s.FGM/s.FGA>=.5?'strengthens that case.':s.FGM/s.FGA<.4?'is the weakness in that season. The scoring was there; the efficiency was not.':'leaves room for a better shooting season.'}`;
+      }
+      if(secondary==='AST'&&Number.isFinite(s.TO)&&s.TO>=0){
+        text+=` The passing came with ${avg(s,'TO')} turnovers a game.${s.AST>s.TO*2?' That is a strong balance.':s.TO>s.AST?' More turnovers than assists is a serious flaw in the season.':''}`;
+      }
+      const previous=p.previousStats;
+      if(previous?.GP>=5&&Number.isFinite(previous.PTS)&&s.GP>=5&&Math.abs(s.PTS/s.GP-previous.PTS/previous.GP)>=2){
+        const up=s.PTS/s.GP>previous.PTS/previous.GP;
+        text+=` ${up?'Up from':'Down from'} ${avg(previous,'PTS')} points a game last year, ${p.name} ${up?'made a clear jump as a scorer.':'did not match last season’s scoring.'}`;
+      }
+      paragraphs.push(text);
+    }
+    return paragraphs;
   }
   function playerBackground(player,league,leagues=[league]){
     const bio={};
@@ -146,21 +207,32 @@
       let text=`${subject(g.PTS)} ${g.PTS.tied?'shared the scoring title':'won the scoring title'} ${season} with ${g.PTS.rate} points per game.`;
       const scorer=!g.PTS.tied?profile(g.PTS.names[0]):null,fg=pct(scorer?.s,'FGM','FGA');
       if(/^\d+(?:\.\d+)?%$/.test(fg))text+=` The scoring came on ${fg} shooting from the field.`;
+      if(scorer?.s?.FGA>0&&Number.isFinite(scorer.s.FGM))text+=scorer.s.FGM/scorer.s.FGA>=.5?
+        ' Strong shooting to go with the league’s highest scoring average.':scorer.s.FGM/scorer.s.FGA<.4?
+        ' The scoring title is impressive. The missed shots are the obvious room for improvement.':
+        '';
+
       text+=' '+history('PTS').join(' ');paragraphs.push(text.trim());
     }
     const interior=[];
     if(double){
       interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared both':'won both'} the rebounding and shot-blocking titles, averaging ${g.REB.rate} rebounds and ${g.BLK.rate} blocks a night.`);
+      interior.push('Winning both titles gives that season a distinction a single category lead cannot.');
       const p=!g.REB.tied?profile(g.REB.names[0]):null;if(p?.s?.GP>0&&p.s.PTS/p.s.GP>=10&&Number(g.REB.rate)>=10)interior.push(`With ${(p.s.PTS/p.s.GP).toFixed(1)} points a game as well, ${g.REB.name} averaged a double-double for the season.`);
     }else{
       if(g.REB)interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`);
+
       if(g.BLK)interior.push(`${subject(g.BLK)} ${g.BLK.tied?'shared the league lead in':'led the league in'} shot blocking with ${g.BLK.rate} blocks a night.`);
+
     }
     interior.push(...history('REB','BLK'));if(interior.length)paragraphs.push(interior.join(' '));
     const perimeter=[];
     if(g.AST){
       perimeter.push(`${subject(g.AST)} ${g.AST.tied?'shared the lead':'finished as the leading playmaker'} with ${g.AST.rate} assists per game.`);
-
+      const passer=!g.AST.tied?profile(g.AST.names[0]):null,s=passer?.s;
+      if(s?.GP>0&&Number.isFinite(s.TO)&&s.TO>=0){
+        perimeter.push(`That came with ${avg(s,'TO')} turnovers a game. ${s.AST>s.TO*2?'The assists comfortably outnumber the mistakes.':s.TO>s.AST?'That is the difficult part of this season: more turnovers than assists. The passing title comes with a real concern about giving the ball away.':'The assists deserve credit, but bringing down the turnovers would make the passing more valuable.'}`);
+      }
     }
     if(g.STL)perimeter.push(`${subject(g.STL,true)} ${g.STL.tied?'shared the steals title':'led the league in steals'} at ${g.STL.rate} steals per game.`);
     perimeter.push(...history('AST','STL'));if(perimeter.length)paragraphs.push(perimeter.join(' '));
@@ -308,7 +380,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?8:eventKey==='leaders'?8:eventKey.startsWith('award-')||eventKey==='championship'?4:3,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?10:eventKey==='leaders'?10:eventKey.startsWith('award-')||eventKey==='championship'?4:3,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -448,5 +520,5 @@
     delete live.broadcastAsOfDay;
     return live;
   }
-  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,mvpRace,playerBackground,honorHistory,honorLines,articleParagraphs,featuredStatsForStory,refreshTVStory};
+  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,repairSeasonReviews,mvpRace,playerBackground,honorHistory,honorLines,articleParagraphs,featuredStatsForStory,refreshTVStory};
 });

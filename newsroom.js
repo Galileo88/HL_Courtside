@@ -47,7 +47,6 @@
   }
   function validGame(g){return g?.home?.name&&g?.away?.name&&Number.isFinite(g.home.score)&&Number.isFinite(g.away.score);}
   function summary(story,paragraphs){
-    if(story.type==='Regular-season review')return `The season’s top three MVP candidates and leading teams, with their main stats.`;
     const text=(paragraphs||story.paragraphs||[]).find(p=>typeof p==='string'&&p.trim())||'';
     const sentence=text.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim()||text;
     return sentence.length>180?sentence.slice(0,177).replace(/\s+\S*$/,'')+'…':sentence;

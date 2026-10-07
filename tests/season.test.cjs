@@ -2,27 +2,28 @@ const test=require('node:test'),assert=require('node:assert/strict'),S=require('
 test('regular-season reviews list the top three team records and main rates',()=>{
  const names=['Pittsburgh Riveters','Los Angeles Breakers','Boston Colonials'],records=[{GP:82,W:64,L:18,PTS:8848,OPP:7462,FGM:493,FGA:1000,TPM:305,TPA:1000},{GP:82,W:64,L:18,PTS:9069,OPP:7700,FGM:489,FGA:1000,TPM:278,TPA:1000},{GP:82,W:62,L:20,PTS:8840,OPP:7905,FGM:493,FGA:1000,TPM:315,TPA:1000}];
  const story={type:'Regular-season review',season:1967,relatedTeams:names.map((name,id)=>({id,name})),seasonSnapshot:{teamRecords:records.map((seasonStats,teamId)=>({teamId,record:{seasonStats}}))}};
- const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
- assert.deepEqual(groups[1].headers,['Team','Record','PPG','Opp PPG','FG%']);
- assert.deepEqual(groups[1].rows[0],['Pittsburgh Riveters','64-18','107.9','91.0','49.3%']);
- assert.match(groups[1].items[0],/Pittsburgh Riveters: 64-18.*107\.9 PPG.*91\.0 opp. PPG.*49\.3% FG/);
- assert.match(groups[1].items[1],/Los Angeles Breakers: 64-18.*110\.6 PPG.*93\.9 opp. PPG/);
- assert.match(groups[1].items[2],/Boston Colonials: 62-20.*107\.8 PPG.*96\.4 opp. PPG/);
+ const groups=S.seasonReviewLists(story);assert.equal(groups.length,1);assert.equal(groups[0].items.length,3);
+ assert.deepEqual(groups[0].headers,['Team','Record','PPG','Opp PPG','FG%']);
+ assert.deepEqual(groups[0].rows[0],['Pittsburgh Riveters','64-18','107.9','91.0','49.3%']);
+ assert.match(groups[0].items[0],/Pittsburgh Riveters: 64-18.*107\.9 PPG.*91\.0 opp. PPG.*49\.3% FG/);
+ assert.match(groups[0].items[1],/Los Angeles Breakers: 64-18.*110\.6 PPG.*93\.9 opp. PPG/);
+ assert.match(groups[0].items[2],/Boston Colonials: 62-20.*107\.8 PPG.*96\.4 opp. PPG/);
 
 });
-test('year reviews list three qualified players and three teams without narrative',()=>{
+test('year reviews develop the leading teams and qualified players in prose with reference tables',()=>{
  const l=fixture();l.season.totalGames=4;Object.assign(l.awards[0],{calculation:0,minGames:50,PTS:1});
  l.teams.push({...structuredClone(l.teams[1]),id:3,name:'Team 3',roster:[]});
  l.teams.forEach((t,i)=>{t.season[0].seasonStats={GP:4,W:4-i,L:i,PTS:400-i*20,OPP:300,REB:160,AST:100,FGM:150,FGA:300,TPM:20,TPA:60};});
  const player=(id,PTS,GP=4)=>({id,tid:1,fn:'Player',ln:String(id),awards:id===1?[{id:2,league:0,yearsWon:[0,1]}]:[],stats:[{league:0,yr:1,season:[{tid:1,GP,PTS,REB:40,AST:32,STL:8,BLK:4,TO:8,FGM:40,FGA:80,TPM:8,TPA:20,FTM:10,FTA:12,MIN:[4800]}]}]});
  l.teams[0].roster=[player(1,160),player(2,120),player(3,100),player(4,90,1)];l.teams[1].roster=[];
  const story=S.candidates(l).find(c=>c.story.eventKey==='regular-wrap').story,text=story.paragraphs.join(' ');
- assert.equal(story.paragraphs.length,6);assert.equal(story.editorialVersion,8);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
- const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[0].items.length,3);assert.equal(groups[1].items.length,3);
- assert.deepEqual(groups[0].headers,['Player','PPG','RPG','APG','SPG','BPG','FG%']);
- assert.deepEqual(groups[0].rows[0],['Player 1','40.0','10.0','8.0','2.0','1.0','50.0%']);
- assert.match(groups[0].items[0],/Player 1: 40\.0 PPG.*10\.0 RPG.*8\.0 APG.*2\.0 SPG.*1\.0 BPG.*50\.0% FG/);assert.match(groups[0].items[1],/Player 2: 30\.0 PPG/);assert.match(groups[0].items[2],/Player 3: 25\.0 PPG/);assert.doesNotMatch(text,/Player 4|MVP|turnovers|minutes|year before/);
- const archived=structuredClone(story);delete archived.seasonSnapshot.reviewPlayers;archived.paragraphs=['Old list.'];assert.match(S.seasonReviewLists(archived)[0].items[0],/MVP race data unavailable/);
+ assert.equal(story.paragraphs.length,6);assert.equal(story.editorialVersion,10);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
+ assert.match(text,/set the pace in wins|finished level/);assert.match(text,/scoring backs up|scoring gap/);
+ assert.ok(story.paragraphs.some(p=>p.split(/\s+/).length>30));assert.doesNotMatch(text,/PPG|RPG|APG| · /);
+ const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
+ assert.deepEqual(groups[1].headers,['Team','Record','PPG','Opp PPG','FG%']);
+ assert.deepEqual(groups[1].rows[0],['Team 1','4-0','100.0','75.0','50.0%']);
+ const archived=structuredClone(story);delete archived.seasonSnapshot.reviewPlayers;archived.paragraphs=['Old list.'];assert.equal(S.seasonReviewLists(archived).length,1);
 
 });
 test('MVP race uses configured weights, eligibility, total calculation and recorded winner rather than scoring order',()=>{
@@ -36,7 +37,7 @@ test('MVP race uses configured weights, eligibility, total calculation and recor
 });
 test('season reviews avoid inventing shooting and comparisons when records are incomplete',()=>{
  const story={type:'Regular-season review',relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{teamRecords:[{teamId:1,record:{W:3,L:1}},{teamId:2,record:{W:2,L:2}}]}};
- const text=S.seasonReviewArticle(story).join(' ');assert.match(text,/Stars: 3-1.*Moons: 2-2/);assert.doesNotMatch(text,/points|shoot|undefined|NaN/);
+ const text=S.seasonReviewArticle(story).join(' ');assert.match(text,/Stars.*3-1.*Moons.*2-2/);assert.doesNotMatch(text,/points|shoot|undefined|NaN/);
  assert.deepEqual(S.seasonReviewArticle({paragraphs:['Existing reporting.']}),['Existing reporting.']);
 });
 test('statistical leaders read as a connected article and combine multiple titles',()=>{

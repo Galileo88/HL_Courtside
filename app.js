@@ -101,6 +101,12 @@
   }
   async function readArchive() {
     const [stories,snapshots,leagues] = await Promise.all([archive.all("stories"),archive.all("snapshots"),archive.all("leagues")]);
+    const repaired=window.HoopWireSeason.repairSeasonReviews(stories,state.raw?.seasonLeagues||[]);
+    if(repaired.length){
+      await archive.write({stories:repaired});
+      const replacements=new Map(repaired.map(s=>[s.id,s]));
+      for(let i=0;i<stories.length;i++)stories[i]=replacements.get(stories[i].id)||stories[i];
+    }
     const refreshed=await window.HoopWireScenes.refreshFraming(stories,leagues);
     if(refreshed.length){
       await archive.write({stories:refreshed});
@@ -219,11 +225,9 @@ branch.append(summary);
       } else figure.remove();
       const paragraphs=window.HoopWireSeason.articleParagraphs(story);
       const reviewLists=story.type==='Regular-season review'?window.HoopWireSeason.seasonReviewLists(story):[];
-      if(reviewLists.length){
-        const intro=document.createElement('p');
-        intro.className='season-summary-intro';
-        intro.textContent=`With the regular season behind us, these were the standout players and teams of ${story.season}.`;
-        node.querySelector('.article-body').appendChild(intro);
+      for(const text of paragraphs){
+        const p=document.createElement('p');p.textContent=text;
+        node.querySelector('.article-body').appendChild(p);
       }
       for(const group of reviewLists){
         const section=document.createElement('section');section.className='season-summary';
@@ -262,9 +266,6 @@ branch.append(summary);
           section.append(heading,list);
         }
         node.querySelector('.article-body').appendChild(section);
-      }
-      for (const text of reviewLists.length?[]:paragraphs) {
-        const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);
       }
       el.feed.appendChild(node);
     }
@@ -346,7 +347,7 @@ branch.append(summary);
     }));
     stories.push(...composed);
     const milestoneIds=new Set();
-    const milestones=[...window.HoopWireSeason.candidates(league,state.raw.seasonLeagues),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);const existing=state.stories.get(x.story.id);return !existing||Number(x.story.editorialVersion||0)>Number(existing.editorialVersion||0);});
+    const milestones=[...window.HoopWireSeason.candidates(league,state.raw.seasonLeagues),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league),...window.HoopWirePerformance.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);const existing=state.stories.get(x.story.id);return !existing||Number(x.story.editorialVersion||0)>Number(existing.editorialVersion||0);});
     // Compose in small batches to keep long season uploads responsive.
     for(let i=0;i<milestones.length;i+=4){
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
@@ -407,6 +408,7 @@ branch.append(summary);
     return C.captureSnapshots(league,story.fingerprint).filter(s=>s.gid===story.gid);
   }
   function tvStoryFromCurrentSave(story) {
+    if(story.performanceSnapshot)return structuredClone(story);
     const league=currentLeagueForStory(story),live=window.HoopWireSeason.refreshTVStory(story,league,state.raw?.seasonLeagues);
     if(!league)return live;
     if(live.gameSummary){
@@ -445,14 +447,32 @@ branch.append(summary);
       const score=document.createElement('b');score.textContent=team.score ?? '—';side.append(name,score);scoreRow.append(side);
     }
     box.append(scoreRow);
+    if(story.performanceSnapshot){
+      const wrap=document.createElement('div');wrap.className='box-table-scroll';
+      const table=document.createElement('table'),caption=document.createElement('caption');
+      table.className='performance-comparison';
+      caption.textContent=`${story.playerName} · Game and season average entering the game`;table.append(caption);
+      const head=document.createElement('thead'),heading=document.createElement('tr');
+      for(const label of ['Statistic','This game','Season average']){const th=document.createElement('th');th.scope='col';th.textContent=label;heading.append(th);}head.append(heading);table.append(head);
+      const body=document.createElement('tbody'),baseline=story.performanceSnapshot.baseline;
+      for(const [key,label] of Object.entries(window.HoopWirePerformance.categories)){
+        if(!Number.isFinite(story.playerStats?.[key])||!Number.isFinite(baseline[key]))continue;
+        const row=document.createElement('tr');
+        for(const [i,value] of [label,story.playerStats[key],window.HoopWirePerformance.average(baseline[key]/baseline.GP)].entries()){
+          const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=value;row.append(cell);
+        }body.append(row);
+      }table.append(body);wrap.append(table);box.append(wrap);
+    }
     const liveSnaps=currentSaveSnapshots(story);
     const snaps=liveSnaps.length?liveSnaps:[...state.snapshots.values()].filter(s=>s.fingerprint===story.fingerprint&&String(s.season)===String(story.season)&&s.gid===story.gid);
     const highlights=document.createElement('div');highlights.className='tv-postgame-highlights';
     for(const team of teams){
       const rows=snaps.filter(s=>s.team.id===team.id&&C.validStats(s.stats)).sort((a,b)=>b.stats.PTS-a.stats.PTS||a.pid-b.pid);
-      const snap=rows.find(s=>s.pid===story.playerId)||rows[0];
+      let snap=rows.find(s=>s.pid===story.playerId)||rows[0];
+      if(story.performanceSnapshot&&story.sceneInputs?.team?.id===team.id)
+        snap={pid:story.playerId,player:story.sceneInputs.player,stats:story.playerStats};
       const card=document.createElement('section');card.className='tv-postgame-player';
-      const label=document.createElement('span');label.className='tv-postgame-label';label.textContent=`${team.name} · ${snap?.pid===story.playerId?'Player of the game':'Scoring leader'}`;
+      const label=document.createElement('span');label.className='tv-postgame-label';label.textContent=`${team.name} · ${snap?.pid===story.playerId?(story.performanceSnapshot?'Featured player':'Player of the game'):'Scoring leader'}`;
       card.append(label);
       if(!snap){label.textContent=team.name;const note=document.createElement('p');note.className='muted';note.textContent='Player stats unavailable.';card.append(note);highlights.append(card);continue;}
       const name=document.createElement('h3');name.textContent=C.playerDisplay(snap.player);card.append(name);

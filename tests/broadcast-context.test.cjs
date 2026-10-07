@@ -50,7 +50,7 @@ test('result enrichment requires a matching score and preserves older verified f
 test('a verified upset outranks a blowout and a featured performance; small samples do not',()=>{
   const g=game(1,8,true,[3,5],[7,1]),s={...story(g),playerStats:{PTS:45,REB:10,AST:10}};
   const context=C.buildContext(s,{league:source([g])});assert.equal(angle(s,context),'upset');
-  assert.match(B.script(s,context)[0].text,/surprise|records|better-record|stronger record/);
+  assert.match(B.script(s,context)[0].text,/surprise|records|better[- ]record|stronger record/);
   assert.equal(angle(s,C.buildContext(s,{league:source([{...g,homeRecord:[1,0],awayRecord:[3,1]}])})),'performance');
 });
 test('dated averages establish exceptional production; later totals never enter the segment',()=>{

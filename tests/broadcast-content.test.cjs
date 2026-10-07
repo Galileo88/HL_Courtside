@@ -67,6 +67,16 @@ test('postgame follow-ups connect efficiency, ball security and per-game context
  const clean={...story,playerStats:{PTS:28,AST:1,TO:0}};assert.ok(B.supportingThreads(B.selectEvidence(clean),'routine').some(t=>/no turnovers/.test(t.detail)));assert.doesNotMatch(text(clean),/giveaways are too many/);
  const incomplete={...game,playerStats:{PTS:12}};assert.doesNotMatch(text(incomplete),/turnovers|field-goal attempts|from three|undefined|NaN/);
 });
+test('the desk carries a discussion forward without restarting a scoring-only topic',()=>{
+ const performance=B.script(game);
+ assert.deepEqual(performance.slice(0,4).map(t=>t.speaker),[0,1,2,1]);
+ const poor={...game,playerStats:{PTS:20,FGM:5,FGA:20}},turns=B.script(poor);
+ assert.match(turns.map(t=>t.text).join(' '),/20 points.*5 for 20.*rough shooting night/);
+ assert.equal(turns.filter(t=>/20 points/.test(t.text)).length,1);
+ assert.ok(turns.length<=6,'Do not add a second discussion of the same scoring total');
+ const zero=text({...game,playerStats:{PTS:0}});
+ assert.match(zero,/0 points/);assert.doesNotMatch(zero,/contributions to add up to wins|great night/);
+});
 test('reporting segues preserve saved quotes and respond to their message',()=>{
  const quote='We have to be more consistent at both ends of the floor.';
  const story={...game,quotesEnabled:true,templateVersion:3,paragraphs:[`“${quote}” head coach Pat Courtside said.`]};

@@ -23,7 +23,7 @@ test('score groups label their own season and latest results day, with recap fal
  const e=N.buildEdition({stories:[story('p','p',90),c],leagues:[p,league('c',1)]});assert.equal(e.editions[0].scoreDay,89);assert.equal(e.editions[1].scoreDay,15);assert.equal(e.editions[0].games.length,1);
 });
 test('summaries use rendered prose, keep decimals and cap long sentences',()=>{
- assert.equal(N.summary(story('a','p',1),['Alex averaged 31.5 points per game. Another sentence.']),'Alex averaged 31.5 points per game.');assert.ok(N.summary(story('a','p',1),['word '.repeat(100)]).length<=180);assert.match(N.summary({type:'Regular-season review'}),/MVP candidates/);
+ assert.equal(N.summary(story('a','p',1),['Alex averaged 31.5 points per game. Another sentence.']),'Alex averaged 31.5 points per game.');assert.ok(N.summary(story('a','p',1),['word '.repeat(100)]).length<=180);assert.equal(N.summary({type:'Regular-season review'},['Stars set the pace with 60 wins. More analysis.']),'Stars set the pace with 60 wins.');
 });
 
 test('one-league sparse editions shorten sections and unknown league routes stay isolated',()=>{
