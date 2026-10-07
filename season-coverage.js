@@ -126,8 +126,10 @@
       const bio=profile(group.names[0])?.bio;if(!bio)return group.name;
       const words=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
       const n=bio.yearsPro,ordinal=words[n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;
-      let detail=preferAge&&bio.age?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:bio.age?`${bio.age}-year-old`:'';
-      if(bio.college)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      const leadWithAge=!!bio.age&&(preferAge||!(n>0));
+      let detail=leadWithAge?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:'';
+      if(bio.college&&!leadWithAge)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      if(leadWithAge)return `the ${detail}, ${group.name},`;
       return detail?`${group.name}, ${detail.startsWith('a product')?detail:'the '+detail},`:group.name;
     };
     const sameLeaders=(a,b)=>a&&b&&a.names.length===b.names.length&&a.names.every(n=>b.names.includes(n));
