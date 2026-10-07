@@ -839,13 +839,23 @@ a[aria-disabled="true"]:hover { background:inherit; }
   .tv-postgame-player { padding:12px; }
 }
 .tv-playback {
-  grid-template-columns:minmax(0,1fr) minmax(110px,160px) minmax(0,1fr) 52px;
-  gap:8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
   margin:12px 0 18px;
 }
 .tv-playback button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  flex:0 1 160px;
   min-height:44px;
+  background:#092033;
 }
+.tv-playback button:hover:not(:disabled) { background:#1455a5; }
+.tv-playback button:focus-visible { outline:3px solid #79fff4; outline-offset:3px; }
 .tv-playback .tv-audio-button {
   padding:8px;
 }

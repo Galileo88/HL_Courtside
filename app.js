@@ -101,7 +101,7 @@
   }
   async function readArchive() {
     const [stories,snapshots,leagues] = await Promise.all([archive.all("stories"),archive.all("snapshots"),archive.all("leagues")]);
-    const refreshed=await window.HoopWireScenes.refreshFraming(stories);
+    const refreshed=await window.HoopWireScenes.refreshFraming(stories,leagues);
     if(refreshed.length){
       await archive.write({stories:refreshed});
       const replacements=new Map(refreshed.map(s=>[s.id,s]));
@@ -299,7 +299,7 @@ branch.append(summary);
         gameResults[year][dayIndex+1] ||= {};
         gameResults[year][dayIndex+1][game.gId] ||= {gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore}};
       }
-      leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,studios,gameResults});
+      leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,logoURL:league.logoURL||null,studios,gameResults});
       // The active save is authoritative for its current verified player box scores.
       // Rewriting the same snapshot id refreshes stale browser-archive values.
       for(const snapshot of C.captureSnapshots(league,fingerprint)){
@@ -336,7 +336,7 @@ branch.append(summary);
       window.HoopWireRecords.enrich(story,league);
       if (existing) story.createdAt = existing.createdAt;
       if(existing?.imageBlob&&existing.playerStats&&existing.coach?.id===story.coach?.id){for(const key of ['imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(existing[key]!==undefined)story[key]=existing[key];}
-      else Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx,story.id)));
+      else Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx,story.id,league)));
       return story;
     }));
     stories.push(...composed);
@@ -347,7 +347,7 @@ branch.append(summary);
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
         const old=state.stories.get(story.id);
         if(old){for(const key of ['day','createdAt','imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(old[key]!==undefined)story[key]=old[key];return story;}
-        const scene=window.HoopWireScenes.inputs(context,story.id);
+        const scene=window.HoopWireScenes.inputs(context,story.id,league);
         if(context.potg)scene.kind='interview';
         Object.assign(story,await window.HoopWireScenes.render(scene));return story;
       })));

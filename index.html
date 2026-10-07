@@ -63,9 +63,9 @@
         </div>
         <button id="tvStagePlay" class="tv-stage-play" type="button" aria-label="Play HoopWire TV episode"><span class="tv-stage-play-icon" aria-hidden="true">▶</span><span class="tv-stage-play-label">Play episode</span></button><button id="tvMute" class="tv-audio-button" type="button" aria-pressed="false" aria-label="Mute voices" title="Mute voices"><span aria-hidden="true">🔊</span></button></div><figcaption id="tvStudioCaption" class="sr-only"></figcaption></figure>
       <div id="tvHosts" hidden></div>
-      <div class="tv-controls tv-playback">
-        <button id="tvPrevious" disabled>Previous Story</button>
-        <button id="tvNext" disabled>Next Story</button>
+      <div class="tv-controls tv-playback" role="group" aria-label="Story navigation">
+        <button id="tvPrevious" aria-label="Previous Story" disabled><span aria-hidden="true">←</span> Previous Story</button>
+        <button id="tvNext" aria-label="Next Story" disabled>Next Story <span aria-hidden="true">→</span></button>
         <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" />
       </div>
       <div hidden><button id="tvLinePrevious">Previous line</button><button id="tvLineNext">Next line</button><select id="tvStorySelect"></select><div id="tvTranscript"></div></div>
@@ -95,6 +95,7 @@
   <script src="archive.js"></script>
   <script src="player-renderer.js"></script>
   <script src="court-renderer.js"></script>
+  <script src="press-backdrop.js"></script>
   <script src="scenes.js"></script>
   <script src="tv.js"></script>
   <script src="vendor/animalese/riffwave.js"></script>
