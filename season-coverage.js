@@ -121,13 +121,23 @@
     const g=groups,paragraphs=[],profiles=story.seasonSnapshot?.leaderProfiles||[];
     const history=(...categories)=>[...new Set((story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(honorLine).filter(Boolean))];
     const profile=name=>profiles.find(p=>p.name===name);
+    const positionName=value=>{
+      if(Number.isInteger(value))return ['point guard','shooting guard','small forward','power forward','center'][value]||'';
+      const key=String(value||'').trim().toLowerCase().replace(/[ ._-]+/g,'');
+      return ({pg:'point guard',pointguard:'point guard',sg:'shooting guard',shootingguard:'shooting guard',sf:'small forward',smallforward:'small forward',pf:'power forward',powerforward:'power forward',c:'center',center:'center'})[key]||'';
+    };
     const subject=(group,preferAge=false)=>{
       if(group.tied)return group.name;
-      const bio=profile(group.names[0])?.bio;if(!bio)return group.name;
+      const person=profile(group.names[0]),bio=person?.bio;if(!bio)return group.name;
       const words=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
       const n=bio.yearsPro,ordinal=words[n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;
-      let detail=preferAge&&bio.age?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:bio.age?`${bio.age}-year-old`:'';
-      if(bio.college)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      const leadWithAge=!!bio.age&&(preferAge||!(n>0));
+      let detail=leadWithAge?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:'';
+      if(bio.college&&!leadWithAge)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      if(leadWithAge){
+        const position=positionName(person.position);
+        return `the ${detail}${position?` ${position}`:''}, ${group.name},`;
+      }
       return detail?`${group.name}, ${detail.startsWith('a product')?detail:'the '+detail},`:group.name;
     };
     const sameLeaders=(a,b)=>a&&b&&a.names.length===b.names.length&&a.names.every(n=>b.names.includes(n));
@@ -390,7 +400,7 @@
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
-      story.seasonSnapshot.leaderProfiles=[...players.values()].map(p=>({name:C.playerDisplay(p),bio:playerBackground(p,league,leagues),s:stats(p,league,year)})).filter(p=>p.s);
+      story.seasonSnapshot.leaderProfiles=[...players.values()].map(p=>({name:C.playerDisplay(p),position:p.position,bio:playerBackground(p,league,leagues),s:stats(p,league,year)})).filter(p=>p.s);
       story.seasonSnapshot.leaderHonors=[];
       for(const [category,[awardId,label]] of Object.entries(titleCategories)){
         const leaders=story.seasonSnapshot.rows.filter(r=>r[0]===category);

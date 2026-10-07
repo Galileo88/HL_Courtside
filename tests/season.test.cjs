@@ -61,8 +61,8 @@ test('leader prose uses saved age, experience and resolved college without inven
  const bio=S.playerBackground({age:24,yrs:3,history:{coll:9}},pro,[pro,college]);assert.deepEqual(bio,{age:24,yearsPro:3,college:'Kansas'});
  assert.deepEqual(S.playerBackground({age:0,yrs:0,history:{coll:0}},pro,[pro,college]),{});
  assert.deepEqual(S.playerBackground({age:21,yrs:3,history:{coll:9}},college,[pro,college]),{age:21});
- const story={season:1967,seasonSnapshot:{rows:[['PTS','Alex',300,10],['REB','Sam',120,10],['AST','Pat',100,10],['STL','Lee',20,10]],leaderProfiles:[{name:'Alex',bio},{name:'Sam',bio:{age:29}},{name:'Pat',bio:{yearsPro:11,college:'Duke'}},{name:'Lee',bio:{age:23}}]}};
- const text=S.leadersArticle(story).join(' ');assert.match(text,/Alex, the third-year pro out of Kansas, won/);assert.match(text,/Sam, the 29-year-old, claimed/);assert.match(text,/Pat, the 11th-year pro out of Duke,/);assert.match(text,/Lee, the 23-year-old, led/);assert.doesNotMatch(text,/undefined|NaN|Wrong pro city/);
+ const story={season:1967,seasonSnapshot:{rows:[['PTS','Alex',300,10],['REB','Sam',120,10],['AST','Pat',100,10],['STL','Lee',20,10]],leaderProfiles:[{name:'Alex',position:1,bio},{name:'Sam',position:4,bio:{age:29}},{name:'Pat',position:0,bio:{yearsPro:11,college:'Duke'}},{name:'Lee',position:2,bio:{age:23}}]}};
+ const text=S.leadersArticle(story).join(' ');assert.match(text,/Alex, the third-year pro out of Kansas, won/);assert.match(text,/the 29-year-old center, Sam, claimed/);assert.match(text,/Pat, the 11th-year pro out of Duke,/);assert.match(text,/the 23-year-old small forward, Lee, led/);assert.doesNotMatch(text,/undefined|NaN|Wrong pro city/);
  const l=fixture(),p=l.teams[0].roster[0];Object.assign(p,{age:24,yrs:3,history:{coll:9}});p.stats[0].season[0].PTS=40;
  const generated=S.candidates(l,[l,college]).find(c=>c.story.eventKey==='leaders').story;assert.deepEqual(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio,bio);assert.match(generated.paragraphs.join(' '),/third-year pro out of Kansas/);p.age=25;assert.equal(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio.age,24);
 });
