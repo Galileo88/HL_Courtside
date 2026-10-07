@@ -41,6 +41,31 @@ test('a poor shooting night gets criticism and a strong shooting night gets spec
  const legacy={...game,playerName:null,paragraphs:['Alex Star was named player of the game after finishing with 28 points.']};
  assert.match(text(legacy),/Alex Star finished/);
 });
+test('postgame follow-ups connect efficiency, ball security and per-game context',()=>{
+ const story={...game,playerStats:{...game.playerStats,STL:2,BLK:1,TO:4},cumulativeStats:{period:'season',season:{GP:10,PTS:200}}};
+ const turns=B.script(story),s=text(story);
+ assert.ok(turns.length>=16);assert.match(s,/9 makes on 15 shots/);assert.match(s,/Where do the 4 turnovers/);assert.match(s,/4 giveaways.*11 assists/);
+ assert.match(s,/20\.0 points a game season average/);assert.match(s,/28 points is above that average/);assert.match(s,/next matchup/);
+ assert.doesNotMatch(s,/200 points|I (?:watched|rewatched|spoke|caught up)|second half|pregame|warmups/);
+ assert.deepEqual(B.script(story),turns);
+ const clean={...story,playerStats:{...story.playerStats,TO:0}};assert.match(text(clean),/No turnovers/);assert.doesNotMatch(text(clean),/giveaways are too many/);
+ const incomplete={...game,playerStats:{PTS:12}};assert.doesNotMatch(text(incomplete),/turnovers|field-goal attempts|from three|undefined|NaN/);
+});
+test('reporting segues preserve saved quotes and respond to their message',()=>{
+ const quote='We have to be more consistent at both ends of the floor.';
+ const story={...game,quotesEnabled:true,templateVersion:3,paragraphs:[`“${quote}” head coach Pat Courtside said.`]};
+ const s=text(story);assert.match(s,/Speaking of that.*Coach Pat Courtside/);assert.ok(s.includes(`Pat Courtside said, “${quote}”`));assert.match(s,/emphasis on consistency/);
+ assert.doesNotMatch(s,/before.*game|I spoke|I talked|pregame/);
+ assert.ok(!text({...story,quotesEnabled:false}).includes(quote));
+ const player={...story,paragraphs:['"We are champions. Everybody in that locker room had a part in this." Alex Star said.']};assert.match(text(player),/Alex Star said/);assert.match(text(player),/how much the title matters/);
+});
+test('playoff, award and season segments develop basketball questions with available facts',()=>{
+ const teams={relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{rows:[['Stars','Moons','Best of 7']],teamRecords:[{teamId:1,record:{seasonStats:{GP:10,W:8,L:2,PTS:1100,OPP:1000}}},{teamId:2,record:{seasonStats:{GP:10,W:7,L:3,PTS:1050,OPP:1020}}}]}};
+ const preview={...teams,type:'Playoff preview'};assert.match(text(preview),/Stars score 110\.0 points a game.*Moons allow 102\.0/);assert.ok(B.script(preview).length>=8);
+ const season={...teams,type:'Regular-season review'};assert.match(text(season),/10\.0-point scoring margin/);assert.match(text(season),/next step for Stars/);
+ const award={type:'Award announcement',headline:'Alex wins MVP',seasonSnapshot:{rows:[['MVP','Alex']],featuredPlayer:{name:'Alex',regularStats:{GP:10,PTS:200,AST:50}}}};assert.match(text(award),/10 games of production/);assert.match(text(award),/5\.0 assists a game/);assert.doesNotMatch(text(award),/undefined|NaN/);
+ const noBox={...game,playerStats:null};assert.match(text(noBox),/What would you want to know/);assert.doesNotMatch(text(noBox),/28 points|turnovers|rally|buzzer/);
+});
 test('league leaders rank per-game production rather than total points and TV displays rates',()=>{
  const league={leagueName:'Test',leagueType:0,season:{currentYear:1,totalGames:2,schedule:[]},teams:[
   {id:1,name:'Stars',season:[{yr:1,seasonStats:{GP:2,W:2,L:0}}],roster:[{id:1,tid:1,fn:'Alex',stats:[{league:0,yr:1,season:[{tid:1,GP:1,PTS:30,REB:10,AST:2}]}]}]},

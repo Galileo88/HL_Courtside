@@ -17,10 +17,13 @@ const server=http.createServer((req,res)=>{
   const labels=await page.locator('#tvStorySelect option').allTextContents(),game=stories.find(s=>s.playerStats&&s.playerName&&labels.includes(s.headline));assert.ok(game,'A verified named game is available in TV');
   await page.locator('#tvStorySelect').selectOption({label:game.headline},{force:true});
   const transcript=await page.locator('#tvTranscript').textContent();assert.ok(transcript.includes(game.playerName));assert.match(transcript,/points.*rebounds.*assists/);assert.doesNotMatch(transcript,/context matters|interesting part is how|next decision/);
+  assert.match(transcript,/What stands out beyond the points|how would you evaluate/);assert.match(transcript,/Let's take that to the next matchup/);
+  if(Number.isFinite(game.playerStats.TO))assert.match(transcript,/Where do the .*turnovers? fit into that assessment/);
   assert.equal(await page.locator('#tvSegment table').count(),0);assert.equal(await page.locator('.tv-postgame-player').count(),2);assert.equal(await page.locator('.tv-postgame-player .tv-stat-card').count(),10);assert.ok((await page.locator('.tv-postgame-player').allTextContents()).some(t=>t.includes(game.playerName)));
   await page.locator('#tvSegment').screenshot({path:path.join(root,'artifacts/tv-postgame.png')});
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.locator('#tvSegment').screenshot({path:path.join(root,'artifacts/tv-postgame-mobile.png')});await page.setViewportSize({width:1100,height:1000});
   const season=stories.find(s=>s.type==='Team season review'&&labels.includes(s.headline));assert.ok(season);await page.locator('#tvStorySelect').selectOption({label:season.headline},{force:true});assert.match(await page.locator('#tvTranscript').textContent(),/points a game/);
+  assert.match(await page.locator('#tvTranscript').textContent(),/planning the next step|next step for/);
   assert.match(await page.locator('#tvSegment').textContent(),/PPG/);assert.doesNotMatch(await page.locator('#tvSegment').textContent(),/\bPTS\b/);
   await page.locator('#tv').screenshot({path:path.join(root,'artifacts/dialogue-tv.png')});
   const archiveBefore=JSON.stringify(season.paragraphs);await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
