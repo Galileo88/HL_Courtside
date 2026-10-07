@@ -9,7 +9,7 @@ const server=http.createServer((req,res)=>{
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
  try{
-  browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[],blobFailures=[];page.on('pageerror',e=>errors.push(e.message));page.on('requestfailed',r=>{if(r.url().startsWith('blob:')&&r.failure()?.errorText.includes('ERR_FILE_NOT_FOUND'))blobFailures.push(r.url());});
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.locator('#saveFile').setInputFiles({name:'league.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(save))});
   await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);await page.locator('.nav a[href="#tv"]').click();
@@ -25,6 +25,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#tv').screenshot({path:path.join(root,'artifacts/dialogue-tv.png')});
   const archiveBefore=JSON.stringify(season.paragraphs);await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   const archived=await page.evaluate(async id=>{const a=await new HoopWireArchive().open();try{return (await a.all('stories')).find(s=>s.id===id);}finally{a.db.close();}},season.id);assert.equal(JSON.stringify(archived.paragraphs),archiveBefore);assert.deepEqual(errors,[]);
+  await page.waitForFunction(()=>document.getElementById('tvStudio').complete&&document.getElementById('tvStudio').naturalWidth>0);assert.deepEqual(blobFailures,[],'Image URLs must remain valid while loading across TV refresh');
   console.log('Dialogue browser checks passed: verified player names, familiar stats, per-game season discussion, four-host transcript integration, no page errors, and archived prose preserved on reload.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

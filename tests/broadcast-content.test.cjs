@@ -2,6 +2,11 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const B=require('../broadcast-content'),S=require('../season-coverage');
 const text=s=>B.script(s).map(t=>t.text).join(' ');
 const game={id:'example',headline:'Example game',gameSummary:{home:{name:'Stars',score:110},away:{name:'Moons',score:108}},playerName:'Alex Star',playerStats:{PTS:28,REB:10,AST:11,FGM:9,FGA:15,TPM:3,TPA:6,FTM:7,FTA:8}};
+test('episodes welcome viewers, introduce all four hosts and close after the reporting',()=>{
+ const turns=B.episode(game),intro=turns.slice(0,4).map(t=>t.text).join(' ');
+ assert.match(intro,/Welcome to HoopWire TV/);for(const name of ['Maya Brooks','Jordan Price','Andre Cole','Nina Reyes'])assert.ok(intro.includes(name));
+ assert.match(turns[4].text,/Stars.*Moons/);assert.match(turns.at(-1).text,/Thanks for watching HoopWire TV/);assert.deepEqual(B.episode(null),[]);
+});
 test('studio names the player, uses basketball terms and does not invent a deciding play',()=>{
  const s=text(game);assert.match(s,/Stars .* Moons, 110 to 108/);assert.match(s,/Alex Star finished with 28 points, 10 rebounds and 11 assists/);assert.match(s,/triple-double/);assert.match(s,/9 for 15 from the field/);assert.doesNotMatch(s,/created separation|context matters|buzzer|fourth quarter|game-winning/);
  assert.ok(B.script(game).every(t=>t.speaker>=0&&t.speaker<=3));

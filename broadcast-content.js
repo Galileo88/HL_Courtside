@@ -139,5 +139,20 @@
     if(['Team season review','Regular-season review'].includes(story.type))return seasonScript(story);
     return genericScript(story);
   }
-  return {script,awardScript,playoffScript,championshipScript,gameScript,genericScript,seasonScript};
+  function episode(story,names=['Maya Brooks','Jordan Price','Andre Cole','Nina Reyes']){
+    if(!story)return [];
+    const opening=[
+      turn(0,`Welcome to HoopWire TV! I'm ${names[0]}, and this is The Daily Desk.`),
+      turn(1,`I'm ${names[1]}. Glad you're with us. Let's talk basketball.`),
+      turn(2,`And I'm ${names[2]}. Ready to get into it.`),
+      turn(3,`I'm ${names[3]}. We've got a lot to talk about, so let's get to it.`)
+    ];
+    const closing=[
+      turn(0,"That wraps up today's show. Thanks for joining us at The Daily Desk."),
+      turn(3,"Come back for the next show. We'll have more basketball to talk about."),
+      turn(0,`For ${names[1]}, ${names[2]} and ${names[3]}, I'm ${names[0]}. Thanks for watching HoopWire TV. We'll see you next time!`)
+    ];
+    return [...opening,...script(story),...closing];
+  }
+  return {script,episode,awardScript,playoffScript,championshipScript,gameScript,genericScript,seasonScript};
 });

@@ -64,6 +64,10 @@ Hosts discuss archived stories in speech bubbles using locally bundled [animales
 
 Episodes open with the supplied HoopWire TV logo, red diagonal panels, a motion grid and a final wipe into the studio. The animation follows the theme's actual playback position and reveals the hosts only when the music ends. Speech bubbles are empty and hidden until the show starts. Pausing freezes both music and graphics; resuming continues from the same position. Changing stories cancels the opening. The existing mute control also mutes the theme. Unavailable theme audio uses an 8.5-second silent opening; reduced-motion preferences use a static logo slate for the same playback period.
 
+After the theme, Maya welcomes viewers and all four hosts introduce themselves before discussing the selected story. The episode closes with a wrap-up and sign-off, then returns to the HoopWire TV logo with a thanks-for-watching message. Speech bubbles are cleared from the ending screen. Replay begins again with the theme and welcome.
+
+Article and studio image URLs are reused across redraws. Pending image loads retain their URLs; obsolete images are released after loading and after they leave both the current archive data and the page. Reloading TV rebuilds URLs from preserved image blobs rather than relying on links from the previous page.
+
 The library and samples are pinned to an upstream revision in `vendor/animalese/UPSTREAM.txt`. The bundled code is MIT licensed, RIFFWAVE is public domain, and Josh Simmons's voice samples are credited under CC BY 4.0 in the TV view and bundled license file.
 
 `player-renderer.js`, `player-assets/`, and `court/` adapt the existing HoopLeagueStudio player/court preview work. `scene-assets/manifest.json` records the additional source textures. To re-extract scene textures for the inspected game build, install UnityPy and Pillow in a development environment and run:

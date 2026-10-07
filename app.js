@@ -5,7 +5,25 @@
   const el = Object.fromEntries(["saveFile","fileName","archiveLeague","archiveSeason","archiveDay","exportButton",
     "importFile","feed","status","articleTemplate","refreshImagesButton","tvStudio","tvStudioCaption",
     "archiveTitle","archiveLeagueSwitch","previousArchiveLeague","nextArchiveLeague","archiveTree","resetArchive","resetDialog","resetTitle","resetDescription","cancelReset","confirmReset","historicalTitle","leagueButtons","newsroomLeague","newsroomLeagueLabel","archiveTeam","newsroomDay","tvHosts","tvStorySelect","tvPrevious","tvNext","tvSegment","tvTicker","tvDeskForeground","tv"].map(id => [id, document.getElementById(id)]));
-  const state = {scope:null,raw: null, leagueIndex: 0, stories: new Map(), snapshots: new Map(), leagues: [], ready: false, busy: false, urls: [], tvUrls: []};
+  const state = {scope:null,raw: null, leagueIndex: 0, stories: new Map(), snapshots: new Map(), leagues: [], ready: false, busy: false};
+  const imageURLs=new Map();
+  function pruneImageURLs(){
+    const live=new Set([...state.stories.values()].map(s=>s.imageBlob));
+    for(const league of state.leagues)for(const studio of Object.values(league.studios||{})){live.add(studio.imageBlob);live.add(studio.backdropBlob);}
+    const displayed=new Set([...document.images].map(img=>img.getAttribute('src')));
+    for(const [blob,item] of imageURLs)if(item.ready&&!live.has(blob)&&!displayed.has(item.url)){URL.revokeObjectURL(item.url);imageURLs.delete(blob);}
+  }
+  function imageURL(blob){
+    let item=imageURLs.get(blob);
+    if(!item){
+      item={url:URL.createObjectURL(blob),ready:false,probe:new Image()};imageURLs.set(blob,item);
+      // Keep a pending URL alive even when rapid redraws detach its image. A
+      // completed load can safely release obsolete archive versions afterward.
+      item.probe.onload=item.probe.onerror=()=>{item.ready=true;item.probe=null;pruneImageURLs();};
+      item.probe.src=item.url;
+    }
+    return item.url;
+  }
   function status(message) { el.status.textContent = message; el.status.classList.remove("hidden"); }
   function selectedLeague() { return state.raw?.seasonLeagues[state.leagueIndex]; }
   function pending() {
@@ -139,13 +157,12 @@ branch.append(summary);
     }
   }
   function render() {
-    for (const url of state.urls) URL.revokeObjectURL(url);
-    state.urls = []; el.feed.replaceChildren();
+    el.feed.replaceChildren();
     const stories = selectedStories();
     if (!stories.length) {
       const empty = document.createElement("div"); empty.className = "panel muted";
       empty.textContent = state.busy&&state.raw ? "Preparing your league’s daily coverage…" : "No archived stories for this selection yet. Load a save and generate daily stories to begin.";
-      el.feed.appendChild(empty); return;
+      el.feed.appendChild(empty);pruneImageURLs();return;
     }
     for (const story of stories) {
       const node = el.articleTemplate.content.cloneNode(true);
@@ -153,7 +170,7 @@ branch.append(summary);
       node.querySelector(".article-headline").textContent = story.headline;
       const figure = node.querySelector(".article-image");
       if (story.imageBlob) {
-        const url = URL.createObjectURL(story.imageBlob); state.urls.push(url);
+        const url = imageURL(story.imageBlob);
         const image = figure.querySelector("img"); image.src = url; image.alt = story.imageAlt || "Composed Hoop Land story illustration";
         figure.querySelector("figcaption").textContent = story.imageCaption || "Composed scene using Hoop Land assets";
       } else figure.remove();
@@ -162,6 +179,7 @@ branch.append(summary);
       }
       el.feed.appendChild(node);
     }
+    pruneImageURLs();
   }
   function selectedStories() {
     return [...state.stories.values()].filter(s => s.fingerprint === el.archiveLeague.value &&
@@ -434,8 +452,6 @@ branch.append(summary);
   }
   function renderTV() {
     window.HoopWireBroadcast?.stop();
-    for(const url of state.tvUrls) URL.revokeObjectURL(url);
-    state.tvUrls = [];
     const stories = selectedStories();
     const league = state.leagues.find(l => l.id === el.archiveLeague.value);
     const studio = league?.studios?.[el.archiveSeason.value];
@@ -444,7 +460,7 @@ branch.append(summary);
     el.tvDeskForeground.removeAttribute("src");
     el.tvHosts.replaceChildren();
     if(studio?.imageBlob) {
-      const url = URL.createObjectURL(studio.backdropBlob || studio.imageBlob); state.tvUrls.push(url);el.tvStudio.src=url;el.tvStudio.alt=studio.imageAlt;
+      const url = imageURL(studio.backdropBlob || studio.imageBlob);el.tvStudio.src=url;el.tvStudio.alt=studio.imageAlt;
       // The archived desk must cover animated hosts, just as in the still composition.
       if(studio.backdropBlob) el.tvDeskForeground.src=url;
       el.tvStudioCaption.textContent = `Illustrated broadcast with exclusive HoopWire hosts${studio.adsStatus === "loaded" ? " and league advertisement artwork" : studio.adsStatus === "unavailable" ? "; league ads could not load" : ""}.`;
@@ -472,6 +488,7 @@ branch.append(summary);
       for(let i=0;i<2;i++){const copy=document.createElement('span');copy.textContent=text+'   •   ';copy.setAttribute('aria-hidden','true');track.append(copy);}
       window.append(track);el.tvTicker.append(badge,window);
     }
+    pruneImageURLs();
     controls();
   }
   for(const [button,step] of [[el.previousArchiveLeague,-1],[el.nextArchiveLeague,1]])button.addEventListener('click',()=>{
