@@ -202,7 +202,7 @@ branch.append(summary);
       const previous = state.leagues.find(l => l.id === fingerprint);
       const studios = {...previous?.studios};
       const year = C.seasonYear(league);
-      if (!studios[year] || studios[year].inputs?.version < 3) studios[year] = await window.HoopWireTV.render(window.HoopWireTV.inputs(league));
+      if (!studios[year] || studios[year].inputs?.version < 4) studios[year] = await window.HoopWireTV.render(window.HoopWireTV.inputs(league));
       const gameResults=structuredClone(previous?.gameResults || {});
       gameResults[year] ||= {};
       const lookup=C.buildLookups(league);
@@ -545,9 +545,9 @@ branch.append(summary);
     const upgraded=[];
     for(const league of state.leagues){
       const studios={...league.studios};let changed=false;
-      for(const [season,studio] of Object.entries(studios))if(studio.inputs?.version<3){
+      for(const [season,studio] of Object.entries(studios))if(studio.inputs?.version<4){
         status('Updating the HoopWire TV studio…');
-        const fresh=await window.HoopWireTV.render({...studio.inputs,version:3});
+        const fresh=await window.HoopWireTV.render({...studio.inputs,version:4});
         if(studio.adsStatus==='loaded'&&fresh.adsStatus==='unavailable')throw new Error('TV studio could not be updated because its advertisement artwork is unavailable. The saved studio was preserved.');
         studios[season]=fresh;changed=true;
       }

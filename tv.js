@@ -13,7 +13,7 @@
   function inputs(league) {
     const announcers = Array.from({length:4},(_,i) => defaults(i));
     const adTeam = (league.teams || []).find(t => t.frontOffice?.adsURL);
-    return {version:3,leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
+    return {version:4,leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
       announcers,adsURL:adTeam?.frontOffice?.adsURL || null,adSize:adTeam?.frontOffice?.adSize || 256,
       hostSource:"hoopwire"};
   }
@@ -54,17 +54,15 @@
     ctx.drawImage(table,0,247,960,240);ctx.drawImage(graphic,0,247,960,240);
     ctx.fillStyle="#172f65";ctx.fillRect(8,365,944,121);
     ctx.textAlign="center";ctx.fillStyle="#ffffff";ctx.font="italic 900 32px Arial";ctx.fillText("HOOPWIRE TV",480,398);
-    // Display the save's ad atlas in separate sponsor windows without stretching logos.
+    // Repeat the first/top advertisement in larger, fitted desk windows.
     if(ads) {
       const tileWidth=Math.min(Math.max(1,Number(input.adSize)||256),ads.width);
       const tileHeight=ads.height <= tileWidth/4 ? ads.height : Math.min(32,ads.height);
-      const columns=Math.max(1,Math.floor(ads.width/tileWidth)),rows=Math.max(1,Math.floor(ads.height/tileHeight));
       for(let i=0;i<4;i++) {
-        const x=32+i*236,w=188,h=Math.round(w*tileHeight/tileWidth),y=428-Math.round(w*tileHeight/tileWidth)/2;
+        const x=14+i*236,w=224,h=Math.min(68,Math.round(w*tileHeight/tileWidth)),y=438-h/2;
         ctx.fillStyle="#0a1120";ctx.fillRect(x,y,w,h);
         const scale=Math.min(w/tileWidth,h/tileHeight),dw=tileWidth*scale,dh=tileHeight*scale;
-        const tile=i%(columns*rows);
-        ctx.drawImage(ads,(tile%columns)*tileWidth,Math.floor(tile/columns)*tileHeight,tileWidth,tileHeight,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+        ctx.drawImage(ads,0,0,tileWidth,tileHeight,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
       }
     }
     ctx.fillStyle="#0b1425";ctx.fillRect(0,496,960,44);
