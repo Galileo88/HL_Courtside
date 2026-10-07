@@ -177,6 +177,12 @@ branch.append(summary);
       } else figure.remove();
       const paragraphs=window.HoopWireSeason.articleParagraphs(story);
       const reviewLists=story.type==='Regular-season review'?window.HoopWireSeason.seasonReviewLists(story):[];
+      if(reviewLists.length){
+        const intro=document.createElement('p');
+        intro.className='season-summary-intro';
+        intro.textContent=`With the regular season behind us, these were the standout players and teams of ${story.season}.`;
+        node.querySelector('.article-body').appendChild(intro);
+      }
       for(const group of reviewLists){
         const section=document.createElement('section');section.className='season-summary';
         const heading=document.createElement('h3');heading.textContent=group.label;
