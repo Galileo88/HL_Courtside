@@ -4,6 +4,12 @@ An offline browser newsroom for Hoop Land saves. Use the local preview server fo
 
 For a stable local browser address, run `node scripts/serve.cjs` and visit `http://127.0.0.1:8123`. Keep using that address to access the same browser archive.
 
+## News front pages
+
+Home combines active saved leagues; each league News page shows only that league. The shared layout includes a lead feature, supporting stories, headlines, league sections, the latest archived finals, and a static HoopWire TV feature. Coverage uses each league’s latest saved season and covered day, with its preceding two covered days for backfill. Articles open individually with a return link and restored front-page position. Archived coverage remains available after refresh without uploading the save again.
+
+The front pages are modular: `newsroom.js` selects editions without touching the DOM or storage, `newsroom-view.js` renders shared components, and `newsroom.css` owns their responsive styling. `app.js` connects these modules to the archive and navigation. Stable routes are `#newsroom`, `#league/<encoded fingerprint>`, and `#story/<encoded story ID>`; legacy `#league-N` links remain supported.
+
 ## Daily coverage
 
 Season milestones are generated automatically on upload alongside daily recaps. Once every team's saved regular-season record reaches the configured schedule length, HoopWire adds a league review, team reviews, final records and total-stat leaders. Award stories require a winner explicitly recorded for this league and year; statistical leaders do not predict awards. Active playoff brackets generate round matchup previews, excluding byes. Recorded team championships or a completed final bracket produce championship reviews and confirmed postseason awards. A save uploaded after these milestones can catch up on the available records, but cannot reconstruct overwritten daily box scores.
@@ -40,7 +46,7 @@ Each new article has one deterministic still image composed locally from exporte
 
 Interview scenes place the featured player between a teammate and the team's head coach, when available, behind a table aligned to their hips. Jersey numbers use readable pixel glyphs. Coaches use the game's staff body and suit layers, with appearance and suit colors from `team.frontOffice.staff` (the unique team-matching person with `pos: 1`). Fictional coach quotes use that head coach's name and are included automatically for new stories. Re-generating latest-day coverage can add coach coverage to earlier articles from the current template.
 
-Action scenes use equally scaled player sprites on the native 1024 × 512 court, with a 2x camera crop rather than giant players on a flattened court. Scenes include up to three players per team from saved rosters, with no referee sprites. Basketball colors have a separate orange palette that is unaffected by accessory or skin colors. Jersey numbers are smaller and centered within the chest. Player appearance, accessories, jersey numbers, team colors, and uniform colors come from the save. Uniform selection defaults to the team's first home or away slot because historical fixtures do not retain actual uniform choices.
+Action scenes use equally scaled player sprites on the native 1024 Ã— 512 court, with a 2x camera crop rather than giant players on a flattened court. Scenes include up to three players per team from saved rosters, with no referee sprites. Basketball colors have a separate orange palette that is unaffected by accessory or skin colors. Jersey numbers are smaller and centered within the chest. Player appearance, accessories, jersey numbers, team colors, and uniform colors come from the save. Uniform selection defaults to the team's first home or away slot because historical fixtures do not retain actual uniform choices.
 
 The home team's court surface patterns, colors, line settings, court text, and hoop colors are reproduced. Its `court.overlayURL` is loaded with canvas-safe CORS and applied at `overlayLayer`, matching the custom-league court layout. Optional logo settings are also supported. If an image is unavailable, the save's built-in court layout is used and the caption reports the fallback. Neither the save nor its contents are uploaded to the image host.
 

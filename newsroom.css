@@ -1,0 +1,44 @@
+/* Editorial front pages share HoopWire's existing colors and imagery. */
+.shell:has(.front-page:not(.hidden)) { width:min(1280px,calc(100% - 28px)); max-width:1280px; }
+.front-page { gap:28px; margin-top:0; }
+.wire-scores { display:flex; gap:0; overflow-x:auto; max-width:100%; border:1px solid var(--line); background:var(--paper); padding:12px 0; }
+.wire-score { flex:0 0 230px; padding:0 16px; border-right:1px solid var(--line); }
+.wire-score:last-child { border:0; }
+.wire-score .wire-meta { font-size:10px; margin-bottom:6px; }
+.wire-final { display:block; font-size:10px; color:#79fff4; margin-bottom:5px; }
+.wire-score-team { display:flex; justify-content:space-between; gap:10px; font-size:12px; line-height:1.6; }
+.wire-score-team span { min-width:0; overflow-wrap:anywhere; }
+.wire-heading { position:relative; padding-right:150px; }
+.wire-heading h1 { font-size:36px; margin:6px 0 8px; }
+.wire-heading p { margin:0; font-size:12px; line-height:1.7; }
+.wire-heading > a { position:absolute; right:0; top:12px; }
+.wire-opening { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:24px; align-items:start; }
+.wire-main { min-width:0; }
+.wire-card { display:block; min-width:0; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:4px; overflow:hidden; text-decoration:none; }
+.wire-card:hover h2,.wire-card:hover h3,.wire-headlines a:hover strong { color:#79fff4; }
+.wire-image { display:block; width:100%; aspect-ratio:16/9; height:auto; object-fit:contain; image-rendering:pixelated; background:#162b49; }
+.wire-placeholder { display:flex; align-items:center; justify-content:center; height:auto; font-size:clamp(20px,4vw,48px); font-style:italic; font-weight:900; letter-spacing:-1px; background:linear-gradient(130deg,#0d3971,#071722); }
+.wire-card-body { padding:16px; }
+.wire-meta { display:block; color:var(--muted); font-size:10px; font-weight:700; line-height:1.5; letter-spacing:.35px; text-transform:uppercase; }
+.wire-card h2 { font-size:32px; line-height:1.15; letter-spacing:-.6px; margin:10px 0 12px; }
+.wire-card h3 { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.35; margin:8px 0 0; }
+.wire-summary { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.5; margin:0 0 12px; }
+.wire-byline { font-size:12px; font-weight:700; color:var(--muted); }
+.wire-read { display:block; font-size:12px; margin-top:14px; color:#79fff4; font-weight:700; }
+.wire-supporting { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:20px; }
+.wire-headlines { background:var(--paper); border-top:3px solid #238bce; padding:18px; }
+.wire-headlines h2,.wire-section > h2 { font-size:21px; margin:0 0 16px; }
+.wire-headlines ul { list-style:none; padding:0; margin:0; }
+.wire-headlines li + li { border-top:1px solid var(--line); margin-top:15px; padding-top:15px; }
+.wire-headlines a { display:block; color:var(--ink); text-decoration:none; }
+.wire-headlines strong { display:block; font-size:15px; line-height:1.4; margin-top:5px; }
+.wire-section > h2 { border-bottom:1px solid var(--line); padding-bottom:12px; }
+.wire-story-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; }
+.wire-tv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; padding:20px; background:var(--paper); border-top:3px solid #238bce; align-items:center; }
+.wire-tv-poster { width:100%; height:auto; image-rendering:pixelated; }
+.wire-tv h2 { font-size:28px; margin:10px 0; }
+.wire-tv p { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.5; }
+.front-page :is(a,button):focus-visible,.wire-scores:focus-visible,.article-back:focus-visible { outline:3px solid #79fff4; outline-offset:3px; }
+@media(max-width:1099px) { .wire-opening { grid-template-columns:1fr; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; } }
+@media(max-width:699px) { .wire-supporting,.wire-story-grid,.wire-tv { grid-template-columns:1fr; }.wire-heading { padding-right:0; }.wire-heading > a { position:static; display:inline-block; margin-top:10px; }.wire-heading h1 { font-size:28px; }.wire-card h2 { font-size:26px; }.wire-card-body { padding:16px; }.wire-tv { padding:16px; } }
+

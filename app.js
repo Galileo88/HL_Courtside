@@ -7,6 +7,21 @@
     "archiveTitle","archiveLeagueSwitch","previousArchiveLeague","nextArchiveLeague","archiveTree","resetArchive","resetDialog","resetTitle","resetDescription","cancelReset","confirmReset","historicalTitle","leagueButtons","newsroomLeague","newsroomLeagueLabel","archiveTeam","newsroomDay","tvHosts","tvStorySelect","tvPrevious","tvNext","tvSegment","tvTicker","tvDeskForeground","tv"].map(id => [id, document.getElementById(id)]));
   const state = {scope:null,raw: null, leagueIndex: 0, stories: new Map(), snapshots: new Map(), leagues: [], ready: false, busy: false};
   const imageURLs=new Map();
+  const frontScroll=new Map(),storyOrigins=new Map();
+  try{for(const [id,value] of JSON.parse(sessionStorage.getItem('hoopwire-story-origins')||'[]'))storyOrigins.set(id,value);}catch{}
+  function routeData(hash=location.hash){
+    try{
+      if(hash.startsWith('#story/'))return {kind:'story',id:decodeURIComponent(hash.slice(7))};
+      if(hash.startsWith('#league/'))return {kind:'front',fingerprint:decodeURIComponent(hash.slice(8))};
+      const old=hash.match(/^#league-(\d+)$/);
+      if(old){const i=Number(old[1]),raw=state.raw?.seasonLeagues[i];return {kind:'front',fingerprint:raw?C.buildFingerprint(raw):state.scope?.[i]||accessibleLeagues()[i]?.id||''};}
+    }catch{return {kind:'missing'};}
+    if(hash==='#newsroom')return {kind:'front',fingerprint:null};
+    return {kind:['#archive','#stories','#tv'].includes(hash)?hash.slice(1):'welcome'};
+  }
+  const leagueHref=id=>'#league/'+encodeURIComponent(id);
+  const storyHref=id=>'#story/'+encodeURIComponent(id);
+
   function pruneImageURLs(){
     const live=new Set([...state.stories.values()].map(s=>s.imageBlob));
     for(const league of state.leagues)for(const studio of Object.values(league.studios||{})){live.add(studio.imageBlob);live.add(studio.backdropBlob);}
@@ -37,7 +52,7 @@
   function accessibleStories() {return [...state.stories.values()].filter(s=>!state.scope||state.scope.includes(s.fingerprint));}
   function canOpen(route) {
     if(!state.ready)return false;
-    if(route==='#newsroom')return !!state.raw;
+    if(route==='#newsroom'||route.startsWith('#league/'))return !!state.raw||accessibleStories().length>0;
     if(['#archive','#stories','#tv'].includes(route))return accessibleStories().length>0;
     return true;
   }
@@ -51,12 +66,13 @@
     el.previousArchiveLeague.disabled=el.nextArchiveLeague.disabled=state.busy || !state.ready;
     options(el.newsroomLeague,(state.raw?.seasonLeagues || []).map((l,i)=>[i,l.leagueName || `League ${i+1}`]),state.leagueIndex);
     el.newsroomLeague.disabled=state.busy || !state.ready || !state.raw;
-    const buttonState=JSON.stringify([state.raw?.seasonLeagues.map(l=>[l.leagueName,l.shortName,l.leagueType]),location.hash,state.leagueIndex,state.busy]);
+    const navLeagues=accessibleLeagues().map(l=>window.HoopWireNewsroom.leagueInfo(l,accessibleStories()));
+    const buttonState=JSON.stringify([navLeagues.map(l=>[l.id,l.name,l.shortName,l.leagueType]),location.hash,state.busy]);
     if(el.leagueButtons.dataset.state!==buttonState){
       el.leagueButtons.dataset.state=buttonState;el.leagueButtons.replaceChildren();
-      (state.raw?.seasonLeagues || []).map((league,index)=>({league,index})).sort((a,b)=>(a.league.leagueType ?? 2)-(b.league.leagueType ?? 2)).forEach(({league,index})=>{
-        const link=document.createElement('a');link.textContent=`${league.shortName || (league.leagueType===1?'College':'Pro')} News`;link.href=`#league-${index}`;link.title=league.leagueName;
-        if(location.hash===`#league-${index}`)link.setAttribute('aria-current','page');
+      navLeagues.sort((a,b)=>(a.leagueType??2)-(b.leagueType??2)).forEach(league=>{
+        const link=document.createElement('a');link.textContent=`${league.shortName||league.name} News`;link.href=leagueHref(league.id);link.title=league.name;
+        if(routeData().fingerprint===league.id)link.setAttribute('aria-current','page');
         if(state.busy||!state.ready){link.setAttribute('aria-disabled','true');link.tabIndex=-1;}
         el.leagueButtons.append(link);
       });
@@ -78,9 +94,10 @@
   async function run(action) {
     if (state.busy) return;
     state.busy = true; controls();
+    let failed=false;
     try { await action(); }
-    catch (error) { status(`${error.message} Nothing was confirmed as archived. Your existing archive has been retained.`); }
-    finally { state.busy = false; controls(); if(location.hash==="#newsroom"||/^#league-/.test(location.hash))render(); }
+    catch (error) { failed=true;status(`${error.message} Nothing was confirmed as archived. Your existing archive has been retained.`); }
+    finally { state.busy = false; controls(); if(routeData().kind==='front'){render();if(!failed)el.status.classList.add('hidden');} }
   }
   async function readArchive() {
     const [stories,snapshots,leagues] = await Promise.all([archive.all("stories"),archive.all("snapshots"),archive.all("leagues")]);
@@ -156,12 +173,31 @@ branch.append(summary);
       }el.archiveTree.append(branch);
     }
   }
+  function renderEdition(fingerprint){
+    const edition=window.HoopWireNewsroom.buildEdition({stories:accessibleStories(),leagues:accessibleLeagues(),fingerprint});
+    window.HoopWireNewsroomView.render(el.feed,edition,{
+      imageURL,storyHref,busy:state.busy,
+      caption:window.HoopWireScenes.caption,paragraphs:window.HoopWireSeason.articleParagraphs,
+      onWatch(story){
+        state.tvRequestedStory=story.id;el.archiveTeam.value='';
+        archiveNavigation(story.fingerprint,String(story.season),String(story.day));location.hash='#tv';
+      }
+    });
+  }
   function render() {
     el.feed.replaceChildren();
-    const stories = selectedStories();
+    const route=routeData();
+    el.feed.classList.toggle('front-page',route.kind==='front');
+    if(route.kind==='front'){renderEdition(route.fingerprint);pruneImageURLs();return;}
+    const stories=route.kind==='story'?[state.stories.get(route.id)].filter(s=>s&&accessibleStories().some(a=>a.id===s.id)):selectedStories();
+    if(route.kind==='story'){
+      const back=document.createElement('a');back.className='article-back text-action';
+      const origin=storyOrigins.get(route.id);back.href=origin?.route|| (stories[0]?leagueHref(stories[0].fingerprint):'#newsroom');back.textContent='← Back to coverage';el.feed.append(back);
+    }
     if (!stories.length) {
       const empty = document.createElement("div"); empty.className = "panel muted";
-      empty.textContent = state.busy&&state.raw ? "Preparing your league’s daily coverage…" : "No archived stories for this selection yet. Load a save and generate daily stories to begin.";
+      empty.textContent = route.kind==='story'?'This story is not available in the active archive.':state.busy&&state.raw ? "Preparing your league’s daily coverage…" : "No archived stories for this selection yet. Load a save and generate daily stories to begin.";
+      if(route.kind==='story'){for(const [label,href] of [['Home','#newsroom'],['Archive','#archive']]){const a=document.createElement('a');a.href=href;a.textContent=label;a.className='text-action';empty.append(document.createTextNode(' '),a);}}
       el.feed.appendChild(empty);pruneImageURLs();return;
     }
     for (const story of stories) {
@@ -228,10 +264,14 @@ branch.append(summary);
         gameResults[year][dayIndex+1] ||= {};
         gameResults[year][dayIndex+1][game.gId] ||= {gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore}};
       }
-      leagues.push({id:fingerprint, name:league.leagueName || "League",studios,gameResults});
+      leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,studios,gameResults});
       // The active save is authoritative for its current verified player box scores.
       // Rewriting the same snapshot id refreshes stale browser-archive values.
-      snapshots.push(...C.captureSnapshots(league,fingerprint));
+      for(const snapshot of C.captureSnapshots(league,fingerprint)){
+        const previousSnapshot=state.snapshots.get(snapshot.id);
+        const comparable=value=>JSON.stringify({...value,capturedAt:null});
+        snapshots.push(previousSnapshot&&comparable(previousSnapshot)===comparable(snapshot)?previousSnapshot:snapshot);
+      }
     }
     await archive.write({snapshots,leagues,meta:[{id:"active-leagues",ids:state.scope}]});
     state.raw = parsed; state.leagueIndex = 0;
@@ -301,27 +341,21 @@ branch.append(summary);
     status(`Refreshed ${stories.length} story images. Article text and stats were preserved.${courtWarnings(stories)}`);
   }
   function view() {
-    const leagueRoute=location.hash.match(/^#league-(\d+)$/);
-    if(leagueRoute&&state.raw?.seasonLeagues[Number(leagueRoute[1])])state.leagueIndex=Number(leagueRoute[1]);
-    let route = leagueRoute ? '#newsroom' : ["#newsroom","#tv","#archive","#stories"].includes(location.hash) ? location.hash : "#welcome";
-    if(state.ready&&!canOpen(route)){history.replaceState(null,'','#welcome');route='#welcome';}
-    document.body.classList.toggle("entry-screen",route==="#welcome");
-    for(const id of ["welcome","newsroom","archive","tv"]) document.getElementById(id).classList.toggle("hidden",route !== `#${id}`);
-    document.getElementById("historicalStories").classList.toggle("hidden",route!=="#stories");
-    el.feed.classList.toggle("hidden",!["#newsroom","#stories"].includes(route));
-    el.status.classList.toggle("hidden",["#tv","#newsroom"].includes(route)||!el.status.textContent);
-    if(route==="#newsroom") {
-      el.archiveTeam.value="";
-      const league=selectedLeague();
-      if(league) archiveNavigation(C.buildFingerprint(league),C.seasonYear(league),C.buildLookups(league).latestDay+1);
-      else archiveNavigation(el.archiveLeague.value,"","");
-      el.newsroomDay.textContent=el.archiveSeason.value ? `${el.archiveLeague.selectedOptions[0]?.textContent} · ${el.archiveSeason.value} · Day ${el.archiveDay.value}` : "Load a save to create today's coverage, or browse the archive.";
+    let route=routeData();
+    if(state.ready&&((route.kind==='front'&&!canOpen('#newsroom'))||(['archive','tv','stories'].includes(route.kind)&&!canOpen('#'+route.kind)))){history.replaceState(null,'','#welcome');route={kind:'welcome'};}
+    document.body.classList.toggle('entry-screen',route.kind==='welcome');
+    for(const id of ['welcome','newsroom','archive','tv'])document.getElementById(id).classList.toggle('hidden',route.kind!==id);
+    document.getElementById('newsroom').classList.add('hidden');
+    document.getElementById('historicalStories').classList.toggle('hidden',route.kind!=='stories');
+    el.feed.classList.toggle('hidden',!['front','story','stories'].includes(route.kind));
+    el.status.classList.toggle('hidden',['tv','front','story'].includes(route.kind)||!el.status.textContent);
+    for(const link of document.querySelectorAll('.nav a')){
+      if(link.getAttribute('href')===location.hash||(route.kind==='front'&&route.fingerprint&&link.getAttribute('href')===leagueHref(route.fingerprint)))link.setAttribute('aria-current','page');
+      else link.removeAttribute('aria-current');
     }
-    for (const link of document.querySelectorAll(".nav a")) {
-      if (link.getAttribute("href") === location.hash) link.setAttribute("aria-current","page");
-      else link.removeAttribute("aria-current");
-    }
-    render();renderTV();
+    render();if(route.kind==='tv')renderTV();else window.HoopWireBroadcast?.stop();
+    if(route.kind==='front')requestAnimationFrame(()=>scrollTo(0,frontScroll.get(location.hash)||0));
+    else if(route.kind==='story')requestAnimationFrame(()=>scrollTo(0,0));
   }
   function currentLeagueForStory(story) {
     return (state.raw?.seasonLeagues||[]).find(l=>C.buildFingerprint(l)===story.fingerprint&&String(C.seasonYear(l))===String(story.season))||null;
@@ -487,7 +521,9 @@ branch.append(summary);
       el.tvStudio.removeAttribute("src");
       el.tvStudioCaption.textContent = "Load a league save to create the HoopWire studio for this season.";
     }
-    const previousIndex = Math.min(Number(el.tvStorySelect.value || 0),Math.max(0,stories.length-1));
+    const requestedIndex=stories.findIndex(s=>s.id===state.tvRequestedStory);
+    const previousIndex = requestedIndex>=0?requestedIndex:Math.min(Number(el.tvStorySelect.value || 0),Math.max(0,stories.length-1));
+    state.tvRequestedStory=null;
     options(el.tvStorySelect,stories.map((s,i)=>[i,s.headline]),previousIndex);
     el.tvSegment.replaceChildren();
     const story=stories[previousIndex],tvStory=story?tvStoryFromCurrentSave(story):null;
@@ -554,8 +590,16 @@ branch.append(summary);
     if(file)run(async()=>{const data=JSON.parse(await file.text());const count=await archive.importData(data);if(!state.raw){state.scope=data.leagues.map(l=>l.id);await archive.write({meta:[{id:'active-leagues',ids:state.scope}]});}await readArchive();archiveNavigation();controls();status(`Imported ${count} stories. Existing archived records were preserved.`);});
   });
   document.addEventListener('click',event=>{
-    const link=event.target.closest('a[href]');
-    if(link){const target=link.getAttribute('href');const route=/^#league-/.test(target)?'#newsroom':target;if(['#newsroom','#archive','#tv','#stories'].includes(route)&&(!canOpen(route)||link.getAttribute('aria-disabled')==='true'))event.preventDefault();}
+    const link=event.target.closest('a[href]');if(!link)return;
+    const target=link.getAttribute('href'),current=routeData();
+    const route=target.startsWith('#league')?'#newsroom':target;
+    if(['#newsroom','#archive','#tv','#stories'].includes(route)&&(!canOpen(route)||link.getAttribute('aria-disabled')==='true')){event.preventDefault();return;}
+    if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+    if(current.kind==='front'){
+      frontScroll.set(location.hash,scrollY);
+      if(target.startsWith('#story/')){storyOrigins.set(decodeURIComponent(target.slice(7)),{route:location.hash,scroll:scrollY});try{sessionStorage.setItem('hoopwire-story-origins',JSON.stringify([...storyOrigins]));}catch{}}
+    }
+    if(link.classList.contains('article-back')){const origin=storyOrigins.get(current.id);if(origin)frontScroll.set(origin.route,origin.scroll);}
   });
   controls(); view();
   run(async () => {
