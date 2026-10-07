@@ -879,15 +879,15 @@ a[aria-disabled="true"]:hover { background:inherit; }
 /* Season review stat tables */
 .season-summary-table-wrap {
   max-width:100%;
-  overflow-x:auto;
+  overflow:hidden;
   border:1px solid var(--line);
   border-radius:10px;
 }
 .article-body .season-summary-table {
   width:100%;
   border-collapse:collapse;
-  table-layout:auto;
-  white-space:nowrap;
+  table-layout:fixed;
+  white-space:normal;
   font-family:'Segoe UI',Arial,sans-serif;
   font-size:15px;
   font-variant-numeric:tabular-nums;
@@ -925,33 +925,34 @@ a[aria-disabled="true"]:hover { background:inherit; }
 }
 
 @media(max-width:600px) {
-  .season-summary-table-wrap {
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-  }
   .article-body .season-summary-table {
-    min-width:520px;
     width:100%;
-    font-size:12px;
+    min-width:0;
+    table-layout:fixed;
+    font-size:10px;
   }
   .article-body .season-summary-table th,
   .article-body .season-summary-table td {
-    padding:9px 7px;
+    padding:8px 3px;
+    overflow-wrap:anywhere;
+    word-break:normal;
   }
   .article-body .season-summary-table thead th {
-    font-size:10px;
-    letter-spacing:.04em;
+    font-size:9px;
+    line-height:1.15;
+    letter-spacing:0;
   }
-  .article-body .season-summary-table th:first-child {
-    position:sticky;
-    left:0;
-    z-index:1;
-    min-width:118px;
-    background:#0d2744;
-    box-shadow:1px 0 0 var(--line);
+  .article-body .season-summary-table tbody th {
+    font-size:11px;
+    line-height:1.2;
   }
-  .article-body .season-summary-table thead th:first-child {
-    z-index:2;
-    background:#123553;
+  .article-body .season-summary-table[aria-label="Top three players"] th:first-child {
+    width:30%;
+  }
+  .article-body .season-summary-table[aria-label="Top three teams"] th:first-child {
+    width:34%;
+  }
+  .article-body .season-summary-table[aria-label="Top three teams"] th:nth-child(2) {
+    width:18%;
   }
 }
