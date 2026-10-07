@@ -5,7 +5,7 @@
   const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
   const pitches=[1.25,.83,.65,1.45];
   const introSrc='assets/hoopwire-tv-intro.mp3',introLeadMs=8500;
-  let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
+  let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,outroAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
   let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[];
   function introVisible(value){el.tvIntro.hidden=!value;el.tvStage.classList.toggle('is-intro',value);}
   function clearIntro(){
@@ -89,6 +89,7 @@
     epoch++;running=false;clearTimeout(timer);timer=null;
     cancelAnimationFrame(introFrame);introFrame=null;
     if(audio){audio.onended=audio.onerror=null;audio.pause();audio.removeAttribute('src');audio=null;}
+    if(outroAudio){outroAudio.onended=outroAudio.onerror=null;outroAudio.pause();outroAudio.removeAttribute('src');outroAudio=null;}
     if(introAudio){introElapsed=introAudio.currentTime*1000;introAudio.onended=introAudio.onerror=null;introAudio.pause();if(resetIntro){introAudio.removeAttribute('src');introAudio=null;}}
     if(resetIntro)clearIntro();
     talking(false);el.tvPlay.textContent=completed?'Replay':needsIntro?'Play':'Resume';updateStagePlay();
@@ -122,9 +123,16 @@
       cancelAnimationFrame(introFrame);introTick(token);
     }
   }
+  async function playOutro() {
+    const media=new Audio(introSrc);
+    outroAudio=media;media.volume=.55;media.muted=!el.tvVoice.checked;
+    const finish=()=>{media.onended=media.onerror=null;media.pause();if(outroAudio===media)outroAudio=null;};
+    media.onended=media.onerror=finish;
+    try {await media.play();}catch {finish();}
+  }
   function startPlayback() {
     if(!turns.length)return;
-    if(completed){clearIntro();line=0;needsIntro=true;completed=false;}
+    if(completed){stop();line=0;needsIntro=true;completed=false;}
     running=true;updateStagePlay();show();
     if(needsIntro)playIntro();
     else playLine();
@@ -157,6 +165,7 @@
       el.tvIntro.querySelector('.tv-intro-eyebrow').textContent='THANKS FOR WATCHING';
       el.tvIntro.querySelector('.tv-intro-tagline').textContent='SEE YOU NEXT TIME ON THE DAILY DESK';
       el.tvDiscussionStatus.textContent='Episode complete. Replay or choose the next story.';
+      playOutro();
       return;
     }
     timer=setTimeout(()=>{if(token!==epoch||!running)return;line++;show();playLine();},450);
@@ -205,6 +214,7 @@
     try {localStorage.setItem('hoopwire.voices.muted',String(!el.tvVoice.checked));}catch{}
     if(audio)audio.muted=!el.tvVoice.checked;
     if(introAudio)introAudio.muted=!el.tvVoice.checked;
+    if(outroAudio)outroAudio.muted=!el.tvVoice.checked;
     if(!audio&&!introAudio&&running&&el.tvVoice.checked&&!needsIntro){clearTimeout(timer);epoch++;playLine();}
     muteLabel();
   });

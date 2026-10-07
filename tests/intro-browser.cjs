@@ -35,10 +35,14 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>!document.getElementById('tvStage').classList.contains('is-intro'),{},{timeout:15000});assert.equal(await page.locator('#tvLiveHosts').isVisible(),true);
   for(let i=0;i<100;i++){if(await page.locator('#tvLineNext').isDisabled())break;await page.locator('#tvLineNext').evaluate(b=>b.click());}
   assert.match(await page.locator('.tv-speech').textContent(),/Thanks for watching HoopWire TV/);
-  await page.clock.install();await page.locator('#tvPlay').click();await page.clock.fastForward(10000);
+  await page.unroute('**/hoopwire-tv-intro.mp3');
+  await page.clock.install();await page.locator('#tvPlay').click();await page.clock.fastForward(10000);await page.clock.resume();
   assert.equal(await page.locator('#tvIntro.is-outro').isVisible(),true);assert.equal(await page.locator('.tv-speech').count(),0);assert.equal(await page.locator('#tvLiveHosts').isVisible(),false);assert.equal(await page.locator('#tvPlay').textContent(),'Replay');assert.equal(await page.locator('#tvStagePlay').isVisible(),false);
+  await page.waitForFunction(()=>testTheme.currentTime>0&&!testTheme.paused);assert.equal(await page.evaluate(()=>testTheme.muted),true);
+  await page.locator('#tvMute').click();assert.equal(await page.evaluate(()=>testTheme.muted),false);await page.locator('#tvMute').click();assert.equal(await page.evaluate(()=>testTheme.muted),true);
+  await page.evaluate(()=>{window.closingTheme=testTheme;});
   await page.locator('#tvStage').screenshot({path:path.join(root,'artifacts/tv-episode-ending.png')});
-  await page.locator('#tvPlay').click();assert.equal(await page.locator('#tvIntro').evaluate(e=>e.classList.contains('is-outro')),false);assert.equal(await page.locator('.tv-speech').count(),0);assert.deepEqual(errors,[]);
+  await page.locator('#tvPlay').click();assert.equal(await page.evaluate(()=>closingTheme.paused&&testTheme!==closingTheme),true);assert.equal(await page.locator('#tvIntro').evaluate(e=>e.classList.contains('is-outro')),false);assert.equal(await page.locator('.tv-speech').count(),0);assert.deepEqual(errors,[]);
   console.log(`Intro checks passed: native ${duration.toFixed(2)}s theme, hosts hidden until music ends, pause/resume synchronization, mute, story-change cancellation, silent fallback, reduced motion, desktop/mobile and no page errors.`);
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
