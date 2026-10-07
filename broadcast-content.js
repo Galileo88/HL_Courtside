@@ -185,7 +185,7 @@
     }
     turns.push(turn(0,gameClosing(story,e,angle)));return turns;
   }
-  function featuredStats(story){const p=story.seasonSnapshot?.featuredPlayer;return story.statsPeriod==='finals'?p?.finalsStats||p?.playoffStats:p?.regularStats;}
+  function featuredStats(story){return Season.featuredStatsForStory(story);}
   function teamRecords(story){return (story.seasonSnapshot?.teamRecords||[]).map(x=>({
     name:(story.relatedTeams||[]).find(t=>t.id===x.teamId)?.name,r:x.record?.seasonStats||x.record
   })).filter(x=>x.name&&validCount(x.r?.W)&&validCount(x.r?.L));}
@@ -199,7 +199,8 @@
     const categories=/defens/i.test(award)?['BLK','STL']:['PTS','AST'];
     const values=categories.filter(k=>rate(s,k)!==null);
     if(s?.GP>0&&values.length){
-      body.push(turn(2,`${name} averaged ${join(values.map(k=>`${rate(s,k)} ${labels[k]}`))} a game${story.statsPeriod==='finals'?' in the postseason':''}. ${/defens/i.test(award)?"Those are defensive contributions worth recognizing, even though the full assessment goes beyond steals and blocks.":"That's the production behind the recognition. It's a stronger starting point than treating the award as praise without substance."}`));
+      const postseason=story.statsPeriod==='finals'||story.statsPeriod==='playoffs'||story.seasonSnapshot?.tables?.some(t=>t.label==='Playoff player statistics');
+      body.push(turn(2,`${name} averaged ${join(values.map(k=>`${rate(s,k)} ${labels[k]}`))} a game${postseason?' in the postseason':''}. ${/defens/i.test(award)?"Those are defensive contributions worth recognizing, even though the full assessment goes beyond steals and blocks.":"That's the production behind the recognition. It's a stronger starting point than treating the award as praise without substance."}`));
       body.push(turn(0,`What gives that production weight when you're judging ${name}'s case for the award?`));
       body.push(turn(3,`It's over ${s.GP} game${s.GP===1?'':'s'}. ${s.GP===1?"That's a one-game sample, so I wouldn't describe it as sustained form.":"The sample gives us a body of work. That's different from singling out one memorable night."}`));
       if(rate(s,'MIN')!==null)body.push(turn(2,`${rate(s,'MIN')} minutes a game also gives us perspective on the workload. I'd read the production with that in mind, rather than assuming every player had the same opportunity.`));

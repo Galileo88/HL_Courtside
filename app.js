@@ -407,13 +407,7 @@ branch.append(summary);
     return C.captureSnapshots(league,story.fingerprint).filter(s=>s.gid===story.gid);
   }
   function tvStoryFromCurrentSave(story) {
-    const live=structuredClone(story),league=currentLeagueForStory(story);
-    if(live.broadcastAsOfDay>live.day){
-      // Editorial upgrades may preserve an earlier article date while carrying
-      // newer totals. Keep those totals out of historical TV discussion.
-      delete live.seasonSnapshot;
-      live.paragraphs=[];
-    }
+    const league=currentLeagueForStory(story),live=window.HoopWireSeason.refreshTVStory(story,league,state.raw?.seasonLeagues);
     if(!league)return live;
     if(live.gameSummary){
       const snaps=currentSaveSnapshots(story);
@@ -423,8 +417,6 @@ branch.append(summary);
         live.playerStats=structuredClone(snap.stats);
       }
     }
-    // Season evidence belongs to the archived story's date. A later save may
-    // verify this game's box score, but must not replace its season snapshot.
     return live;
   }
   function boxScore(story) {

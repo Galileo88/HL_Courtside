@@ -31,14 +31,16 @@
     const dates=edition.editions.map(e=>`${e.league.shortName||e.league.name} · ${e.season} · Day ${e.day}`);header.append(element('p','muted',dates.join('  /  ')));
     const update=element('a','text-action','Update coverage');update.href='#welcome';header.append(update);target.append(header);
     if(!edition.lead){target.append(element('div','panel muted',busy?'Preparing the latest coverage…':'No saved stories for this league yet. Load a save to create coverage.'));return;}
-    const opening=element('div','wire-opening'),main=element('section','wire-main');main.setAttribute('aria-label','Featured coverage');main.append(card(edition.lead,true));
-    opening.append(main);
+    const opening=element('div','wire-opening'),main=element('div','wire-main'),lead=card(edition.lead,true);
+    let sidebar=null;
     if(edition.headlines.length){
       const aside=element('aside','wire-headlines');aside.append(element('h2','','Top Headlines'));const list=element('ul','');
       for(const story of edition.headlines){const li=element('li',''),a=element('a','');a.href=storyHref(story.id);a.dataset.storyId=story.id;a.dataset.leagueId=story.fingerprint;a.append(element('span','wire-meta',label(story)),element('strong','',story.headline));li.append(a);list.append(li);}
-      aside.append(list);const sidebar=element('div','wire-sidebar');sidebar.append(aside,window.HoopWireNewsroomPromos.render({studio:edition.tvStory?leagueFor(edition.tvStory).studios[edition.tvStory.season]:null,story:edition.tvStory,onWatch}));opening.append(sidebar);
+      aside.append(list);sidebar=element('div','wire-sidebar');sidebar.append(aside,window.HoopWireNewsroomPromos.render({studio:edition.tvStory?leagueFor(edition.tvStory).studios[edition.tvStory.season]:null,story:edition.tvStory,onWatch}));
     }
-    if(edition.supporting.length){const supporting=element('section','wire-supporting');supporting.setAttribute('aria-label','More featured stories');for(const story of edition.supporting)supporting.append(card(story));opening.append(supporting);}
+    main.append(lead);opening.append(main);
+    if(sidebar)opening.append(sidebar);
+    if(edition.supporting.length){const supporting=element('section','wire-supporting');supporting.setAttribute('aria-label','More featured stories');for(const story of edition.supporting)supporting.append(card(story));main.append(supporting);}
     target.append(opening);
     for(const section of edition.sections){const node=element('section','wire-section');node.append(element('h2','',section.label));const grid=element('div','wire-story-grid');for(const story of section.items)grid.append(card(story));node.append(grid);target.append(node);}
     if(edition.tvStory){

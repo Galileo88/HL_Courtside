@@ -178,8 +178,8 @@
     if(story.type==='Season leaders')return {headers:['Category','Player','Per game'],rows:(snapshot?.rows||[]).slice(0,5).map(r=>[({PTS:'Points',REB:'Rebounds',AST:'Assists',STL:'Steals',BLK:'Blocks'})[r[0]]||r[0],r[1],r[3]>0?(r[2]/r[3]).toFixed(1):'—'])};
     if(story.eventKey?.startsWith('award-')&&snapshot?.featuredPlayer){
       const person=snapshot.featuredPlayer;
-      const postseason=story.statsPeriod==='finals'||snapshot.tables?.some(t=>t.label==='Playoff player statistics');
-      const stats=postseason?(person.finalsStats||person.playoffStats):person.regularStats;
+      const postseason=story.statsPeriod==='finals'||story.statsPeriod==='playoffs'||snapshot.tables?.some(t=>t.label==='Playoff player statistics');
+      const stats=featuredStatsForStory(story);
       if(stats){const table=playerTable(postseason?'Postseason player statistics':'Player season statistics',[{p:{fn:person.name},s:stats}]);return table;}
     }
     return {headers:snapshot?.headers||[],rows:(snapshot?.rows||[]).slice(0,5)};
@@ -415,5 +415,38 @@
     }
     return results;
   }
-  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,mvpRace,playerBackground,honorHistory,honorLines,articleParagraphs};
+  function featuredStatsForStory(story){
+    const snapshot=story.seasonSnapshot,p=snapshot?.featuredPlayer;
+    if(story.statsPeriod==='finals')return p?.finalsStats||p?.playoffStats;
+    if(story.statsPeriod==='playoffs'||snapshot?.tables?.some(t=>t.label==='Playoff player statistics'))return p?.playoffStats;
+    return p?.regularStats;
+  }
+  function refreshTVStory(story,league,leagues=[league]){
+    const live=structuredClone(story);
+    if(!league||C.buildFingerprint(league)!==story.fingerprint||String(C.seasonYear(league))!==String(story.season))return live;
+    // Refresh the presentation copy only. Articles and archive evidence retain
+    // their original values; the loaded save is authoritative for live TV.
+    if(story.kind==='season'&&story.eventKey){
+      const fresh=candidates(league,leagues).find(c=>c.story.eventKey===story.eventKey)?.story;
+      if(fresh){live.seasonSnapshot=structuredClone(fresh.seasonSnapshot);live.statsPeriod=fresh.statsPeriod;}
+    }
+    const featured=live.seasonSnapshot?.featuredPlayer,lookup=C.buildLookups(league);
+    if(featured?.id!=null){
+      const player=lookup.players.get(featured.id)||[...(league.retirees||[]),...(league.hallOfFame||[])].find(p=>p.id===featured.id);
+      featured.regularStats=player?stats(player,league,story.season,'season'):null;
+      featured.playoffStats=player?stats(player,league,story.season,'playoffs'):null;
+      featured.finalsStats=player?stats(player,league,story.season,'finals'):null;
+    }
+    if(live.gameSummary&&live.playerId!=null){
+      const player=lookup.players.get(live.playerId),game=lookup.completed.find(g=>g.game.gId===live.gid)?.game;
+      const period=game?.tRound>0?'playoffs':game?.gameType===0?'season':null;
+      const average=player&&period?stats(player,league,story.season,period):null;
+      delete live.broadcastSnapshot;
+      if(average)live.broadcastSnapshot={fingerprint:story.fingerprint,season:story.season,day:story.day,
+        playerId:live.playerId,period,average,source:'loaded-save',asOfDay:lookup.latestDay+1};
+    }
+    delete live.broadcastAsOfDay;
+    return live;
+  }
+  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,mvpRace,playerBackground,honorHistory,honorLines,articleParagraphs,featuredStatsForStory,refreshTVStory};
 });

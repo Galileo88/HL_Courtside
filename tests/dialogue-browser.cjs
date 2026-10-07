@@ -33,7 +33,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#tv').screenshot({path:path.join(root,'artifacts/dialogue-tv.png')});
   const archiveBefore=JSON.stringify(season.paragraphs);await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   const archived=await page.evaluate(async id=>{const a=await new HoopWireArchive().open();try{return (await a.all('stories')).find(s=>s.id===id);}finally{a.db.close();}},season.id);assert.equal(JSON.stringify(archived.paragraphs),archiveBefore);assert.deepEqual(errors,[]);
-  // Historical TV must keep the story's season totals after a later save loads.
+  // Live TV uses the loaded save; archive-only replay retains the saved totals.
   const nativeLeague=save.seasonLeagues.find(l=>HoopWireFingerprint(l)===season.fingerprint);
   function HoopWireFingerprint(l){return require('../core').buildFingerprint(l);}
   const player=nativeLeague.teams.flatMap(t=>t.roster||[])[0],historical={...season,id:season.id+':historical-tv-test',
@@ -54,7 +54,11 @@ const server=http.createServer((req,res)=>{
   await page.locator('#archiveLeague').selectOption(season.fingerprint,{force:true});await page.locator('#archiveSeason').selectOption(String(season.season),{force:true});await page.locator('#archiveDay').selectOption(String(season.day),{force:true});
   assert.ok((await page.locator('#tvStorySelect option').allTextContents()).includes(historical.headline),'Historical fixture survives loading a later save');
   await page.locator('#tvStorySelect').selectOption({label:historical.headline},{force:true});
-  assert.match(await page.locator('#tvTranscript').textContent(),/10\.0 points and 3\.0 assists/);
+  const liveTotals=require('../season-coverage').stats(laterPlayer,laterLeague,season.season),livePPG=(liveTotals.PTS/liveTotals.GP).toFixed(1);
+  assert.ok((await page.locator('#tvTranscript').textContent()).includes(livePPG+' points'));
+  assert.equal(await page.locator('#tvSegment .tv-stat-card').filter({has:page.getByText('PPG',{exact:true})}).locator('strong').textContent(),livePPG);
+  const retained=await page.evaluate(async id=>{const a=await new HoopWireArchive().open();try{return (await a.get('stories',id)).seasonSnapshot.featuredPlayer.regularStats;}finally{a.db.close();}},historical.id);
+  assert.deepEqual(retained,{GP:10,PTS:100,AST:30});
   await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.locator('#archiveLeague').selectOption(season.fingerprint,{force:true});await page.locator('#archiveSeason').selectOption(String(season.season),{force:true});await page.locator('#archiveDay').selectOption(String(season.day),{force:true});
   await page.locator('#tvStorySelect').selectOption({label:historical.headline},{force:true});
