@@ -71,18 +71,28 @@
   function seasonReviewLists(story){
     const teams=(story.seasonSnapshot?.teamRecords||[]).map(x=>({id:x.teamId,name:(story.relatedTeams||[]).find(t=>t.id===x.teamId)?.name,s:x.record?.seasonStats||x.record})).filter(t=>t.name&&Number.isInteger(t.s?.W)&&t.s.W>=0&&Number.isInteger(t.s?.L)&&t.s.L>=0).sort((a,b)=>b.s.W-a.s.W||a.s.L-b.s.L);
     if(!teams.length)return [];
-    const playerLines=mvpRace(story.seasonSnapshot).map(p=>{
+    const players=mvpRace(story.seasonSnapshot);
+    const playerLines=players.map(p=>{
       const values=['PTS','REB','AST','STL','BLK'].filter(k=>Number.isFinite(p.s[k])&&p.s[k]>=0).map(k=>`${(p.s[k]/p.s.GP).toFixed(1)} ${{PTS:'PPG',REB:'RPG',AST:'APG',STL:'SPG',BLK:'BPG'}[k]}`);
       const fg=p.shooting?.FG||pct(p.s,'FGM','FGA');if(/^\d+(?:\.\d+)?%$/.test(fg))values.push(`${fg} FG`);
       return `${p.name}: ${values.join(' · ')}`;
     });
-    const teamLines=teams.slice(0,3).map(t=>{
+    const playerRows=players.map(p=>{
+      const fg=p.shooting?.FG||pct(p.s,'FGM','FGA');
+      return [p.name,...['PTS','REB','AST','STL','BLK'].map(k=>avg(p.s,k)),/^\d+(?:\.\d+)?%$/.test(fg)?fg:'—'];
+    });
+    const topTeams=teams.slice(0,3);
+    const teamLines=topTeams.map(t=>{
       const values=[`${t.s.W}-${t.s.L}`];
       for(const [key,label] of [['PTS','PPG'],['OPP','opp. PPG']])if(Number.isFinite(t.s[key])&&t.s[key]>=0&&t.s.GP>0)values.push(`${(t.s[key]/t.s.GP).toFixed(1)} ${label}`);
       const fg=pct(t.s,'FGM','FGA');if(/^\d+(?:\.\d+)?%$/.test(fg))values.push(`${fg} FG`);
       return `${t.name}: ${values.join(' · ')}`;
     });
-    return [{label:'Top three players',items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},{label:'Top three teams',items:teamLines}];
+    const teamRows=topTeams.map(t=>[t.name,`${t.s.W}-${t.s.L}`,avg(t.s,'PTS'),avg(t.s,'OPP'),pct(t.s,'FGM','FGA')]);
+    return [
+      {label:'Top three players',headers:['Player','PPG','RPG','APG','SPG','BPG','FG%'],rows:playerRows,items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},
+      {label:'Top three teams',headers:['Team','Record','PPG','Opp PPG','FG%'],rows:teamRows,items:teamLines}
+    ];
   }
   function seasonReviewArticle(story){
     const groups=seasonReviewLists(story);
@@ -111,13 +121,23 @@
     const g=groups,paragraphs=[],profiles=story.seasonSnapshot?.leaderProfiles||[];
     const history=(...categories)=>[...new Set((story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(honorLine).filter(Boolean))];
     const profile=name=>profiles.find(p=>p.name===name);
+    const positionName=value=>{
+      if(Number.isInteger(value))return ['point guard','shooting guard','small forward','power forward','center'][value]||'';
+      const key=String(value||'').trim().toLowerCase().replace(/[ ._-]+/g,'');
+      return ({pg:'point guard',pointguard:'point guard',sg:'shooting guard',shootingguard:'shooting guard',sf:'small forward',smallforward:'small forward',pf:'power forward',powerforward:'power forward',c:'center',center:'center'})[key]||'';
+    };
     const subject=(group,preferAge=false)=>{
       if(group.tied)return group.name;
-      const bio=profile(group.names[0])?.bio;if(!bio)return group.name;
+      const person=profile(group.names[0]),bio=person?.bio;if(!bio)return group.name;
       const words=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
       const n=bio.yearsPro,ordinal=words[n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;
-      let detail=preferAge&&bio.age?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:bio.age?`${bio.age}-year-old`:'';
-      if(bio.college)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      const leadWithAge=!!bio.age&&(preferAge||!(n>0));
+      let detail=leadWithAge?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:'';
+      if(bio.college&&!leadWithAge)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      if(leadWithAge){
+        const position=positionName(person.position);
+        return `the ${detail}${position?` ${position}`:''}, ${group.name},`;
+      }
       return detail?`${group.name}, ${detail.startsWith('a product')?detail:'the '+detail},`:group.name;
     };
     const sameLeaders=(a,b)=>a&&b&&a.names.length===b.names.length&&a.names.every(n=>b.names.includes(n));
@@ -380,7 +400,7 @@
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
-      story.seasonSnapshot.leaderProfiles=[...players.values()].map(p=>({name:C.playerDisplay(p),bio:playerBackground(p,league,leagues),s:stats(p,league,year)})).filter(p=>p.s);
+      story.seasonSnapshot.leaderProfiles=[...players.values()].map(p=>({name:C.playerDisplay(p),position:p.position,bio:playerBackground(p,league,leagues),s:stats(p,league,year)})).filter(p=>p.s);
       story.seasonSnapshot.leaderHonors=[];
       for(const [category,[awardId,label]] of Object.entries(titleCategories)){
         const leaders=story.seasonSnapshot.rows.filter(r=>r[0]===category);

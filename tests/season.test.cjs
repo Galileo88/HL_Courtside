@@ -3,6 +3,8 @@ test('regular-season reviews list the top three team records and main rates',()=
  const names=['Pittsburgh Riveters','Los Angeles Breakers','Boston Colonials'],records=[{GP:82,W:64,L:18,PTS:8848,OPP:7462,FGM:493,FGA:1000,TPM:305,TPA:1000},{GP:82,W:64,L:18,PTS:9069,OPP:7700,FGM:489,FGA:1000,TPM:278,TPA:1000},{GP:82,W:62,L:20,PTS:8840,OPP:7905,FGM:493,FGA:1000,TPM:315,TPA:1000}];
  const story={type:'Regular-season review',season:1967,relatedTeams:names.map((name,id)=>({id,name})),seasonSnapshot:{teamRecords:records.map((seasonStats,teamId)=>({teamId,record:{seasonStats}}))}};
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
+ assert.deepEqual(groups[1].headers,['Team','Record','PPG','Opp PPG','FG%']);
+ assert.deepEqual(groups[1].rows[0],['Pittsburgh Riveters','64-18','107.9','91.0','49.3%']);
  assert.match(groups[1].items[0],/Pittsburgh Riveters: 64-18.*107\.9 PPG.*91\.0 opp. PPG.*49\.3% FG/);
  assert.match(groups[1].items[1],/Los Angeles Breakers: 64-18.*110\.6 PPG.*93\.9 opp. PPG/);
  assert.match(groups[1].items[2],/Boston Colonials: 62-20.*107\.8 PPG.*96\.4 opp. PPG/);
@@ -17,6 +19,8 @@ test('year reviews list three qualified players and three teams without narrativ
  const story=S.candidates(l).find(c=>c.story.eventKey==='regular-wrap').story,text=story.paragraphs.join(' ');
  assert.equal(story.paragraphs.length,6);assert.equal(story.editorialVersion,8);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[0].items.length,3);assert.equal(groups[1].items.length,3);
+ assert.deepEqual(groups[0].headers,['Player','PPG','RPG','APG','SPG','BPG','FG%']);
+ assert.deepEqual(groups[0].rows[0],['Player 1','40.0','10.0','8.0','2.0','1.0','50.0%']);
  assert.match(groups[0].items[0],/Player 1: 40\.0 PPG.*10\.0 RPG.*8\.0 APG.*2\.0 SPG.*1\.0 BPG.*50\.0% FG/);assert.match(groups[0].items[1],/Player 2: 30\.0 PPG/);assert.match(groups[0].items[2],/Player 3: 25\.0 PPG/);assert.doesNotMatch(text,/Player 4|MVP|turnovers|minutes|year before/);
  const archived=structuredClone(story);delete archived.seasonSnapshot.reviewPlayers;archived.paragraphs=['Old list.'];assert.match(S.seasonReviewLists(archived)[0].items[0],/MVP race data unavailable/);
 
@@ -57,8 +61,8 @@ test('leader prose uses saved age, experience and resolved college without inven
  const bio=S.playerBackground({age:24,yrs:3,history:{coll:9}},pro,[pro,college]);assert.deepEqual(bio,{age:24,yearsPro:3,college:'Kansas'});
  assert.deepEqual(S.playerBackground({age:0,yrs:0,history:{coll:0}},pro,[pro,college]),{});
  assert.deepEqual(S.playerBackground({age:21,yrs:3,history:{coll:9}},college,[pro,college]),{age:21});
- const story={season:1967,seasonSnapshot:{rows:[['PTS','Alex',300,10],['REB','Sam',120,10],['AST','Pat',100,10],['STL','Lee',20,10]],leaderProfiles:[{name:'Alex',bio},{name:'Sam',bio:{age:29}},{name:'Pat',bio:{yearsPro:11,college:'Duke'}},{name:'Lee',bio:{age:23}}]}};
- const text=S.leadersArticle(story).join(' ');assert.match(text,/Alex, the third-year pro out of Kansas, won/);assert.match(text,/Sam, the 29-year-old, claimed/);assert.match(text,/Pat, the 11th-year pro out of Duke,/);assert.match(text,/Lee, the 23-year-old, led/);assert.doesNotMatch(text,/undefined|NaN|Wrong pro city/);
+ const story={season:1967,seasonSnapshot:{rows:[['PTS','Alex',300,10],['REB','Sam',120,10],['AST','Pat',100,10],['STL','Lee',20,10]],leaderProfiles:[{name:'Alex',position:1,bio},{name:'Sam',position:4,bio:{age:29}},{name:'Pat',position:0,bio:{yearsPro:11,college:'Duke'}},{name:'Lee',position:2,bio:{age:23}}]}};
+ const text=S.leadersArticle(story).join(' ');assert.match(text,/Alex, the third-year pro out of Kansas, won/);assert.match(text,/the 29-year-old center, Sam, claimed/);assert.match(text,/Pat, the 11th-year pro out of Duke,/);assert.match(text,/the 23-year-old small forward, Lee, led/);assert.doesNotMatch(text,/undefined|NaN|Wrong pro city/);
  const l=fixture(),p=l.teams[0].roster[0];Object.assign(p,{age:24,yrs:3,history:{coll:9}});p.stats[0].season[0].PTS=40;
  const generated=S.candidates(l,[l,college]).find(c=>c.story.eventKey==='leaders').story;assert.deepEqual(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio,bio);assert.match(generated.paragraphs.join(' '),/third-year pro out of Kansas/);p.age=25;assert.equal(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio.age,24);
 });
