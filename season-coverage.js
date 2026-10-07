@@ -82,11 +82,22 @@
       const fg=pct(t.s,'FGM','FGA');if(/^\d+(?:\.\d+)?%$/.test(fg))values.push(`${fg} FG`);
       return `${t.name}: ${values.join(' · ')}`;
     });
-    return [{label:'Top three players — MVP race (estimated)',items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},{label:'Top three teams — record',items:teamLines}];
+    return [{label:'Top three players',items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},{label:'Top three teams',items:teamLines}];
   }
   function seasonReviewArticle(story){
     const groups=seasonReviewLists(story);
     return groups.length?groups.flatMap(group=>group.items):story.paragraphs||[];
+  }
+  function playerBackground(player,league,leagues=[league]){
+    const bio={};
+    if(Number.isInteger(player.age)&&player.age>=15&&player.age<=80)bio.age=player.age;
+    if(league.leagueType===0&&Number.isInteger(player.yrs)&&player.yrs>0)bio.yearsPro=player.yrs;
+    if(league.leagueType===0){
+      const id=player.history?.coll>0?player.history.coll:player.history?.collegeStats?.season?.GP>0?player.history.collegeStats.season.tid:null;
+      const college=leagues.filter(l=>l.leagueType===1).flatMap(l=>l.teams||[]).find(t=>t.id===id);
+      const name=college?.city?.trim()||college?.name?.trim();if(name)bio.college=name;
+    }
+    return bio;
   }
   function leadersArticle(story){
     const rows=(story.seasonSnapshot?.rows||[]).filter(r=>typeof r[1]==='string'&&Number.isFinite(r[2])&&r[2]>=0&&Number.isFinite(r[3])&&r[3]>0);
@@ -97,23 +108,45 @@
       groups[key]={names,name:names.length>1?names.slice(0,-1).join(', ')+' and '+names.at(-1):names[0],rate:max.toFixed(1),tied:names.length>1};
     }
     if(!Object.keys(groups).length)return story.paragraphs||[];
-    const offense=[],defense=[],g=groups;
-    const history=(...categories)=>(story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(honorLine).filter(Boolean);
-    const season=story.season!=null?`the ${story.season} regular season`:'the regular season',league=story.leagueName||'the league';
-    if(g.PTS)offense.push(`${g.PTS.name} ${g.PTS.tied?'shared the scoring lead':'set the scoring pace'} in ${league} during ${season}, averaging ${g.PTS.rate} points per game.`);
-    if(g.AST)offense.push(g.PTS?`The assist title went to ${g.AST.name}${g.AST.tied?', who shared the league lead':''} with ${g.AST.rate} assists per game.`:`In the playmaking race, ${g.AST.name} ${g.AST.tied?'shared the lead':'led the league'} with ${g.AST.rate} assists per game.`);
-    offense.push(...history('PTS','AST'));
+    const g=groups,paragraphs=[],profiles=story.seasonSnapshot?.leaderProfiles||[];
+    const history=(...categories)=>[...new Set((story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(honorLine).filter(Boolean))];
+    const profile=name=>profiles.find(p=>p.name===name);
+    const subject=(group,preferAge=false)=>{
+      if(group.tied)return group.name;
+      const bio=profile(group.names[0])?.bio;if(!bio)return group.name;
+      const words=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
+      const n=bio.yearsPro,ordinal=words[n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;
+      let detail=preferAge&&bio.age?`${bio.age}-year-old`:n>0?`${ordinal}-year pro`:bio.age?`${bio.age}-year-old`:'';
+      if(bio.college)detail+=`${detail?' out of':'a product of'} ${bio.college}`;
+      return detail?`${group.name}, ${detail.startsWith('a product')?detail:'the '+detail},`:group.name;
+    };
     const sameLeaders=(a,b)=>a&&b&&a.names.length===b.names.length&&a.names.every(n=>b.names.includes(n));
-    if(sameLeaders(g.REB,g.BLK)){
-      defense.push(`${g.REB.name} ${g.REB.tied?'shared the lead in':'finished atop'} both rebounding and shot blocking, pairing ${g.REB.rate} rebounds with ${g.BLK.rate} blocks a night.`);
-    }else{
-      if(g.REB)defense.push(`On the boards, ${g.REB.name} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`);
-      if(g.BLK)defense.push(`${g.BLK.name} ${g.BLK.tied?'shared the league lead in':'led the league in'} shot blocking with ${g.BLK.rate} blocks a night.`);
+    const double=sameLeaders(g.REB,g.BLK),season=story.season!=null?`in ${story.season}`:'this season';
+    if(g.PTS){
+      let text=`${subject(g.PTS)} ${g.PTS.tied?'shared the scoring title':'won the scoring title'} ${season} with ${g.PTS.rate} points per game.`;
+      const scorer=!g.PTS.tied?profile(g.PTS.names[0]):null,fg=pct(scorer?.s,'FGM','FGA');
+      if(/^\d+(?:\.\d+)?%$/.test(fg))text+=` The scoring came on ${fg} shooting from the field.`;
+      text+=' '+history('PTS').join(' ');paragraphs.push(text.trim());
     }
-    if(g.STL)defense.push(`${defense.length?'Meanwhile, ':''}${g.STL.name} ${g.STL.tied?'shared the steals lead':'topped the steals standings'} at ${g.STL.rate} steals per game.`);
-    defense.push(...history('REB','BLK','STL'));
-    return [offense.join(' '),defense.join(' ')].filter(Boolean);
+    const interior=[];
+    if(double){
+      interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared both':'won both'} the rebounding and shot-blocking titles, averaging ${g.REB.rate} rebounds and ${g.BLK.rate} blocks a night.`);
+      const p=!g.REB.tied?profile(g.REB.names[0]):null;if(p?.s?.GP>0&&p.s.PTS/p.s.GP>=10&&Number(g.REB.rate)>=10)interior.push(`With ${(p.s.PTS/p.s.GP).toFixed(1)} points a game as well, ${g.REB.name} averaged a double-double for the season.`);
+    }else{
+      if(g.REB)interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`);
+      if(g.BLK)interior.push(`${subject(g.BLK)} ${g.BLK.tied?'shared the league lead in':'led the league in'} shot blocking with ${g.BLK.rate} blocks a night.`);
+    }
+    interior.push(...history('REB','BLK'));if(interior.length)paragraphs.push(interior.join(' '));
+    const perimeter=[];
+    if(g.AST){
+      perimeter.push(`${subject(g.AST)} ${g.AST.tied?'shared the lead':'finished as the leading playmaker'} with ${g.AST.rate} assists per game.`);
+
+    }
+    if(g.STL)perimeter.push(`${subject(g.STL,true)} ${g.STL.tied?'shared the steals title':'led the league in steals'} at ${g.STL.rate} steals per game.`);
+    perimeter.push(...history('AST','STL'));if(perimeter.length)paragraphs.push(perimeter.join(' '));
+    return paragraphs;
   }
+
   function factsForStory(story){
     const snapshot=story.seasonSnapshot;
     if(story.type==='Team season review'){
@@ -235,7 +268,7 @@
     if(spotlight)paragraphs.push(`${spotlight.off} bring the round's highest-scoring offense at ${spotlight.ppg.toFixed(1)} points per game into a matchup with ${spotlight.def}, who allowed ${spotlight.opp.toFixed(1)} a night. That is the opening statistical pressure point to watch as the bracket gets underway.`);
     return paragraphs.slice(0,3);
   }
-  function candidates(league){
+  function candidates(league,leagues=[league]){
     const year=C.seasonYear(league),fp=C.buildFingerprint(league),lookup=C.buildLookups(league);
     const day=Math.max(1,lookup.latestDay+1),teams=[...lookup.teams.values()];
     const records=teams.map(t=>({team:t,year:(t.season||[]).find(s=>s.yr===year)}));
@@ -255,7 +288,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?8:eventKey==='leaders'?5:eventKey.startsWith('award-')||eventKey==='championship'?4:3,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?8:eventKey==='leaders'?8:eventKey.startsWith('award-')||eventKey==='championship'?4:3,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -347,6 +380,7 @@
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
+      story.seasonSnapshot.leaderProfiles=[...players.values()].map(p=>({name:C.playerDisplay(p),bio:playerBackground(p,league,leagues),s:stats(p,league,year)})).filter(p=>p.s);
       story.seasonSnapshot.leaderHonors=[];
       for(const [category,[awardId,label]] of Object.entries(titleCategories)){
         const leaders=story.seasonSnapshot.rows.filter(r=>r[0]===category);
@@ -361,5 +395,5 @@
     }
     return results;
   }
-  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,mvpRace,honorHistory,honorLines,articleParagraphs};
+  return {candidates,stats,outcome,quoteLines,awardQuoteLines,playoffPreviewParagraphs,postseasonOutcome,factsForStory,leadersArticle,seasonReviewArticle,seasonReviewLists,mvpRace,playerBackground,honorHistory,honorLines,articleParagraphs};
 });

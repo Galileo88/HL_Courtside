@@ -37,15 +37,30 @@ test('season reviews avoid inventing shooting and comparisons when records are i
 });
 test('statistical leaders read as a connected article and combine multiple titles',()=>{
  const story={season:1967,leagueName:'UBA',seasonSnapshot:{rows:[['PTS','Halil Simsek',3843,90],['REB','Joe Simon',1665,90],['AST','Paul Ball',1224,90],['STL','Keith Austin',207,90],['BLK','Joe Simon',297,90]]}};
- const paragraphs=S.leadersArticle(story);assert.equal(paragraphs.length,2);
- assert.match(paragraphs[0],/Halil Simsek.*42\.7 points per game.*Paul Ball.*13\.6 assists per game/);
- assert.match(paragraphs[1],/Joe Simon finished atop both rebounding and shot blocking.*18\.5 rebounds.*3\.3 blocks.*Keith Austin.*2\.3 steals/);
- assert.doesNotMatch(paragraphs.join(' '),/3843|1665|1224|207|297|led the league with/);
+ const paragraphs=S.leadersArticle(story);assert.equal(paragraphs.length,3);
+ assert.match(paragraphs[0],/Halil Simsek.*scoring title.*42\.7 points per game/);assert.match(paragraphs[2],/Paul Ball.*13\.6 assists per game/);
+ assert.match(paragraphs[1],/Joe Simon won both the rebounding and shot-blocking titles.*18\.5 rebounds.*3\.3 blocks/);
+ assert.match(paragraphs[2],/Keith Austin.*2\.3 steals/);assert.doesNotMatch(paragraphs.join(' '),/3843|1665|1224|207|297|led the league with/);
+});
+test('leader reporting discusses each winner without runner-up comparisons',()=>{
+ const story={season:1967,seasonSnapshot:{rows:[['PTS','Scorer',420,10],['REB','Big',180,10],['BLK','Big',30,10],['AST','Passer',130,10],['STL','Guard',20,10]],leaderProfiles:[{name:'Scorer',s:{GP:10,PTS:420,FGM:150,FGA:300,REB:10,AST:10,STL:1,BLK:1}},{name:'Big',s:{GP:10,PTS:200,REB:180,BLK:30,AST:10,STL:1}},{name:'Passer',s:{GP:10,PTS:100,REB:10,BLK:1,AST:130,TO:20,STL:1}},{name:'Guard',s:{GP:10,PTS:300,REB:100,BLK:20,AST:100,STL:20}}]}};
+ const text=S.leadersArticle(story).join(' ');assert.match(text,/Scorer.*42\.0 points per game.*50\.0% shooting/);assert.match(text,/Big.*18\.0 rebounds and 3\.0 blocks/);assert.match(text,/20\.0 points a game.*double-double/);assert.match(text,/Passer.*13\.0 assists/);assert.match(text,/Guard.*2\.0 steals/);assert.doesNotMatch(text,/winning margin|gap|next on|runner-up|second place|behind|close race/);
+
 });
 test('leader articles preserve shared titles, missing categories and archived fallback',()=>{
  const rows=[['AST','Alex',40,10],['AST','Sam',20,5],['REB','Alex',50,10],['BLK','Sam',20,10]];
  const s={seasonSnapshot:{rows}};const text=S.leadersArticle(s).join(' ');assert.match(text,/Alex and Sam shared the lead with 4\.0 assists per game/);assert.match(text,/Alex claimed the rebounding title at 5\.0/);assert.match(text,/Sam led the league in shot blocking with 2\.0/);assert.doesNotMatch(text,/undefined|NaN|points/);
  assert.deepEqual(S.leadersArticle({seasonSnapshot:{rows:[['PTS','Alex',20,0]]},paragraphs:['Original reporting.']}),['Original reporting.']);
+});
+test('leader prose uses saved age, experience and resolved college without inventing a background',()=>{
+ const pro={leagueType:0,teams:[{id:9,city:'Wrong pro city'}]},college={leagueType:1,teams:[{id:9,city:'Kansas',name:'Jayhawks'}]};
+ const bio=S.playerBackground({age:24,yrs:3,history:{coll:9}},pro,[pro,college]);assert.deepEqual(bio,{age:24,yearsPro:3,college:'Kansas'});
+ assert.deepEqual(S.playerBackground({age:0,yrs:0,history:{coll:0}},pro,[pro,college]),{});
+ assert.deepEqual(S.playerBackground({age:21,yrs:3,history:{coll:9}},college,[pro,college]),{age:21});
+ const story={season:1967,seasonSnapshot:{rows:[['PTS','Alex',300,10],['REB','Sam',120,10],['AST','Pat',100,10],['STL','Lee',20,10]],leaderProfiles:[{name:'Alex',bio},{name:'Sam',bio:{age:29}},{name:'Pat',bio:{yearsPro:11,college:'Duke'}},{name:'Lee',bio:{age:23}}]}};
+ const text=S.leadersArticle(story).join(' ');assert.match(text,/Alex, the third-year pro out of Kansas, won/);assert.match(text,/Sam, the 29-year-old, claimed/);assert.match(text,/Pat, the 11th-year pro out of Duke,/);assert.match(text,/Lee, the 23-year-old, led/);assert.doesNotMatch(text,/undefined|NaN|Wrong pro city/);
+ const l=fixture(),p=l.teams[0].roster[0];Object.assign(p,{age:24,yrs:3,history:{coll:9}});p.stats[0].season[0].PTS=40;
+ const generated=S.candidates(l,[l,college]).find(c=>c.story.eventKey==='leaders').story;assert.deepEqual(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio,bio);assert.match(generated.paragraphs.join(' '),/third-year pro out of Kansas/);p.age=25;assert.equal(generated.seasonSnapshot.leaderProfiles.find(x=>x.name==='Player 1').bio.age,24);
 });
 function fixture(){return {leagueName:'Test',leagueType:0,shortName:'T',season:{startingYear:1,currentYear:1,totalGames:2,schedule:[],playoffs:[]},awards:[{id:2,name:'MVP',enabled:true,phase:0}],teams:[1,2].map(id=>({id,name:`Team ${id}`,roster:[{id,tid:id,fn:'Player',ln:String(id),stats:[{league:0,yr:1,season:[{tid:id,GP:2,PTS:0,REB:0,AST:0,STL:0,BLK:0}]}],awards:id===1?[{id:2,league:0,yearsWon:[1]}]:[]}],season:[{yr:1,seasonStats:{GP:2,W:1,L:1},seed:id}]}))};}
 test('repeat wins exclude duplicates, future wins and other leagues, and distinguish streaks',()=>{
