@@ -6,12 +6,13 @@
   const pitches=[1.25,.83,.65,1.45];
   const introSrc='assets/hoopwire-tv-intro.mp3',introLeadMs=8500;
   let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,outroAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
-  let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[];
+  let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[],outroActive=false;
   function introVisible(value){el.tvIntro.hidden=!value;el.tvStage.classList.toggle('is-intro',value);}
   function settleLogo(){
     cancelAnimationFrame(introFrame);introFrame=null;
     introAnimations.forEach(a=>a.cancel());introAnimations=[];
     introElapsed=0;introDuration=introLeadMs;
+    outroActive=false;updateStagePlay();
   }
   function clearIntro(){
     settleLogo();
@@ -82,7 +83,7 @@
     if(available&&completed)label='Replay episode';
     else if(available&&(!needsIntro||introElapsed>0))label='Resume episode';
     el.tvStagePlay.disabled=!available;
-    el.tvStagePlay.hidden=running||!available||completed;
+    el.tvStagePlay.hidden=running||!available||outroActive;
     el.tvStagePlay.setAttribute('aria-label',label.replace('episode','HoopWire TV episode'));
     const text=el.tvStagePlay.querySelector('.tv-stage-play-label');
     if(text)text.textContent=label;
@@ -128,6 +129,7 @@
   }
   async function playOutro() {
     const token=epoch,media=new Audio(introSrc);
+    outroActive=true;updateStagePlay();
     animateIntro();
     outroAudio=media;media.volume=.55;media.muted=!el.tvVoice.checked;
     const release=()=>{media.onended=media.onerror=null;media.pause();outroAudio=null;};

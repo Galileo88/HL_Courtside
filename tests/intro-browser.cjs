@@ -50,9 +50,10 @@ const server=http.createServer((req,res)=>{
   await page.locator('#tvStage').screenshot({path:path.join(root,'artifacts/tv-episode-ending.png')});
   await page.waitForFunction(()=>closingTheme.ended&&document.getElementById('tvIntro').getAnimations({subtree:true}).length===0);
   assert.equal(await page.locator('#tvIntro.is-outro').isVisible(),true);assert.equal(await page.locator('.tv-intro-brand').evaluate(e=>getComputedStyle(e).opacity),'1');assert.equal(await page.locator('.tv-speech').count(),0);
-  await page.locator('#tvLinePrevious').evaluate(b=>b.click());await page.locator('#tvLineNext').evaluate(b=>b.click());await page.locator('#tvPlay').click();await page.clock.fastForward(10000);
-  await page.waitForFunction(()=>testTheme!==closingTheme&&testTheme.currentTime>0&&!testTheme.paused);await page.evaluate(()=>{window.closingTheme=testTheme;});
-  await page.locator('#tvPlay').click();assert.equal(await page.evaluate(()=>closingTheme.paused&&testTheme!==closingTheme),true);assert.equal(await page.locator('#tvIntro').evaluate(e=>e.classList.contains('is-outro')),false);assert.equal(await page.locator('.tv-speech').count(),0);assert.deepEqual(errors,[]);
+  assert.equal(await page.locator('#tvStagePlay').isVisible(),true);assert.match(await page.locator('#tvStagePlay').getAttribute('aria-label'),/Replay HoopWire TV episode/);
+  await page.locator('#tvStagePlay').click();assert.equal(await page.locator('#tvStagePlay').isVisible(),false);assert.equal(await page.locator('#tvIntro.is-outro').count(),0);assert.equal(await page.locator('.tv-speech').count(),0);
+  await page.waitForFunction(()=>testTheme!==closingTheme&&testTheme.currentTime>0&&!testTheme.paused);
+  assert.equal(await page.evaluate(()=>closingTheme.paused),true);assert.equal(await page.locator('#tvIntro').evaluate(e=>e.classList.contains('is-outro')),false);assert.equal(await page.locator('.tv-speech').count(),0);assert.deepEqual(errors,[]);
   console.log(`Intro/outro checks passed: identical animation keyframes, native ${duration.toFixed(2)}s theme synchronization, final logo hold, mute, replay cancellation, intro pause/resume, silent fallback, reduced motion, desktop/mobile and no page errors.`);
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
