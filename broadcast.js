@@ -46,18 +46,16 @@
     };
     tick();
   }
-  function chunks(text) {
-    const result=[];let part='';
-    for(const word of String(text).split(/\s+/)){if(part.length+word.length>160){result.push(part);part='';}part+=(part?' ':'')+word;}
-    if(part)result.push(part);return result;
-  }
   function discussion(story) {
     if(!story)return [];
     const scripted=window.HoopWireBroadcastContent?.episode(story,hosts.length?hosts.map(h=>HoopWireCore.playerDisplay(h)):undefined)||[
       {speaker:0,text:story.headline}
     ];
     const result=[];
-    for(const turn of scripted)chunks(turn.text).forEach(text=>result.push({speaker:turn.speaker,text}));
+    for(const turn of scripted){
+      const chunks=window.HoopWireBroadcastContent?.chunkDialogue(turn.text)||[turn.text];
+      chunks.forEach((text,i)=>result.push({speaker:turn.speaker,text,continuation:i>0}));
+    }
     return result;
   }
   function spoken(text) {
@@ -179,7 +177,7 @@
       playOutro();
       return;
     }
-    timer=setTimeout(()=>{if(token!==epoch||!running)return;line++;show();playLine();},450);
+    timer=setTimeout(()=>{if(token!==epoch||!running)return;line++;show();playLine();},turns[line+1]?.continuation?0:450);
   }
   async function playLine() {
     const token=epoch,turn=turns[line];

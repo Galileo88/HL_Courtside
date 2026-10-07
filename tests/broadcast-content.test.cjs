@@ -2,6 +2,21 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const B=require('../broadcast-content'),S=require('../season-coverage');
 const text=s=>B.script(s).map(t=>t.text).join(' ');
 const game={id:'example',headline:'Example game',gameSummary:{home:{name:'Stars',score:110},away:{name:'Moons',score:108}},playerName:'Alex Star',playerStats:{PTS:28,REB:10,AST:11,FGM:9,FGA:15,TPM:3,TPA:6,FTM:7,FTA:8}};
+test('dialogue chunks rebalance short endings without dropping or rearranging words',()=>{
+ for(const ending of ['tonight.','in this game.','and protect the ball.']){
+  const original='basketball '.repeat(14)+ending,chunks=B.chunkDialogue(original);
+  assert.equal(chunks.length,2);assert.equal(chunks.join(' '),original);
+  assert.ok(chunks.every(c=>c.length<=160&&c.length>=40&&c.split(/\s+/).length>=5));
+ }
+ const long='Take care of the ball. '.repeat(40)+'Every night.';
+ const chunks=B.chunkDialogue(long);assert.equal(chunks.join(' '),long);assert.ok(chunks.every(c=>c.length<=160));assert.ok(chunks.at(-1).split(/\s+/).length>=5);
+ assert.deepEqual(B.chunkDialogue('  Welcome\n to the show!  '),['Welcome to the show!']);assert.deepEqual(B.chunkDialogue(''),[]);
+ assert.deepEqual(B.chunkDialogue('Yes.'),['Yes.']);assert.deepEqual(B.chunkDialogue('x'.repeat(170)),['x'.repeat(170)]);
+ for(const turn of B.episode(game)){
+  const parts=B.chunkDialogue(turn.text);assert.equal(parts.join(' '),turn.text);
+  if(parts.length>1)assert.ok(parts.every(c=>c.split(/\s+/).length>=5),turn.text);
+ }
+});
 test('episodes welcome viewers, introduce all four hosts and close after the reporting',()=>{
  const turns=B.episode(game),intro=turns.slice(0,4).map(t=>t.text).join(' ');
  assert.match(intro,/Welcome to HoopWire TV/);for(const name of ['Maya Brooks','Jordan Price','Andre Cole','Nina Reyes'])assert.ok(intro.includes(name));

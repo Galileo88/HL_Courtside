@@ -8,6 +8,28 @@
   const labels={PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks'};
   const valid=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
   const turn=(speaker,text)=>({speaker,text});
+  function chunkDialogue(text){
+    const words=String(text).trim().split(/\s+/).filter(Boolean),chunks=[];
+    let part=[];
+    for(const word of words){
+      if(part.length&&[...part,word].join(' ').length>160){chunks.push(part);part=[];}
+      part.push(word);
+    }
+    if(part.length)chunks.push(part);
+    const tail=chunks.at(-1);
+    if(chunks.length>1&&(tail.length<5||tail.join(' ').length<40)){
+      const pair=chunks.slice(-2).flat();let best=null;
+      for(let i=1;i<pair.length;i++){
+        const left=pair.slice(0,i),right=pair.slice(i),a=left.join(' ').length,b=right.join(' ').length;
+        if(a>160||b>160)continue;
+        const shortPenalty=(left.length<5||a<40?1000:0)+(right.length<5||b<40?1000:0);
+        const score=shortPenalty+Math.abs(a-b)-(/[.!?][”"']?$/.test(left.at(-1))?24:0);
+        if(!best||score<best.score)best={left,right,score};
+      }
+      if(best)chunks.splice(-2,2,best.left,best.right);
+    }
+    return chunks.map(words=>words.join(' '));
+  }
   // Maya steers the desk; Jordan makes the forceful case; Andre values boards
   // and production; Nina explains shooting and playmaking. Reactions connect.
   function pick(story,options,salt=0){const seed=[...String(story.id||story.headline||'')].reduce((n,c)=>n+c.charCodeAt(0),salt);return options[seed%options.length];}
@@ -223,5 +245,5 @@
     ];
     return [...opening,...script(story),...closing];
   }
-  return {script,episode,awardScript,playoffScript,championshipScript,gameScript,genericScript,seasonScript};
+  return {script,episode,chunkDialogue,awardScript,playoffScript,championshipScript,gameScript,genericScript,seasonScript};
 });
