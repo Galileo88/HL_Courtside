@@ -297,7 +297,8 @@ branch.append(summary);
       const lookup=C.buildLookups(league);
       for(const {game,dayIndex} of lookup.completed){
         gameResults[year][dayIndex+1] ||= {};
-        gameResults[year][dayIndex+1][game.gId] ||= {gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore}};
+        const result={gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore},homeRecord:game.homeRecord,awayRecord:game.awayRecord,gameType:game.gameType,tRound:game.tRound};
+        gameResults[year][dayIndex+1][game.gId]=window.HoopWireBroadcastContext.enrichResult(gameResults[year][dayIndex+1][game.gId],result);
       }
       leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,logoURL:league.logoURL||null,studios,gameResults});
       // The active save is authoritative for its current verified player box scores.
@@ -334,6 +335,10 @@ branch.append(summary);
       const existing = state.stories.get(C.storyId(fingerprint,ctx.seasonYear,ctx.game.gId));
       const story = C.generateArticle(ctx,fingerprint,existing?.quotesEnabled ?? true);
       window.HoopWireRecords.enrich(story,league);
+      if(story.cumulativeStats&&story.day===C.buildLookups(league).latestDay+1){
+        story.broadcastSnapshot={fingerprint,season:story.season,day:story.day,playerId:story.playerId,
+          period:story.cumulativeStats.period,average:structuredClone(story.cumulativeStats.season)};
+      }
       if (existing) story.createdAt = existing.createdAt;
       if(existing?.imageBlob&&existing.playerStats&&existing.coach?.id===story.coach?.id){for(const key of ['imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(existing[key]!==undefined)story[key]=existing[key];}
       else Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx,story.id,league)));
@@ -345,6 +350,7 @@ branch.append(summary);
     // Compose in small batches to keep long season uploads responsive.
     for(let i=0;i<milestones.length;i+=4){
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
+        story.broadcastAsOfDay=C.buildLookups(league).latestDay+1;
         const old=state.stories.get(story.id);
         if(old){for(const key of ['day','createdAt','imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(old[key]!==undefined)story[key]=old[key];return story;}
         const scene=window.HoopWireScenes.inputs(context,story.id,league);
@@ -402,6 +408,12 @@ branch.append(summary);
   }
   function tvStoryFromCurrentSave(story) {
     const live=structuredClone(story),league=currentLeagueForStory(story);
+    if(live.broadcastAsOfDay>live.day){
+      // Editorial upgrades may preserve an earlier article date while carrying
+      // newer totals. Keep those totals out of historical TV discussion.
+      delete live.seasonSnapshot;
+      live.paragraphs=[];
+    }
     if(!league)return live;
     if(live.gameSummary){
       const snaps=currentSaveSnapshots(story);
@@ -411,15 +423,8 @@ branch.append(summary);
         live.playerStats=structuredClone(snap.stats);
       }
     }
-    const featured=live.seasonSnapshot?.featuredPlayer;
-    if(featured?.id!=null){
-      const player=C.buildLookups(league).players.get(featured.id);
-      if(player){
-        featured.regularStats=window.HoopWireSeason.stats(player,league,story.season,'season');
-        featured.playoffStats=window.HoopWireSeason.stats(player,league,story.season,'playoffs');
-        featured.finalsStats=window.HoopWireSeason.stats(player,league,story.season,'finals');
-      }
-    }
+    // Season evidence belongs to the archived story's date. A later save may
+    // verify this game's box score, but must not replace its season snapshot.
     return live;
   }
   function boxScore(story) {
@@ -562,7 +567,9 @@ branch.append(summary);
     options(el.tvStorySelect,stories.map((s,i)=>[i,s.headline]),previousIndex);
     el.tvSegment.replaceChildren();
     const story=stories[previousIndex],tvStory=story?tvStoryFromCurrentSave(story):null;
-    window.HoopWireBroadcast?.mount(tvStory,studio,false);
+    const context=tvStory?window.HoopWireBroadcastContext.buildContext(tvStory,{league,
+      stories:[...state.stories.values()],snapshots:[...state.snapshots.values()]}):{};
+    window.HoopWireBroadcast?.mount(tvStory,studio,false,context);
     if(tvStory) el.tvSegment.appendChild(tvStoryPanel(tvStory));
     else el.tvSegment.textContent="Choose an archived day with stories to start the broadcast.";
     const results=new Map(Object.values(league?.gameResults?.[el.archiveSeason.value]?.[el.archiveDay.value] || {}).map(g=>[g.gid,g]));

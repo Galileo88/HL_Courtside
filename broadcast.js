@@ -48,9 +48,9 @@
     };
     tick();
   }
-  function discussion(story) {
+  function discussion(story,context) {
     if(!story)return [];
-    const scripted=window.HoopWireBroadcastContent?.episode(story,hosts.length?hosts.map(h=>HoopWireCore.playerDisplay(h)):undefined)||[
+    const scripted=window.HoopWireBroadcastContent?.episode(story,hosts.length?hosts.map(h=>HoopWireCore.playerDisplay(h)):undefined,context)||[
       {speaker:0,text:story.headline}
     ];
     const result=[];
@@ -209,8 +209,8 @@
     lineRemaining=null;lineDue=performance.now()+delay;
     talking(true);timer=setTimeout(()=>advance(token),delay);
   }
-  function mount(story,studio,autoplay=false) {
-    stop();line=0;needsIntro=true;completed=false;hosts=studio?.inputs.announcers || HoopWireTV.inputs({teams:[]}).announcers;turns=discussion(story);
+  function mount(story,studio,autoplay=false,context) {
+    stop();line=0;needsIntro=true;completed=false;hosts=studio?.inputs.announcers || HoopWireTV.inputs({teams:[]}).announcers;turns=discussion(story,context);
     el.tvLiveHosts.replaceChildren();el.tvTranscript.replaceChildren();
     if(studio?.backdropBlob)hosts.forEach((person,i)=>{
       const slot=document.createElement('div');slot.className='tv-live-host';slot.dataset.host=i;slot.style.left=`${(70+i*220)/960*100}%`;

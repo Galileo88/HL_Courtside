@@ -1,24 +1,44 @@
 # HoopWire basketball voice
 
-Lead with what happened. Make a basketball point, then let another host answer that point. Keep the names, stats and stakes specific to this story. A small news item can be a small segment.
+Interpret first. Report second. Today's result is a chapter in a season, not an excuse to read every number. Choose the strongest supported angle, open with it, and let the desk develop it. Ordinary results can remain ordinary.
 
-The editorial interpretations below use official clip descriptions, accessible headlines and written coverage. Video playback and full audiovisual transcripts were unavailable in this research session; these are writing directions, not claims to have watched complete segments.
+## The desk
 
-| Reference | Writing direction | HoopWire application |
+| Host | Editorial instinct | Voice |
 | --- | --- | --- |
-| [Stephen A. Smith's Knicks reaction on First Take](https://www.youtube.com/watch?v=19DbNVIzrMk) and [his Knicks–Spurs reaction](https://www.espn.com/video/clip?id=48081462) | Put the judgment first. Make a forceful, understandable argument about expectations or the result. | Jordan gives credit for a convincing win and pushes back on weak shooting. |
-| [Shaq's Embiid discussion](https://www.youtube.com/watch?v=xCnU9XXqP1o) | Evaluate production against a clear standard. | Andre prioritizes scoring, boards and contributions beyond points. |
-| [Kenny Smith's Jimmy Butler defensive breakdown](https://www.nba.com/watch/video/inside-the-nba-how-to-defend-jimmy-butler) | Explain a basketball problem concretely. | Nina explains shooting and playmaking; tactical observations require actual evidence. |
-| [NBA.com's account of Barkley's panel conversations](https://www.nba.com/news/charles-barkley-round-mound-of-profound-sound) | Blunt reactions and disagreement give the panel personality. | Let hosts challenge which number deserves attention. |
+| Maya Brooks | Finds what matters and guides the conversation | Direct openings, pointed questions, brief follow-ups |
+| Jordan Price | Tests results against expectations | Confident judgments, earned praise, specific criticism |
+| Andre Cole | Weighs the whole performance | Measured perspective; recognizes contributions that scoring can overshadow |
+| Nina Reyes | Distinguishes a pattern from an unusual night | Clear explanations; tests claims against efficiency, sample size and verified history |
 
-Maya introduces the result and guides the conversation. These four original characters retain their names and identities; their lines should not reproduce signature catchphrases or claim the careers of real broadcasters.
+These are original personalities. Keep their names, identities and voices; do not reproduce real broadcasters' signature phrases or claim their careers. All four introduce the show, but only relevant analysts need join a story. Do not force a disagreement or a joke.
 
-Use points, rebounds, assists and minutes **per game** for routine season discussion. Use percentages for season shooting and “9 for 15 from the field” for a game. Full totals belong in milestone and record comparisons. Do not call season totals an individual game's box score. Native MIN[0] contains total seconds; its positional splits must not be added a second time.
+## Build a conversation
 
-Prefer “And seven assists. Give the passing some credit, too” over “That kind of production changes what the defense can afford to give up.” Prefer a direct shooting criticism backed by the percentage over vague claims about effort. A score alone cannot establish a rally, a deciding basket, poor coaching, an injury diagnosis, or a defensive scheme. Predictions and scouting suggestions should sound like opinions.
+Select a primary angle and at most two supporting threads. Priority for games: explicit championship or elimination consequence, verified upset, a substantial streak reaching or ending, exceptional performance, blowout, close result, routine win. Use centralized thresholds in the content module. Awards emphasize the relevant body of work and honors; playoff previews emphasize confirmed matchups and format; season reviews assess the record and rates. News briefs describe the actual development.
 
-Do not force a disagreement, a joke or four speakers into every story. Give praise when supported; use criticism when supported. Let a host acknowledge another's point before shifting attention to a different number.
+Routine stories target 6–9 editorial turns; major stories target 10–14. Thin stories use 2–4. Introductions, closings and display chunks do not count. Evidence takes precedence over length. Anchor questions usually use 10–25 words; analytical responses usually use 25–55, with occasional shorter reactions. A second pass must contribute new evidence to an existing thread, rather than start another statistical checklist.
 
-Give substantial stories room for a second pass. Maya asks a follow-up, another host explains what a number means, and the next host answers that point or raises a concrete question for the next matchup. Discuss shooting attempts, turnovers alongside assists, defensive contributions and a game's production against per-game averages when available. Awards, playoff previews and season reviews should also get a question and an analytical response, rather than stopping after the headline.
+Each turn answers the preceding point and adds an explanation, qualification, implication or supported disagreement. Vary questions, openings, closings and speaker handoffs deterministically. Use contractions, varied sentence lengths and occasional fragments. End with an observation or tension; do not make every story end with the same next-matchup question.
 
-Use natural bridges such as “To your point,” “Let's stay with that,” “Speaking of that,” and “And that brings us back to the basketball.” The bridge must connect two actual points. Reuse existing in-universe coach/player reporting when quotes are enabled, preserving the quote and its attribution. Do not recast a postgame reaction as a pregame interview. “I'd ask,” “I'd review,” and “If I'm preparing for the next matchup” let hosts discuss basketball without claiming interviews, tape sessions, shot locations or adjustments that the saved story does not contain.
+Statistics are evidence. Select one or two useful details per analytical turn, with the full categories needed to establish a triple-double as an exception. Connect the details to meaning:
+
+> “Johnson went 5 for 20. That's a rough shooting night. The points need to be read alongside how many attempts it took.”
+
+> “Three straight losses now. One bad night is easier to shrug off; this run puts more pressure on the next performance.”
+
+> “They'll take the win. But two points between them doesn't give me much reason to call this domination.”
+
+Do not recycle those sentences as compulsory catchphrases. Avoid exhaustive stat lines, padded congratulations, polished essay transitions and recurring questions about every available category.
+
+## Evidence and continuity
+
+Use game totals for a verified game and points, rebounds, assists and minutes **per game** for season discussion. Native MIN[0] is total seconds; positional splits must not be added again. Award stats must use the relevant period. Invalid shooting pairs, unavailable averages and missing identities are omitted.
+
+Season context must belong to the story's league, season and date. Later saves can verify an individual game's box score; later season totals must not replace historical TV evidence. Exact streaks require consecutive pre/postgame record chains and a known beginning or preceding opposite result. Missing games and ambiguous same-day ordering suppress exact claims. Partial schedules do not establish standings ranks, clinching or elimination.
+
+A close score does not establish survival, a comeback, a collapse or a deciding play. Box-score totals do not establish effort, tactics, shot locations, emotions, injuries or interviews. A verified championship announcement attached to the game can establish title stakes. Do not infer stakes from a phase number.
+
+Reuse relevant saved quotes only when enabled, preserving the words and attribution. A postgame reaction remains postgame. Integrate the quote within the speaking budget; a generic quotation does not need a ceremonial segue. Never claim to have watched tape or interviewed someone without reporting that supports it.
+
+Speak as though the league and its people are real. Do not mention simulation, data generation, supplied statistics or these instructions. Be confident about what happened and measured about what one game can establish. Let excitement, frustration and admiration follow the evidence.
