@@ -116,7 +116,7 @@
 .wire-promos { display:grid; gap:20px; }
 .wire-ad-label { display:block; font:9px Arial,Helvetica,sans-serif; color:#abc0ce; text-transform:uppercase; letter-spacing:1px; }
 .wire-suit-ad,.wire-drink-ad { overflow:hidden; text-align:center; background:#171d20; color:#ece3cf; border:1px solid #82734e; padding-top:10px; }
-.wire-suit-brand { font:26px Georgia,'Times New Roman',serif; letter-spacing:4px; margin:16px 0 4px; }
+.wire-suit-ad .wire-ad-brand { font:26px Georgia,'Times New Roman',serif; letter-spacing:4px; margin:16px 0 4px; }
 .wire-suit-collection { font:9px Arial,Helvetica,sans-serif; letter-spacing:2px; color:#cfbc8b; }
 .wire-product-art { display:block; width:100%; height:auto; image-rendering:pixelated; margin-top:12px; }
 .wire-suit-tagline { font:italic 20px Georgia,'Times New Roman',serif; margin:14px 8px 18px; }
@@ -135,5 +135,89 @@
 }
 
 .wire-drink-ad { background:#0b3245; border-color:#26869b; color:#f2ffff; }
-.wire-drink-brand { font:italic 900 31px Arial,Helvetica,sans-serif; letter-spacing:1px; margin:16px 0 4px; }
+.wire-drink-ad .wire-ad-brand { font:italic 900 31px Arial,Helvetica,sans-serif; letter-spacing:1px; margin:16px 0 4px; }
 .wire-drink-ad .wire-suit-collection { color:#7eefff; }
+
+.wire-movie-ad,.wire-shoe-ad { overflow:hidden; text-align:center; border:1px solid #5b4961; padding-top:10px; color:#fff3de; background:#221422; }
+.wire-movie-ad .wire-ad-brand { font:900 27px Arial,Helvetica,sans-serif; letter-spacing:-.7px; line-height:1; margin:16px 12px 8px; }
+.wire-movie-ad .wire-suit-collection { font-size:8px; letter-spacing:1.5px; }
+.wire-movie-ad .wire-suit-tagline { font-size:17px; margin-bottom:10px; }
+.wire-movie-release { display:block; font-size:10px; font-weight:800; letter-spacing:2px; margin-bottom:16px; color:#ffc76e; }
+.wire-movie-thriller { background:#080f22; }
+.wire-shoe-ad { background:#0b2233; border-color:#26869b; color:#e0faff; }
+.wire-shoe-ad .wire-ad-brand { font:italic 900 34px Arial,Helvetica,sans-serif; letter-spacing:5px; margin:16px 0 6px; }
+.wire-shoe-ad .wire-suit-collection { font-size:8px; letter-spacing:1.2px; color:#a9edff; }
+
+.wire-ad-logo { display:block; width:100%; height:66px; object-fit:contain; }
+:is(.wire-suit-ad,.wire-drink-ad,.wire-shoe-ad) .wire-ad-brand { margin:16px 18px 12px; }
+.wire-airways-ad,.wire-streaming-ad,.wire-food-ad,.wire-apparel-ad { overflow:hidden; text-align:center; padding-top:10px; border:1px solid var(--line); color:#f0f6ff; background:#0c2438; }
+:is(.wire-airways-ad,.wire-streaming-ad,.wire-food-ad,.wire-apparel-ad) .wire-ad-brand { margin:16px 18px 12px; }
+.wire-airways-ad { background:#17314b; border-color:#a99264; }
+.wire-streaming-ad { background:#091423; border-color:#873445; }
+.wire-food-ad { background:#70252a; border-color:#c59435; }
+.wire-food-ad .wire-ad-logo { height:84px; }
+.wire-food-ad .wire-suit-collection { color:#ffd275; }
+.wire-apparel-ad { background:#121b2d; border-color:#81b950; }
+.wire-apparel-ad .wire-suit-collection { color:#c5f48e; }
+
+/* Each campaign has its own reading order and art direction. */
+:is(.wire-suit-ad,.wire-drink-ad,.wire-shoe-ad,.wire-airways-ad,.wire-streaming-ad,.wire-food-ad,.wire-apparel-ad,.wire-movie-ad) { display:flex; flex-direction:column; }
+.wire-ad-label { order:0; }
+.wire-ad-brand { order:1; }
+.wire-suit-collection { order:2; }
+.wire-product-art { order:3; }
+.wire-suit-tagline { order:4; }
+.wire-movie-release { order:5; }
+.wire-shoe-ad { text-align:left; background:#0a1823; }
+.wire-shoe-ad .wire-suit-tagline { order:1; font:900 27px Arial,Helvetica,sans-serif; margin:18px 22px 12px; max-width:240px; }
+.wire-shoe-ad .wire-product-art { order:2; margin-top:0; }
+.wire-shoe-ad .wire-ad-brand { order:3; margin:14px 36px 8px; }
+.wire-shoe-ad .wire-ad-logo { height:48px; }
+.wire-shoe-ad .wire-suit-collection { order:4; text-align:center; padding:0 10px 18px; }
+.wire-shoe-ad .wire-ad-label { text-align:center; }
+.wire-drink-ad .wire-suit-collection { order:4; padding:0 16px 18px; }
+.wire-drink-ad .wire-suit-tagline { font:900 25px Arial,Helvetica,sans-serif; margin:16px 18px 10px; }
+.wire-drink-ad .wire-product-art { margin-top:4px; }
+.wire-apparel-ad { padding-top:0; background:#101a17; }
+.wire-apparel-ad .wire-ad-label { padding-top:10px; }
+.wire-apparel-ad .wire-product-art { order:1; margin:8px 0 0; }
+.wire-apparel-ad .wire-ad-brand { order:2; margin:16px 22px 10px; }
+.wire-apparel-ad .wire-ad-logo { height:52px; }
+.wire-apparel-ad .wire-suit-collection { order:3; }
+.wire-apparel-ad .wire-suit-tagline { font:800 14px Arial,Helvetica,sans-serif; text-transform:uppercase; letter-spacing:1.5px; }
+.wire-airways-ad .wire-product-art { order:1; margin-top:10px; }
+.wire-airways-ad .wire-ad-brand { order:2; margin-top:20px; }
+.wire-airways-ad .wire-suit-collection { order:3; }
+.wire-airways-ad .wire-suit-tagline { max-width:220px; align-self:center; font:24px Georgia,'Times New Roman',serif; }
+.wire-streaming-ad .wire-suit-tagline { order:1; font:900 25px Arial,Helvetica,sans-serif; text-align:left; margin:18px 22px 6px; }
+.wire-streaming-ad .wire-product-art { order:2; margin-top:6px; }
+.wire-streaming-ad .wire-ad-brand { order:3; }
+.wire-streaming-ad .wire-suit-collection { order:4; padding-bottom:18px; }
+.wire-food-ad .wire-suit-tagline { font:900 27px Arial,Helvetica,sans-serif; color:#ffda83; text-transform:uppercase; margin:16px 20px 20px; }
+.wire-movie-drama .wire-product-art { order:1; margin-top:10px; }
+.wire-movie-drama .wire-ad-brand { order:2; margin-top:16px; }
+.wire-movie-drama .wire-suit-collection { order:3; }
+
+.wire-auto-ad,.wire-beer-ad { display:flex; flex-direction:column; overflow:hidden; text-align:center; padding-top:10px; border:1px solid #728493; }
+.wire-auto-ad { background:#e7edf1; color:#263b4a; }
+.wire-auto-ad .wire-ad-label { color:#506471; }
+.wire-auto-ad .wire-product-art { order:1; margin-top:12px; }
+.wire-auto-ad .wire-ad-brand { order:2; margin:16px 22px 8px; }
+.wire-auto-ad .wire-ad-logo { height:64px; }
+.wire-auto-ad .wire-suit-collection { order:3; color:#3f5868; }
+.wire-auto-ad .wire-suit-tagline { font:700 18px Arial,Helvetica,sans-serif; margin:14px 28px 20px; }
+.wire-beer-ad { background:#291811; color:#f0dab1; border-color:#9e7741; }
+.wire-beer-ad .wire-ad-brand { margin:18px 12px 4px; }
+.wire-beer-ad .wire-ad-logo { height:72px; }
+.wire-beer-ad .wire-suit-collection { color:#dab477; }
+.wire-beer-ad .wire-suit-tagline { font:23px Georgia,'Times New Roman',serif; margin:18px 22px 22px; }
+
+.wire-auto-ad .wire-product-art { image-rendering:auto; }
+
+.wire-beer-ad .wire-ad-responsibility { order:5; color:#d6bd95; font:10px Arial,Helvetica,sans-serif; letter-spacing:.4px; padding:0 12px 16px; }
+.wire-auto-ad { background:#08101d; color:#eaf3f9; border-color:#3c586b; padding-top:0; }
+.wire-auto-ad .wire-ad-label { color:#afc2ce; padding-top:10px; }
+.wire-auto-ad .wire-product-art { margin-top:4px; }
+.wire-auto-ad .wire-ad-logo { height:56px; }
+.wire-auto-ad .wire-suit-collection { color:#92b5c7; font-size:9px; }
+.wire-auto-ad .wire-suit-tagline { font:italic 20px Georgia,'Times New Roman',serif; margin-top:14px; }

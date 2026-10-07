@@ -3,6 +3,15 @@
   "use strict";
   const artCache=new Map();
   function node(tag,cls,text){const e=document.createElement(tag);e.className=cls;if(text)e.textContent=text;return e;}
+  function brandArt(file,colors){
+    const key=JSON.stringify([file,colors]);
+    if(!artCache.has(key))artCache.set(key,HoopWireCourt.loadImage('scene-assets/'+file).then(source=>{
+      const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;
+      const ctx=canvas.getContext('2d');ctx.drawImage(source,0,0);ctx.globalCompositeOperation='source-in';
+      const gradient=ctx.createLinearGradient(0,0,canvas.width,canvas.height);colors.forEach((color,i)=>gradient.addColorStop(i/(colors.length-1),color));
+      ctx.fillStyle=gradient;ctx.fillRect(0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png');
+    }));return artCache.get(key);
+  }
   function suitArt(hosts){
     const key=JSON.stringify(hosts.slice(0,3));
     if(!artCache.has(key))artCache.set(key,window.HoopWirePlayer.ready().then(()=>{
@@ -28,7 +37,8 @@
   function drinkArt(){
     if(!artCache.has('drink'))artCache.set('drink',window.HoopWireCourt.loadImage('scene-assets/bottle.png').then(source=>{
       const canvas=document.createElement('canvas');canvas.width=300;canvas.height=156;const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
-      ctx.fillStyle='#0b3245';ctx.fillRect(0,0,300,156);
+      const glow=ctx.createLinearGradient(0,0,300,156);glow.addColorStop(0,'#0b3245');glow.addColorStop(1,'#116579');ctx.fillStyle=glow;ctx.fillRect(0,0,300,156);
+      ctx.strokeStyle='rgba(121,255,244,.2)';ctx.lineWidth=2;for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(12+i*43,26+(i*31)%96,8+i%3*5,0,Math.PI*2);ctx.stroke();}
       const colors=[[44,197,239],[255,157,44],[161,216,58]];
       colors.forEach((color,i)=>{
         const tile=document.createElement('canvas');tile.width=source.width;tile.height=source.height;const t=tile.getContext('2d');t.drawImage(source,0,0);
@@ -48,13 +58,32 @@
   function render({studio,story,onWatch,product}){
     const promos=node('section','wire-promos');promos.setAttribute('aria-label','In-world advertisements');
     const seed=Array.from(story?.id||'hoopwire').reduce((sum,c)=>sum+c.charCodeAt(0),0);
-    const drink=(product|| (seed%2?'drink':'suit'))==='drink';
-    const ad=node('section',drink?'wire-drink-ad':'wire-suit-ad');ad.setAttribute('aria-label',drink?'Overtime sports drink advertisement':'Courtside luxury suit advertisement');
-    ad.append(node('span','wire-ad-label','Advertisement'),node('h2',drink?'wire-drink-brand':'wire-suit-brand',drink?'OVERTIME':'COURTSIDE'),node('span','wire-suit-collection',drink?'SPORTS DRINK':'THE TAILORED COLLECTION'));
-    const art=node('img','wire-product-art');art.width=300;art.height=drink?156:180;art.alt=drink?'Blue, citrus and lime bottles made from the Hoop Land bottle sprite':'Three tailored suits illustrated with Hoop Land character sprites';
+    const catalog={
+      suit:{title:'Hartley',logo:'brand7.png',subtitle:'THE TAILORED COLLECTION',tagline:'Dress for the moment.',alt:'Three tailored suits illustrated with Hoop Land character sprites',cls:'wire-suit-ad'},
+      drink:{title:'Zero-G',logo:'brand.png',colors:['#79fff4','#26c6e8'],subtitle:'FUEL YOUR NEXT QUARTER',tagline:'Stay in the game.',alt:'Blue, citrus and lime bottles made from the Hoop Land bottle sprite',cls:'wire-drink-ad'},
+      'movie-drama':{title:'LAST POSSESSION',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'One shot. Everything on the line.',alt:'Sprite actors on a floodlit basketball court in the fictional Last Possession movie poster',cls:'wire-movie-ad wire-movie-drama'},
+      'movie-thriller':{title:'MIDNIGHT TRANSFER',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'Every deal has a dark side.',alt:'Suited sprite actors against a city skyline in the fictional Midnight Transfer movie poster',cls:'wire-movie-ad wire-movie-thriller'},
+      shoes:{title:'Stride',logo:'brand3.png',colors:['#7fd9ff','#f7fbff'],subtitle:'COURT 01 · BASKETBALL FOOTWEAR',tagline:'Own your next step.',alt:'Supplied blue shoe artwork centered on a spotlighted display platform',cls:'wire-shoe-ad'},
+      airways:{title:'Horizon Airways',logo:'brand2.png',subtitle:'THE AWAY GAME COLLECTION',tagline:'Your next destination awaits.',alt:'Suited sprite traveler against a sunset skyline',cls:'wire-airways-ad'},
+      streaming:{title:'LifeStream',logo:'brand4.png',subtitle:'YOUR WORLD. ON SCREEN.',tagline:'Every story deserves a stage.',alt:'Sprite presenters framed inside a broadcast studio screen',cls:'wire-streaming-ad'},
+      food:{title:'Monarch’s',logo:'brand5.png',subtitle:'THE POSTGAME STOP',tagline:'Bring a royal appetite.',alt:'Sprite basketball players gathering after the final buzzer',cls:'wire-food-ad'},
+      apparel:{title:'Trufit',logo:'brand6.png',colors:['#ceff69','#79db86'],subtitle:'BUILT FOR YOUR GAME',tagline:'Work in. Stand out.',alt:'Sprite basketball player shooting in athletic apparel',cls:'wire-apparel-ad'},
+      automotive:{title:'Kiyota',logo:'brand8.png',colors:['#dce5ee','#a6b6c5'],subtitle:'BUILT FOR WHAT COMES NEXT',tagline:'Take the long way home.',alt:'Kiyota pickup truck on a night road under arena lights',cls:'wire-auto-ad'},
+      beer:{title:'American Heritage',logo:'brand9.png',subtitle:'A CLASSIC FINISH',tagline:'Here’s to the final buzzer.',alt:'Amber bottles composed from the supplied bottle sprite on a warm copper background',cls:'wire-beer-ad'}
+    };
+    const selected=Object.hasOwn(catalog,product)?product:Object.keys(catalog)[seed%Object.keys(catalog).length],creative=catalog[selected];
+    const ad=node('section',creative.cls);ad.dataset.ad=selected;ad.setAttribute('aria-label',creative.title+' advertisement');
+    const brand=node('h2','wire-ad-brand');
+    if(creative.logo){const logo=node('img','wire-ad-logo');logo.alt=creative.title;if(creative.colors)brandArt(creative.logo,creative.colors).then(src=>{logo.src=src;}).catch(()=>{logo.src='scene-assets/'+creative.logo;});else logo.src='scene-assets/'+creative.logo;logo.addEventListener('error',()=>{brand.textContent=creative.title;},{once:true});brand.append(logo);}else brand.textContent=creative.title;
+    ad.append(node('span','wire-ad-label','Advertisement'),brand,node('span','wire-suit-collection',creative.subtitle));
+    const art=node('img','wire-product-art');art.width=300;art.height=selected==='drink'?156:selected==='automotive'?285:180;art.alt=creative.alt;
     const hosts=studio?.inputs?.announcers||window.HoopWireTV.inputs({teams:[]}).announcers;
-    (drink?drinkArt():suitArt(hosts)).then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
-    ad.append(art,node('p','wire-suit-tagline',drink?'Stay in the game.':'Dress for the moment.'));promos.append(ad);
+    const artwork=selected==='drink'?drinkArt():selected==='suit'?suitArt(hosts):HoopWireAdArt.render(selected,hosts);
+    artwork.then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
+    ad.append(art,node('p','wire-suit-tagline',creative.tagline));
+    if(selected==='beer')ad.append(node('span','wire-ad-responsibility','Drink responsibly.'));
+    if(selected.startsWith('movie-'))ad.append(node('span','wire-movie-release','NOW SHOWING'));
+    promos.append(ad);
     if(story){
       const tv=node('section','wire-tv-ad');tv.setAttribute('aria-label','HoopWire TV advertisement');
       const logo=node('img','');logo.src='assets/hoopwire_logo.png';logo.alt='HoopWire TV';logo.width=1336;logo.height=366;
