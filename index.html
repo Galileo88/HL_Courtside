@@ -52,7 +52,7 @@
     <section id="feed" class="feed"></section>
     <section id="tv" class="tv-panel hidden">
       <div class="tv-title"><span class="tv-badge">THE DAILY DESK</span><h1>HoopWire TV</h1></div>
-      <figure class="tv-studio"><div id="tvStage" class="tv-stage"><img id="tvStudio" width="960" height="540" alt="" hidden /><div id="tvLiveHosts" class="tv-live-hosts" aria-hidden="true"></div><img id="tvDeskForeground" class="tv-desk-foreground" width="960" height="540" alt="" aria-hidden="true" hidden /><div id="tvBubbles" class="tv-bubbles" aria-live="polite"></div><div id="tvTicker" class="tv-results-ticker" hidden></div>
+      <figure class="tv-studio"><div id="tvStage" class="tv-stage" tabindex="0" aria-label="HoopWire TV. Click or press Space to play or pause."><img id="tvStudio" width="960" height="540" alt="" hidden /><div id="tvLiveHosts" class="tv-live-hosts" aria-hidden="true"></div><img id="tvDeskForeground" class="tv-desk-foreground" width="960" height="540" alt="" aria-hidden="true" hidden /><div id="tvBubbles" class="tv-bubbles" aria-live="polite"></div><div id="tvTicker" class="tv-results-ticker" hidden></div>
         <div id="tvIntro" class="tv-intro" hidden aria-label="HoopWire TV opening sequence">
           <div class="tv-intro-grid" aria-hidden="true"></div><div class="tv-intro-orbit" aria-hidden="true"></div>
           <div class="tv-intro-slash slash-one" aria-hidden="true"></div><div class="tv-intro-slash slash-two" aria-hidden="true"></div>
@@ -60,13 +60,12 @@
           <div class="tv-intro-footer"><span>BASKETBALL / EVERY ANGLE</span><span class="tv-intro-onair"><i aria-hidden="true"></i> HOOPWIRE TV</span></div>
           <div class="tv-intro-progress" aria-hidden="true"></div><div class="tv-intro-wipe" aria-hidden="true"></div>
         </div>
-        <button id="tvStagePlay" class="tv-stage-play" type="button" aria-label="Play HoopWire TV episode"><span class="tv-stage-play-icon" aria-hidden="true">▶</span><span class="tv-stage-play-label">Play episode</span></button></div><figcaption id="tvStudioCaption" class="sr-only"></figcaption></figure>
+        <button id="tvStagePlay" class="tv-stage-play" type="button" aria-label="Play HoopWire TV episode"><span class="tv-stage-play-icon" aria-hidden="true">▶</span><span class="tv-stage-play-label">Play episode</span></button><button id="tvMute" class="tv-audio-button" type="button" aria-pressed="false" aria-label="Mute voices" title="Mute voices"><span aria-hidden="true">🔊</span></button></div><figcaption id="tvStudioCaption" class="sr-only"></figcaption></figure>
       <div id="tvHosts" hidden></div>
       <div class="tv-controls tv-playback">
         <button id="tvPrevious" disabled>Previous Story</button>
-        <button id="tvPlay" disabled>Pause</button>
         <button id="tvNext" disabled>Next Story</button>
-        <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" /><button id="tvMute" class="tv-audio-button" aria-pressed="false" aria-label="Mute voices" title="Mute voices"><span aria-hidden="true">🔊</span></button>
+        <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" />
       </div>
       <div hidden><button id="tvLinePrevious">Previous line</button><button id="tvLineNext">Next line</button><select id="tvStorySelect"></select><div id="tvTranscript"></div></div>
       <span id="tvDiscussionStatus" class="sr-only" role="status"></span>

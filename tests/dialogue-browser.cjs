@@ -33,16 +33,24 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.getElementById('tvStudio').complete&&document.getElementById('tvStudio').naturalWidth>0);assert.deepEqual(blobFailures,[],'Image URLs must remain valid while loading across TV refresh');
   await page.clock.install();
   const delays=await page.evaluate(()=>{
-   window.Audio=class{constructor(){window.testAudio=this;this.currentTime=0;this.duration=10;}play(){return Promise.resolve();}pause(){}removeAttribute(){}};
+   window.Audio=class{constructor(src){window.testAudio=this;this.src=src;this.currentTime=0;this.duration=10;}play(){this.paused=false;return Promise.resolve();}pause(){this.paused=true;}removeAttribute(){}};
    const text='basketball '.repeat(14)+'tonight.';
    HoopWireBroadcastContent.episode=()=>[{speaker:0,text},{speaker:1,text:'Now let me respond to that point.'}];
    document.getElementById('tvVoice').checked=false;HoopWireBroadcast.mount({headline:'Chunk timing'},null);
-   return HoopWireBroadcastContent.chunkDialogue(text).map(c=>Math.max(2500,Math.min(8500,c.length*45)));
+   return HoopWireBroadcastContent.chunkDialogue(text).map(c=>Math.max(2800,Math.min(9800,c.length*52)));
   });
   await page.locator('#tvStagePlay').click();await page.evaluate(()=>testAudio.onended());
-  await page.clock.runFor(delays[0]+5);assert.match(await page.locator('#tvDiscussionStatus').textContent(),/Line 2 of 3/,'Same-host continuation should start without a 450ms pause');
+  await page.clock.runFor(1000);await page.locator('#tvStage').click({position:{x:100,y:100}});const frozen=await page.locator('.tv-speech').textContent();
+  await page.clock.runFor(10000);assert.equal(await page.locator('.tv-speech').textContent(),frozen);assert.equal(await page.locator('.is-speaking').count(),0);
+  await page.locator('#tvStage').focus();await page.keyboard.press('Space');await page.clock.runFor(delays[0]-1300);assert.match(await page.locator('#tvDiscussionStatus').textContent(),/Line 1 of 3/,'Silent reading time should resume where it paused');
+  await page.clock.runFor(305);assert.match(await page.locator('#tvDiscussionStatus').textContent(),/Line 2 of 3/);
   await page.clock.runFor(delays[1]);assert.match(await page.locator('#tvDiscussionStatus').textContent(),/Line 2 of 3/,'Host handoff should retain its pause');
   await page.clock.runFor(450);assert.match(await page.locator('#tvDiscussionStatus').textContent(),/Line 3 of 3/);assert.deepEqual(errors,[]);
+  await page.evaluate(()=>{HoopWireBroadcastContent.episode=()=>[{speaker:0,text:'Take care of the ball and make the next possession count.'}];document.getElementById('tvVoice').checked=true;HoopWireBroadcast.mount({headline:'Voice pace'},null);});
+  await page.locator('#tvStagePlay').click();await page.evaluate(()=>testAudio.onended());await page.waitForFunction(()=>testAudio.src.startsWith('data:'));
+  assert.equal(await page.evaluate(()=>testAudio.playbackRate),.9);assert.equal(await page.evaluate(()=>testAudio.preservesPitch),true);
+  await page.evaluate(()=>{window.speechAudio=testAudio;speechAudio.currentTime=1.25;});await page.locator('#tvStage').click({position:{x:100,y:100}});assert.equal(await page.evaluate(()=>speechAudio.paused),true);
+  await page.locator('#tvStagePlay').click();assert.equal(await page.evaluate(()=>testAudio===speechAudio&&speechAudio.currentTime===1.25&&!speechAudio.paused),true);
   console.log('Dialogue browser checks passed: verified player names, familiar stats, per-game season discussion, four-host transcript integration, no page errors, and archived prose preserved on reload.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

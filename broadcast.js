@@ -1,12 +1,13 @@
 /* Local, fact-based host discussions with Animalese voices. */
 (() => {
   'use strict';
-  const ids=['tvMute','tvPlay','tvLinePrevious','tvLineNext','tvVoice','tvDiscussionStatus','tvLiveHosts','tvBubbles','tvTranscript','tvStage','tvStagePlay','tvIntro'];
+  const ids=['tvMute','tvLinePrevious','tvLineNext','tvVoice','tvDiscussionStatus','tvLiveHosts','tvBubbles','tvTranscript','tvStage','tvStagePlay','tvIntro'];
   const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
   const pitches=[1.25,.83,.65,1.45];
   const introSrc='assets/hoopwire-tv-intro.mp3',introLeadMs=8500;
   let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,outroAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
   let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[],outroActive=false;
+  let paused=false,lineRemaining=null,lineDue=0;
   function introVisible(value){el.tvIntro.hidden=!value;el.tvStage.classList.toggle('is-intro',value);}
   function settleLogo(){
     cancelAnimationFrame(introFrame);introFrame=null;
@@ -37,7 +38,7 @@
   function introTick(token,media=null,closing=false){
     const started=performance.now(),resumeAt=introElapsed;
     const tick=()=>{
-      if(token!==epoch||(closing?!completed:!running||!needsIntro))return;
+      if(token!==epoch||(closing?!completed||paused:!running||!needsIntro))return;
       if(media&&Number.isFinite(media.duration)&&media.duration>0)introDuration=media.duration*1000;
       introElapsed=media?media.currentTime*1000:resumeAt+performance.now()-started;
       const progress=Math.min(1,introElapsed/introDuration);
@@ -80,23 +81,25 @@
     if(!el.tvStagePlay)return;
     const available=turns.length>0;
     let label='Play episode';
-    if(available&&completed)label='Replay episode';
+    if(available&&completed)label=outroActive?'Resume episode':'Replay episode';
     else if(available&&(!needsIntro||introElapsed>0))label='Resume episode';
     el.tvStagePlay.disabled=!available;
-    el.tvStagePlay.hidden=running||!available||outroActive;
+    el.tvStagePlay.hidden=running||!available||(outroActive&&!paused);
     el.tvStagePlay.setAttribute('aria-label',label.replace('episode','HoopWire TV episode'));
     const text=el.tvStagePlay.querySelector('.tv-stage-play-label');
     if(text)text.textContent=label;
   }
   function stop(resetIntro=true) {
+    if(!resetIntro&&running&&lineDue)lineRemaining=Math.max(0,lineDue-performance.now());
+    if(resetIntro){lineRemaining=null;lineDue=0;}
+    paused=!resetIntro;
     epoch++;running=false;clearTimeout(timer);timer=null;
     cancelAnimationFrame(introFrame);introFrame=null;
-    if(audio){audio.onended=audio.onerror=null;audio.pause();audio.removeAttribute('src');audio=null;}
-    if(outroAudio){outroAudio.onended=outroAudio.onerror=null;outroAudio.pause();outroAudio.removeAttribute('src');outroAudio=null;}
+    if(audio){audio.onended=audio.onerror=null;audio.pause();if(resetIntro){audio.removeAttribute('src');audio=null;}}
+    if(outroAudio){introElapsed=outroAudio.currentTime*1000;outroAudio.onended=outroAudio.onerror=null;outroAudio.pause();if(resetIntro){outroAudio.removeAttribute('src');outroAudio=null;}}
     if(introAudio){introElapsed=introAudio.currentTime*1000;introAudio.onended=introAudio.onerror=null;introAudio.pause();if(resetIntro){introAudio.removeAttribute('src');introAudio=null;}}
     if(resetIntro)clearIntro();
-    else if(completed)settleLogo();
-    talking(false);el.tvPlay.textContent=completed?'Replay':needsIntro?'Play':'Resume';updateStagePlay();
+    talking(false);updateStagePlay();
   }
   function beginHosts(token) {
     if(token!==epoch||!running||!needsIntro)return;
@@ -128,7 +131,7 @@
     }
   }
   async function playOutro() {
-    const token=epoch,media=new Audio(introSrc);
+    const token=epoch,media=outroAudio||new Audio(introSrc);
     outroActive=true;updateStagePlay();
     animateIntro();
     outroAudio=media;media.volume=.55;media.muted=!el.tvVoice.checked;
@@ -143,6 +146,8 @@
   }
   function startPlayback() {
     if(!turns.length)return;
+    paused=false;
+    if(completed&&outroActive){playOutro();return;}
     if(completed){stop();line=0;needsIntro=true;completed=false;}
     running=true;updateStagePlay();show();
     if(needsIntro)playIntro();
@@ -160,8 +165,7 @@
       }
       el.tvDiscussionStatus.textContent=`Line ${line+1} of ${turns.length}`;
     }else el.tvDiscussionStatus.textContent='Choose a story to start the discussion.';
-    el.tvPlay.disabled=!turn;el.tvLinePrevious.disabled=!turn||needsIntro||line===0;el.tvLineNext.disabled=!turn||needsIntro||line===turns.length-1;
-    el.tvPlay.textContent=running?'Pause':completed?'Replay':needsIntro&&introElapsed===0?'Play':'Resume';
+    el.tvLinePrevious.disabled=!turn||needsIntro||line===0;el.tvLineNext.disabled=!turn||needsIntro||line===turns.length-1;
     if(needsIntro&&!el.tvIntro.hidden)el.tvDiscussionStatus.textContent=running?'Opening theme…':introElapsed>0?'Opening theme paused.':'Play episode to start the show.';
     if(completed)el.tvDiscussionStatus.textContent='Episode complete. Replay or choose the next story.';
     for(const [i,p] of [...el.tvTranscript.children].entries())p.classList.toggle('current-line',i===line);
@@ -169,6 +173,7 @@
   }
   function advance(token) {
     if(token!==epoch||!running)return;
+    lineRemaining=null;lineDue=0;
     talking(false);
     if(line>=turns.length-1){
       completed=true;stop();el.tvBubbles.replaceChildren();el.tvBubbles.hidden=true;
@@ -184,17 +189,25 @@
   async function playLine() {
     const token=epoch,turn=turns[line];
     try {
-      if(el.tvVoice.checked){
+      if(audio||el.tvVoice.checked){
         el.tvDiscussionStatus.textContent='Preparing voice…';
-        const synth=await voiceSamples();if(token!==epoch||!running)return;
-        const wav=synth.Animalese(spoken(turn.text),true,pitches[turn.speaker]);
-        audio=new Audio(wav.dataURI);audio.volume=.38;audio.muted=!el.tvVoice.checked;
-        audio.onended=()=>advance(token);
+        if(!audio){
+          const synth=await voiceSamples();if(token!==epoch||!running)return;
+          const wav=synth.Animalese(spoken(turn.text),true,pitches[turn.speaker]);
+          audio=new Audio(wav.dataURI);audio.volume=.38;audio.playbackRate=.9;audio.preservesPitch=true;
+        }
+        audio.muted=!el.tvVoice.checked;
+        audio.onended=()=>{audio=null;advance(token);};
         audio.onerror=()=>{if(token!==epoch)return;stop();el.tvDiscussionStatus.textContent='Voice playback failed. Turn off Animalese voices to continue with speech bubbles.';};
         await audio.play();if(token!==epoch||!running)return;
         el.tvDiscussionStatus.textContent=`Line ${line+1} of ${turns.length}`;talking(true);
-      }else{talking(true);timer=setTimeout(()=>advance(token),Math.max(2500,Math.min(8500,turn.text.length*45)));}
-    }catch(error){if(token!==epoch||!running)return;audio?.pause();audio=null;el.tvDiscussionStatus.textContent='Voice unavailable; continuing with speech bubbles.';talking(true);timer=setTimeout(()=>advance(token),Math.max(2500,Math.min(8500,turn.text.length*45)));}
+      }else holdLine(turn,token);
+    }catch(error){if(token!==epoch||!running)return;audio?.pause();audio=null;el.tvDiscussionStatus.textContent='Voice unavailable; continuing with speech bubbles.';holdLine(turn,token);}
+  }
+  function holdLine(turn,token){
+    const delay=lineRemaining??Math.max(2800,Math.min(9800,turn.text.length*52));
+    lineRemaining=null;lineDue=performance.now()+delay;
+    talking(true);timer=setTimeout(()=>advance(token),delay);
   }
   function mount(story,studio,autoplay=false) {
     stop();line=0;needsIntro=true;completed=false;hosts=studio?.inputs.announcers || HoopWireTV.inputs({teams:[]}).announcers;turns=discussion(story);
@@ -210,7 +223,9 @@
     show();
     if(autoplay&&turns.length)startPlayback();
   }
-  el.tvPlay.addEventListener('click',()=>{if(running){stop(false);show();return;}startPlayback();});
+  function togglePlayback(){if(running||(outroActive&&!paused)){stop(false);show();}else startPlayback();}
+  el.tvStage.addEventListener('click',event=>{if(event.target.closest('button,input,a'))return;togglePlayback();});
+  el.tvStage.addEventListener('keydown',event=>{if(event.target!==el.tvStage||![' ','Enter'].includes(event.key))return;event.preventDefault();togglePlayback();});
   el.tvStagePlay.addEventListener('click',startPlayback);
   el.tvLinePrevious.addEventListener('click',()=>{stop();completed=false;needsIntro=false;line=Math.max(0,line-1);show();});
   el.tvLineNext.addEventListener('click',()=>{stop();completed=false;needsIntro=false;line=Math.min(turns.length-1,line+1);show();});
