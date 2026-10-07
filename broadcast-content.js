@@ -1,9 +1,9 @@
 /* Original studio dialogue: lead with the story, use familiar basketball language,
    and let the other hosts respond to a specific fact. Box scores do not prove plays. */
 (function(root,factory){
-  if(typeof module==='object'&&module.exports)module.exports=factory();
-  else root.HoopWireBroadcastContent=factory();
-})(globalThis,function(){
+  if(typeof module==='object'&&module.exports)module.exports=factory(require('./season-coverage'));
+  else root.HoopWireBroadcastContent=factory(root.HoopWireSeason);
+})(globalThis,function(Season){
   'use strict';
   const labels={PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks'};
   const valid=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
@@ -123,6 +123,7 @@
     const name=p?.name||row?.[1]||String(story.headline).split(' wins ')[0];
     const award=row?.[0]||String(story.headline).split(' wins ').slice(1).join(' wins ')||'the award';
     const s=featuredStats(story),turns=[turn(0,`${name} takes home ${award}.`)];
+    for(const line of Season.honorLines(story))turns.push(turn(1,line));
     if(s?.GP>0&&numbers(s)){
       turns.push(turn(1,`Look at the season ${name} put together: ${numbers(s,true)} a game${story.statsPeriod==='finals'?' in the postseason':''}.`));
       if(rate(s,'MIN'))turns.push(turn(2,`${rate(s,'MIN')} minutes a game, too.`));
@@ -142,6 +143,7 @@
   function championshipScript(story){
     const row=story.seasonSnapshot?.rows?.[0]||[],champ=row[0]||story.relatedTeams?.[0]?.name||story.headline;
     const turns=[turn(0,`${champ} have won the championship!`)];
+    for(const line of Season.honorLines(story))turns.push(turn(1,line));
     if(row[1]&&row[1]!=='Not available')turns.push(turn(1,`They beat ${row[1]} for the title. Give them their credit. Nobody can argue with a championship.`));
     const record=teamRecords(story).find(x=>x.name===champ);
     if(record)turns.push(turn(2,`${record.r.W} wins in the regular season, and now a championship. That's the finish they wanted.`));
@@ -222,6 +224,7 @@
   }
   function baseScript(story){
     if(!story)return [];
+    if(story.type==='Season leaders')return [turn(0,sentence(story.headline)),...Season.leadersArticle(story).map((text,i)=>turn(i%3+1,text))];
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return awardScript(story);
     if(story.type==='Playoff preview'||story.eventKey?.startsWith('playoff-round-'))return playoffScript(story);
     if(story.type==='Championship review'||story.eventKey==='championship')return championshipScript(story);

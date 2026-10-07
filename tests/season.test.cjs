@@ -1,5 +1,34 @@
 const test=require('node:test'),assert=require('node:assert/strict'),S=require('../season-coverage');
+test('statistical leaders read as a connected article and combine multiple titles',()=>{
+ const story={season:1967,leagueName:'UBA',seasonSnapshot:{rows:[['PTS','Halil Simsek',3843,90],['REB','Joe Simon',1665,90],['AST','Paul Ball',1224,90],['STL','Keith Austin',207,90],['BLK','Joe Simon',297,90]]}};
+ const paragraphs=S.leadersArticle(story);assert.equal(paragraphs.length,2);
+ assert.match(paragraphs[0],/Halil Simsek.*42\.7 points per game.*Paul Ball.*13\.6 assists per game/);
+ assert.match(paragraphs[1],/Joe Simon finished atop both rebounding and shot blocking.*18\.5 rebounds.*3\.3 blocks.*Keith Austin.*2\.3 steals/);
+ assert.doesNotMatch(paragraphs.join(' '),/3843|1665|1224|207|297|led the league with/);
+});
+test('leader articles preserve shared titles, missing categories and archived fallback',()=>{
+ const rows=[['AST','Alex',40,10],['AST','Sam',20,5],['REB','Alex',50,10],['BLK','Sam',20,10]];
+ const s={seasonSnapshot:{rows}};const text=S.leadersArticle(s).join(' ');assert.match(text,/Alex and Sam shared the lead with 4\.0 assists per game/);assert.match(text,/Alex claimed the rebounding title at 5\.0/);assert.match(text,/Sam led the league in shot blocking with 2\.0/);assert.doesNotMatch(text,/undefined|NaN|points/);
+ assert.deepEqual(S.leadersArticle({seasonSnapshot:{rows:[['PTS','Alex',20,0]]},paragraphs:['Original reporting.']}),['Original reporting.']);
+});
 function fixture(){return {leagueName:'Test',leagueType:0,shortName:'T',season:{startingYear:1,currentYear:1,totalGames:2,schedule:[],playoffs:[]},awards:[{id:2,name:'MVP',enabled:true,phase:0}],teams:[1,2].map(id=>({id,name:`Team ${id}`,roster:[{id,tid:id,fn:'Player',ln:String(id),stats:[{league:0,yr:1,season:[{tid:id,GP:2,PTS:0,REB:0,AST:0,STL:0,BLK:0}]}],awards:id===1?[{id:2,league:0,yearsWon:[1]}]:[]}],season:[{yr:1,seasonStats:{GP:2,W:1,L:1},seed:id}]}))};}
+test('repeat wins exclude duplicates, future wins and other leagues, and distinguish streaks',()=>{
+ const h=S.honorHistory('Alex','the MVP award',[{league:0,yearsWon:[1965,1966,1967,1967,1970]},{league:0,yearsWon:[1966]},{league:1,yearsWon:[1964]}],0,1967);
+ assert.deepEqual(h.years,[1965,1966,1967]);assert.equal(h.count,3);assert.equal(h.streak,3);
+ assert.match(S.honorLines({seasonSnapshot:{honorHistory:h}}).join(' '),/third time.*3 straight wins/);
+ const gap=S.honorHistory('Alex','the MVP award',[{league:0,yearsWon:[1965,1967]}],0,1967);assert.doesNotMatch(S.honorLines({seasonSnapshot:{honorHistory:gap}}).join(' '),/straight|back-to-back/);
+ const two=S.honorHistory('Alex','the MVP award',[{league:0,yearsWon:[1966,1967]}],0,1967);assert.match(S.honorLines({seasonSnapshot:{honorHistory:two}}).join(' '),/second time.*back-to-back/);
+});
+test('articles and broadcasts acknowledge repeated awards, leader titles and championships',()=>{
+ const l=fixture();l.season.currentYear=1967;for(const t of l.teams){t.season[0].yr=1967;t.roster[0].stats[0].yr=1967;}
+ const p=l.teams[0].roster[0];p.stats[0].season[0].PTS=60;p.awards=[{id:2,league:0,yearsWon:[1965,1966,1967]},{id:7,league:0,yearsWon:[1966,1967]}];
+ l.teams[0].championships={league:0,yearsWon:[1965,1966,1967]};
+ const stories=S.candidates(l).map(c=>c.story),award=stories.find(s=>s.eventKey==='award-2-1'),champion=stories.find(s=>s.eventKey==='championship'),leaders=stories.find(s=>s.eventKey==='leaders');
+ assert.match(award.paragraphs[0],/MVP award for the third time.*3 straight wins/);assert.match(champion.paragraphs[0],/championship for the third time/);assert.match(leaders.paragraphs.join(' '),/scoring title for the second time.*back-to-back/);
+ const B=require('../broadcast-content');assert.match(B.script(award).map(t=>t.text).join(' '),/third time/);assert.match(B.script(champion).map(t=>t.text).join(' '),/third time/);assert.match(B.script(leaders).map(t=>t.text).join(' '),/scoring title for the second time/);
+ const old={...award,paragraphs:['Alex wins MVP.'],seasonSnapshot:{...award.seasonSnapshot}};delete old.seasonSnapshot.honorHistory;assert.match(S.articleParagraphs(old)[0],/third time/);
+ p.awards=p.awards.filter(a=>a.id!==7);p.awards.push({id:7,league:0,yearsWon:[1965,1966]});const prior=S.candidates(l).find(c=>c.story.eventKey==='leaders').story;assert.match(prior.paragraphs.join(' '),/had already won the scoring title twice before this season/);assert.doesNotMatch(prior.paragraphs.join(' '),/scoring title for the third time/);
+});
 test('regular wraps require every team completed; placeholders do not block finished records',()=>{let l=fixture();assert.ok(S.candidates(l).some(x=>x.story.eventKey==='regular-wrap'));l.teams[0].season[0].seasonStats.GP=1;assert.equal(S.candidates(l).length,0);});
 test('awards require recorded winner, correct league/year and milestone; zero stats and ties survive',()=>{const l=fixture(),c=S.candidates(l);assert.equal(c.filter(x=>x.story.type==='Award announcement').length,1);assert.match(c.find(x=>x.story.type==='Award announcement').story.paragraphs[1],/0\.0 points, 0\.0 rebounds and 0\.0 assists/);assert.equal(c.find(x=>x.story.eventKey==='leaders').story.seasonSnapshot.rows.length,10);l.teams[0].roster[0].awards[0].league=1;assert.equal(S.candidates(l).filter(x=>x.story.type==='Award announcement').length,0);});
 test('brackets exclude byes, produce active previews, and crown only confirmed winners',()=>{const l=fixture();l.season.playoffs=[{yr:1,rounds:[{series:[{topSeed:1,lowerSeed:2,firstTo:1,winner:0},{topSeed:1,lowerSeed:0,winner:1}]}]}];assert.equal(S.candidates(l).find(x=>x.story.type==='Playoff preview').story.seasonSnapshot.rows.length,1);l.season.playoffs[0].rounds[0].series.pop();l.season.playoffs[0].rounds[0].series[0].winner=1;assert.ok(S.candidates(l).some(x=>x.story.eventKey==='championship'));assert.ok(!S.candidates(l).some(x=>x.story.type==='Playoff preview'));});

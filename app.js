@@ -175,7 +175,8 @@ branch.append(summary);
         const image = figure.querySelector("img"); image.src = url; image.alt = caption;
         figure.querySelector("figcaption").textContent = caption;
       } else figure.remove();
-      for (const text of story.paragraphs) {
+      const paragraphs=window.HoopWireSeason.articleParagraphs(story);
+      for (const text of paragraphs) {
         const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);
       }
       el.feed.appendChild(node);
