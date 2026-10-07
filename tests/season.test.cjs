@@ -3,6 +3,8 @@ test('regular-season reviews list the top three team records and main rates',()=
  const names=['Pittsburgh Riveters','Los Angeles Breakers','Boston Colonials'],records=[{GP:82,W:64,L:18,PTS:8848,OPP:7462,FGM:493,FGA:1000,TPM:305,TPA:1000},{GP:82,W:64,L:18,PTS:9069,OPP:7700,FGM:489,FGA:1000,TPM:278,TPA:1000},{GP:82,W:62,L:20,PTS:8840,OPP:7905,FGM:493,FGA:1000,TPM:315,TPA:1000}];
  const story={type:'Regular-season review',season:1967,relatedTeams:names.map((name,id)=>({id,name})),seasonSnapshot:{teamRecords:records.map((seasonStats,teamId)=>({teamId,record:{seasonStats}}))}};
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
+ assert.deepEqual(groups[1].headers,['Team','Record','PPG','Opp PPG','FG%']);
+ assert.deepEqual(groups[1].rows[0],['Pittsburgh Riveters','64-18','107.9','91.0','49.3%']);
  assert.match(groups[1].items[0],/Pittsburgh Riveters: 64-18.*107\.9 PPG.*91\.0 opp. PPG.*49\.3% FG/);
  assert.match(groups[1].items[1],/Los Angeles Breakers: 64-18.*110\.6 PPG.*93\.9 opp. PPG/);
  assert.match(groups[1].items[2],/Boston Colonials: 62-20.*107\.8 PPG.*96\.4 opp. PPG/);
@@ -17,6 +19,8 @@ test('year reviews list three qualified players and three teams without narrativ
  const story=S.candidates(l).find(c=>c.story.eventKey==='regular-wrap').story,text=story.paragraphs.join(' ');
  assert.equal(story.paragraphs.length,6);assert.equal(story.editorialVersion,8);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[0].items.length,3);assert.equal(groups[1].items.length,3);
+ assert.deepEqual(groups[0].headers,['Player','PPG','RPG','APG','SPG','BPG','FG%']);
+ assert.deepEqual(groups[0].rows[0],['Player 1','40.0','10.0','8.0','2.0','1.0','50.0%']);
  assert.match(groups[0].items[0],/Player 1: 40\.0 PPG.*10\.0 RPG.*8\.0 APG.*2\.0 SPG.*1\.0 BPG.*50\.0% FG/);assert.match(groups[0].items[1],/Player 2: 30\.0 PPG/);assert.match(groups[0].items[2],/Player 3: 25\.0 PPG/);assert.doesNotMatch(text,/Player 4|MVP|turnovers|minutes|year before/);
  const archived=structuredClone(story);delete archived.seasonSnapshot.reviewPlayers;archived.paragraphs=['Old list.'];assert.match(S.seasonReviewLists(archived)[0].items[0],/MVP race data unavailable/);
 

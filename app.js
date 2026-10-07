@@ -180,17 +180,40 @@ branch.append(summary);
       for(const group of reviewLists){
         const section=document.createElement('section');section.className='season-summary';
         const heading=document.createElement('h3');heading.textContent=group.label;
-        const list=document.createElement('ul');list.className='season-summary-list';
-        for(const text of group.items){
-          const item=document.createElement('li'),separator=text.indexOf(': ');
-          if(separator>=0){
-            const name=document.createElement('strong');name.textContent=text.slice(0,separator);
-            const stats=document.createElement('span');stats.textContent=' '+text.slice(separator+2);
-            item.append(name,stats);
-          }else item.textContent=text;
-          list.appendChild(item);
+        if(Array.isArray(group.headers)&&group.headers.length&&Array.isArray(group.rows)&&group.rows.length){
+          const wrap=document.createElement('div');wrap.className='season-summary-table-wrap';
+          const table=document.createElement('table');table.className='season-summary-table';table.setAttribute('aria-label',group.label);
+          const thead=document.createElement('thead'),headRow=document.createElement('tr');
+          for(const label of group.headers){
+            const th=document.createElement('th');th.scope='col';th.textContent=label;headRow.append(th);
+          }
+          thead.append(headRow);
+          const tbody=document.createElement('tbody');
+          for(const row of group.rows){
+            const tr=document.createElement('tr');
+            row.forEach((value,index)=>{
+              const cell=document.createElement(index===0?'th':'td');
+              if(index===0)cell.scope='row';
+              else cell.dataset.label=group.headers[index]||'';
+              cell.textContent=value??'—';tr.append(cell);
+            });
+            tbody.append(tr);
+          }
+          table.append(thead,tbody);wrap.append(table);section.append(heading,wrap);
+        }else{
+          const list=document.createElement('ul');list.className='season-summary-list';
+          for(const text of group.items){
+            const item=document.createElement('li'),separator=text.indexOf(': ');
+            if(separator>=0){
+              const name=document.createElement('strong');name.textContent=text.slice(0,separator);
+              const stats=document.createElement('span');stats.textContent=' '+text.slice(separator+2);
+              item.append(name,stats);
+            }else item.textContent=text;
+            list.appendChild(item);
+          }
+          section.append(heading,list);
         }
-        section.append(heading,list);node.querySelector('.article-body').appendChild(section);
+        node.querySelector('.article-body').appendChild(section);
       }
       for (const text of reviewLists.length?[]:paragraphs) {
         const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);

@@ -71,18 +71,28 @@
   function seasonReviewLists(story){
     const teams=(story.seasonSnapshot?.teamRecords||[]).map(x=>({id:x.teamId,name:(story.relatedTeams||[]).find(t=>t.id===x.teamId)?.name,s:x.record?.seasonStats||x.record})).filter(t=>t.name&&Number.isInteger(t.s?.W)&&t.s.W>=0&&Number.isInteger(t.s?.L)&&t.s.L>=0).sort((a,b)=>b.s.W-a.s.W||a.s.L-b.s.L);
     if(!teams.length)return [];
-    const playerLines=mvpRace(story.seasonSnapshot).map(p=>{
+    const players=mvpRace(story.seasonSnapshot);
+    const playerLines=players.map(p=>{
       const values=['PTS','REB','AST','STL','BLK'].filter(k=>Number.isFinite(p.s[k])&&p.s[k]>=0).map(k=>`${(p.s[k]/p.s.GP).toFixed(1)} ${{PTS:'PPG',REB:'RPG',AST:'APG',STL:'SPG',BLK:'BPG'}[k]}`);
       const fg=p.shooting?.FG||pct(p.s,'FGM','FGA');if(/^\d+(?:\.\d+)?%$/.test(fg))values.push(`${fg} FG`);
       return `${p.name}: ${values.join(' · ')}`;
     });
-    const teamLines=teams.slice(0,3).map(t=>{
+    const playerRows=players.map(p=>{
+      const fg=p.shooting?.FG||pct(p.s,'FGM','FGA');
+      return [p.name,...['PTS','REB','AST','STL','BLK'].map(k=>avg(p.s,k)),/^\d+(?:\.\d+)?%$/.test(fg)?fg:'—'];
+    });
+    const topTeams=teams.slice(0,3);
+    const teamLines=topTeams.map(t=>{
       const values=[`${t.s.W}-${t.s.L}`];
       for(const [key,label] of [['PTS','PPG'],['OPP','opp. PPG']])if(Number.isFinite(t.s[key])&&t.s[key]>=0&&t.s.GP>0)values.push(`${(t.s[key]/t.s.GP).toFixed(1)} ${label}`);
       const fg=pct(t.s,'FGM','FGA');if(/^\d+(?:\.\d+)?%$/.test(fg))values.push(`${fg} FG`);
       return `${t.name}: ${values.join(' · ')}`;
     });
-    return [{label:'Top three players',items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},{label:'Top three teams',items:teamLines}];
+    const teamRows=topTeams.map(t=>[t.name,`${t.s.W}-${t.s.L}`,avg(t.s,'PTS'),avg(t.s,'OPP'),pct(t.s,'FGM','FGA')]);
+    return [
+      {label:'Top three players',headers:['Player','PPG','RPG','APG','SPG','BPG','FG%'],rows:playerRows,items:playerLines.length?playerLines:['MVP race data unavailable in this saved story. Reload the season’s league save.']},
+      {label:'Top three teams',headers:['Team','Record','PPG','Opp PPG','FG%'],rows:teamRows,items:teamLines}
+    ];
   }
   function seasonReviewArticle(story){
     const groups=seasonReviewLists(story);
