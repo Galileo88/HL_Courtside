@@ -224,7 +224,7 @@
     if(autoplay&&turns.length)startPlayback();
   }
   function togglePlayback(){if(running||(outroActive&&!paused)){stop(false);show();}else startPlayback();}
-  el.tvStage.addEventListener('click',event=>{if(event.target.closest('button,input,a'))return;togglePlayback();});
+  el.tvStage.addEventListener('click',event=>{if(event.composedPath().some(node=>node instanceof Element&&node.matches('button,input,a')))return;togglePlayback();});
   el.tvStage.addEventListener('keydown',event=>{if(event.target!==el.tvStage||![' ','Enter'].includes(event.key))return;event.preventDefault();togglePlayback();});
   el.tvStagePlay.addEventListener('click',startPlayback);
   el.tvLinePrevious.addEventListener('click',()=>{stop();completed=false;needsIntro=false;line=Math.max(0,line-1);show();});
@@ -235,7 +235,8 @@
     el.tvMute.replaceChildren(icon);el.tvMute.setAttribute('aria-label',label);el.tvMute.title=label;
     el.tvMute.setAttribute('aria-pressed',String(!el.tvVoice.checked));
   }
-  el.tvMute.addEventListener('click',()=>{
+  el.tvMute.addEventListener('click',event=>{
+    event.stopPropagation();
     el.tvVoice.checked=!el.tvVoice.checked;
     try {localStorage.setItem('hoopwire.voices.muted',String(!el.tvVoice.checked));}catch{}
     if(audio)audio.muted=!el.tvVoice.checked;

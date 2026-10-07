@@ -51,6 +51,11 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>testAudio.playbackRate),.9);assert.equal(await page.evaluate(()=>testAudio.preservesPitch),true);
   await page.evaluate(()=>{window.speechAudio=testAudio;speechAudio.currentTime=1.25;});await page.locator('#tvStage').click({position:{x:100,y:100}});assert.equal(await page.evaluate(()=>speechAudio.paused),true);
   await page.locator('#tvStagePlay').click();assert.equal(await page.evaluate(()=>testAudio===speechAudio&&speechAudio.currentTime===1.25&&!speechAudio.paused),true);
+  await page.locator('#tvMute span').click();assert.equal(await page.evaluate(()=>speechAudio.muted&&!speechAudio.paused),true);assert.equal(await page.locator('#tvStagePlay').isVisible(),false);
+  await page.locator('#tvMute span').click();assert.equal(await page.evaluate(()=>!speechAudio.muted&&!speechAudio.paused),true);assert.equal(await page.locator('#tvStagePlay').isVisible(),false);
+  await page.locator('#tvStage').click({position:{x:100,y:100}});await page.locator('#tvMute span').click();assert.equal(await page.evaluate(()=>speechAudio.muted&&speechAudio.paused),true);assert.equal(await page.locator('#tvStagePlay').isVisible(),true);
+  await page.locator('#tvMute span').click();assert.equal(await page.evaluate(()=>!speechAudio.muted&&speechAudio.paused),true);assert.equal(await page.locator('#tvStagePlay').isVisible(),true);
+  assert.equal(await page.locator('#tvMute').evaluate(e=>getComputedStyle(e).fontSize),'22px');assert.equal(await page.locator('#tvMute').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');assert.deepEqual(errors,[]);
   console.log('Dialogue browser checks passed: verified player names, familiar stats, per-game season discussion, four-host transcript integration, no page errors, and archived prose preserved on reload.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
