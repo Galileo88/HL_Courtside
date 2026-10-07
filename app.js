@@ -101,6 +101,12 @@
   }
   async function readArchive() {
     const [stories,snapshots,leagues] = await Promise.all([archive.all("stories"),archive.all("snapshots"),archive.all("leagues")]);
+    const refreshed=await window.HoopWireScenes.refreshFraming(stories);
+    if(refreshed.length){
+      await archive.write({stories:refreshed});
+      const replacements=new Map(refreshed.map(s=>[s.id,s]));
+      for(let i=0;i<stories.length;i++)stories[i]=replacements.get(stories[i].id)||stories[i];
+    }
     state.stories = new Map(stories.map(s => [s.id,s]));
     state.snapshots = new Map(snapshots.map(s => [s.id,s]));
     state.leagues = leagues;

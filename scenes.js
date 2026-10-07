@@ -21,7 +21,13 @@
   function sceneKind(id, verified) {
     return verified ? window.HoopWireCore.choose(id,['action','interview','action'],'scene-kind') : 'action';
   }
-  const actionVariants=['drive','close-up','dunk','three-point','pass','pass-close-up'];
+  const actionVariants=['drive','close-up','dunk','three-point','pass','pass-close-up','drive-tight','shot-close-up','pass-tight','dunk-tight'];
+  const interviewVariants=['group','player-close-up','player-profile','player-coach'];
+  function interviewDesign(seed,variant){
+    variant=interviewVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,interviewVariants,'interview-framing');
+    const cameras={group:[0,0,768,432],'player-close-up':[224,126,320,180],'player-profile':[260,126,320,180],'player-coach':[128,104,576,324]};
+    return {variant,camera:[...cameras[variant]]};
+  }
   function actionDesign(seed, variant, side) {
     variant=actionVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,actionVariants,'action-variant');
     const layouts={
@@ -30,7 +36,11 @@
       dunk:{label:'Dunk approach',pose:'dunking',frame:0,camera:[688,148,192,108],subject:[778,216],groundFoot:276,support:[[714,228],[734,254],[720,204],[813,249],[847,247]]},
       'three-point':{label:'Three-point shot',pose:'shooting',frame:4,camera:[576,158,256,144],subject:[610,250],groundFoot:256,flightBall:[636,204],support:[[717,205],[738,286],[662,251],[762,249],[791,290]]},
       pass:{label:'Passing to a teammate',pose:'passing',frame:2,camera:[576,158,256,144],subject:[665,254],flightBall:[694,236],support:[[760,264],[702,201],[713,216],[780,283],[791,208]]},
-      'pass-close-up':{label:'Close-up passing',pose:'passing',frame:2,camera:[620,172,192,108],subject:[665,254],flightBall:[694,236],support:[[760,264],[702,201],[713,216],[787,273],[791,208]]}
+      'pass-close-up':{label:'Close-up passing',pose:'passing',frame:2,camera:[620,172,192,108],subject:[665,254],flightBall:[694,236],support:[[760,264],[702,201],[713,216],[787,273],[791,208]]},
+      'drive-tight':{label:'Player close-up driving',pose:'dribbling',frame:1,camera:[647,222,96,54],subject:[695,270],support:[[615,192],[641,291],[684,185],[762,249],[783,299]]},
+      'shot-close-up':{label:'Player close-up shooting',pose:'shooting',frame:4,camera:[566,194,112,63],subject:[610,250],groundFoot:256,flightBall:[636,204],support:[[717,205],[738,286],[698,251],[762,249],[791,290]]},
+      'pass-tight':{label:'Player close-up passing',pose:'passing',frame:2,camera:[617,206,96,54],subject:[665,254],flightBall:[694,236],support:[[760,264],[702,191],[743,216],[787,273],[791,208]]},
+      'dunk-tight':{label:'Player close-up dunking',pose:'dunking',frame:0,camera:[730,168,96,54],subject:[778,216],groundFoot:276,support:[[714,228],[734,254],[720,204],[813,249],[847,247]]}
     };
     side=['left','right'].includes(side)?side:window.HoopWireCore.choose(seed,['left','right'],'court-side');
     const action={variant,side,...structuredClone(layouts[variant])};
@@ -46,12 +56,12 @@
     const saved = structuredClone(scene);
     const enriched = context ? inputs(context,story.id) : {};
     const action=actionDesign(story.id);
-    return {...saved,version:6,seed:story.id,attackDirection:action.side,action,
+    return {...saved,version:10,seed:story.id,attackDirection:action.side,action,interview:interviewDesign(story.id,saved.interview?.variant),
       ball:saved.ball || enriched.ball || {pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'},
       teammates:saved.teammates || enriched.teammates || [],
       opponents:saved.opponents || enriched.opponents || (saved.opponentPlayer ? [saved.opponentPlayer] : []),
       coach:saved.coach || enriched.coach || story.coach || null,
-      kind:sceneKind(story.id,!!story.playerStats),
+      kind:saved.kind||sceneKind(story.id,!!story.playerStats),
       pose:action.pose};
   }
   function inputs(ctx, id) {
@@ -62,7 +72,7 @@
     const featured = ctx.potg || ctx.scenePlayer;
     const teammates = (liveTeam?.roster || []).filter(p => p.id !== featured?.id).sort((a,b) => a.id-b.id).slice(0,2).map(playerSnapshot);
     const action=actionDesign(id);
-    return {version:6,seed:id,attackDirection:action.side,action,ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
+    return {version:10,seed:id,attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
       pose:action.pose,
       player:playerSnapshot(ctx.potg || ctx.scenePlayer),team:teamSnapshot(team),opponent:teamSnapshot(opponent),
       opponentPlayer:playerSnapshot(opponent?.roster?.[0]),
@@ -84,15 +94,21 @@
     let description;
     if(scene.kind==='interview'){
       const participants=[name];
-      if(scene.teammates?.[0])participants.push(C.playerDisplay(scene.teammates[0]));
-      if(scene.coach)participants.push(`Coach ${C.playerDisplay(scene.coach)}`);
-      else if(scene.teammates?.[1])participants.push(C.playerDisplay(scene.teammates[1]));
+      const variant=scene.interview?.variant||'group';
+      if(variant==='group'){
+        if(scene.teammates?.[0])participants.push(C.playerDisplay(scene.teammates[0]));
+        if(scene.coach)participants.push(`Coach ${C.playerDisplay(scene.coach)}`);
+        else if(scene.teammates?.[1])participants.push(C.playerDisplay(scene.teammates[1]));
+      }else if(variant==='player-coach'){
+        if(scene.coach)participants.push(`Coach ${C.playerDisplay(scene.coach)}`);
+        else if(scene.teammates?.[0])participants.push(C.playerDisplay(scene.teammates[0]));
+      }
       const group=participants.length>1?participants.slice(0,-1).join(', ')+' and '+participants.at(-1):name;
       const plural=participants.length>1;
       description=story.kind==='season'?`${group} ${plural?'discuss':'discusses'} ${story.type==='Award announcement'?'the award announcement':'the season'}.`:
         `${group} ${plural?'answer':'answers'} postgame questions${result==='win'?' after a win':result==='loss'?' after a loss':result==='tie'?' after a tied game':''}.`;
     }else{
-      const actions={drive:'drives to the basket','close-up':'handles the ball',dunk:'goes up for a dunk','three-point':'takes a three-point shot',pass:'passes to a teammate','pass-close-up':'passes to a teammate'};
+      const actions={drive:'drives to the basket','close-up':'handles the ball',dunk:'goes up for a dunk','three-point':'takes a three-point shot',pass:'passes to a teammate','pass-close-up':'passes to a teammate','drive-tight':'drives to the basket','shot-close-up':'takes a three-point shot','pass-tight':'passes to a teammate','dunk-tight':'goes up for a dunk'};
       description=`${name} ${actions[scene.action?.variant]||'in action'} against ${opponent}.`;
     }
     const matchup=teams.length===2?`${teams[0].name} vs ${teams[1].name}`:scene.team&&scene.opponent?`${C.teamDisplay(scene.team)} vs ${C.teamDisplay(scene.opponent)}`:null;
@@ -112,21 +128,27 @@
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
     let customCourt=null;
     if (scene.kind === 'interview') {
-      ctx.fillStyle='#162b49';ctx.fillRect(0,0,768,432);
-      ctx.save();ctx.scale(2,2);ctx.fillStyle=ctx.createPattern(art['press-background'],'repeat');ctx.fillRect(0,0,384,216);ctx.restore();
-      const left = scene.teammates?.[0], right = scene.coach || scene.teammates?.[1];
-      const group = !!(left || right);
-      if (group) {
-        player(ctx,left,scene.team,scene.uniformIndex,56,104,192);
-        player(ctx,scene.player,scene.team,scene.uniformIndex,288,104,192);
-        player(ctx,right,scene.team,scene.uniformIndex,520,104,192);
-      } else player(ctx,scene.player,scene.team,scene.uniformIndex,256,76,256);
-      // Account for the source table's 11-pixel gap before its surface.
-      // Align that surface with the hips for both solo and group compositions.
-      const tableY = group ? 218 : 250;
-      // Keep props in the editable table asset so custom art displays intact.
-      ctx.drawImage(art['press-table'],0,tableY,768,192);
-      if (group) ctx.drawImage(art['press-table'],0,31,128,1,0,410,768,22);
+      const stage=document.createElement('canvas');stage.width=768;stage.height=432;
+      const press=stage.getContext('2d');press.imageSmoothingEnabled=false;
+      press.fillStyle='#162b49';press.fillRect(0,0,768,432);
+      press.save();press.scale(2,2);press.fillStyle=press.createPattern(art['press-background'],'repeat');press.fillRect(0,0,384,216);press.restore();
+      const design=interviewDesign(scene.seed,scene.interview?.variant||'group'),variant=design.variant;
+      const left=scene.teammates?.[0],right=scene.coach||scene.teammates?.[1];
+      if(variant==='group'){
+        player(press,left,scene.team,scene.uniformIndex,56,104,192);
+        player(press,scene.player,scene.team,scene.uniformIndex,288,104,192);
+        player(press,right,scene.team,scene.uniformIndex,520,104,192);
+      }else if(variant==='player-coach'&&(scene.coach||left)){
+        player(press,scene.player,scene.team,scene.uniformIndex,152,104,192);
+        player(press,scene.coach||left,scene.team,scene.uniformIndex,424,104,192);
+      }else{
+        player(press,scene.player,scene.team,scene.uniformIndex,288,104,192,'idle',variant==='player-profile'?1:0,variant==='player-profile'?'right':'left');
+      }
+      // Build every participant and prop at the same scale, then move the camera.
+      // This keeps the desk, microphones and backdrop in proportion to the player.
+      press.drawImage(art['press-table'],0,218,768,192);
+      press.drawImage(art['press-table'],0,31,128,1,0,410,768,22);
+      ctx.drawImage(stage,...design.camera,0,0,768,432);
     } else {
       const floor=await window.HoopWireCourt.render(scene.home || scene.team,{includeHoops:false});
       customCourt=floor.customCourt;
@@ -163,5 +185,18 @@
     return {imageBlob:blob,sceneInputs:scene,customCourt,
       imageAlt:caption(scene),imageCaption:caption(scene)};
   }
-  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants,caption};
+  async function refreshFraming(stories){
+    const pending=stories.filter(s=>(s.sceneInputs?.kind==='interview'&&(s.sceneInputs.version||0)<9)||(s.sceneInputs?.kind==='action'&&(s.sceneInputs.version||0)<10)),updated=[];
+    for(let i=0;i<pending.length;i+=4){
+      updated.push(...await Promise.all(pending.slice(i,i+4).map(async story=>{
+        const scene=upgrade(story.sceneInputs,story);
+        const rendered=await render(scene);
+        // Retain a saved custom court if its source is unavailable on this visit.
+        if(story.imageBlob&&story.customCourt?.status==='loaded'&&rendered.customCourt?.status==='unavailable')return story;
+        return {...story,...rendered};
+      })));
+    }
+    return updated;
+  }
+  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants,interviewDesign,interviewVariants,refreshFraming,caption};
 })();

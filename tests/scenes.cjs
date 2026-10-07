@@ -52,7 +52,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
    const palette=HoopWirePlayer.ballPalette({pri:'12AB34',sec:'56CD78',ter:'90EF12',outline:'231045'});
    return {outputs,palette,selected:HoopWireScenes.actionDesign('same-seed'),repeat:HoopWireScenes.actionDesign('same-seed')};
   },action.sceneInputs);
-  assert.equal(new Set(variants.outputs.map(v=>v.hash)).size,6);assert.ok(variants.outputs.every(v=>v.identical&&v.bytes>0));
+  assert.equal(new Set(variants.outputs.map(v=>v.hash)).size,10);assert.ok(variants.outputs.every(v=>v.identical&&v.bytes>0));
   assert.deepEqual(variants.selected,variants.repeat);
   const sides=await page.evaluate(async saved=>{
    const chosen=Array.from({length:100},(_,i)=>HoopWireScenes.actionDesign(`story-${i}`).side),pairs=[];
@@ -99,8 +99,8 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   const sameHosts=await page.evaluate(()=>HoopWireTV.inputs({leagueName:'Other',media:[{fn:'Different',ln:'Host',appearance:{}}],teams:[]}).announcers);
   assert.deepEqual(sameHosts,studio.inputs.announcers);
   const card = s => page.locator('.article-card').filter({has:page.getByRole('heading',{name:s.headline,exact:true})});
-  await card(action).screenshot({path:path.join(root,'artifacts/custom-action.png')});
-  await card(interview).screenshot({path:path.join(root,'artifacts/group-interview.png')});
+  await page.evaluate(id=>location.hash='#story/'+encodeURIComponent(id),action.id);await card(action).screenshot({path:path.join(root,'artifacts/custom-action.png')});
+  await page.evaluate(id=>location.hash='#story/'+encodeURIComponent(id),interview.id);await card(interview).screenshot({path:path.join(root,'artifacts/group-interview.png')});
   // Refresh an older scene without changing its text, statistics, or creation date.
   const original=stories[0];
   await page.evaluate(async id=>{const a=await new HoopWireArchive().open();const s=await a.get('stories',id);s.sceneInputs.version=1;delete s.sceneInputs.teammates;delete s.sceneInputs.coach;await a.write({stories:[s]});a.db.close();},original.id);
@@ -109,7 +109,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   assert.match(await page.locator('#status').textContent(),/^Refreshed/);
   const refreshed=(await getStories(page)).find(s=>s.id===original.id);
   assert.deepEqual(refreshed.paragraphs,original.paragraphs);assert.deepEqual(refreshed.playerStats,original.playerStats);assert.equal(refreshed.createdAt,original.createdAt);
-  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,6);
+  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,10);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tv').screenshot({path:path.join(root,'artifacts/tv-with-ads.png')});
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(root,'artifacts/tv-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -134,7 +134,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
     return result;
    },loaded[0].sceneInputs);
    for(const preview of previews)fs.writeFileSync(path.join(root,`artifacts/action-${preview.variant}.png`),Buffer.from(preview.data.split(',')[1],'base64'));
-   const group=stories.find(s=>s.sceneInputs.kind==='interview');await card(group).screenshot({path:path.join(root,'artifacts/uba-group-interview.png')});
+   const group=stories.find(s=>s.sceneInputs.kind==='interview');await page.evaluate(id=>location.hash='#story/'+encodeURIComponent(id),group.id);await card(group).screenshot({path:path.join(root,'artifacts/uba-group-interview.png')});
    await p.locator('.nav a[href="#tv"]').click();await p.locator('#tv').screenshot({path:path.join(root,'artifacts/uba-tv.png')});
    const adsStatus=await p.evaluate(async()=>{const a=await new HoopWireArchive().open();const l=(await a.all('leagues'))[0];a.db.close();const s=Object.values(l.studios)[0];return `${s.adsStatus} (${s.adsWidth}x${s.adsHeight})`;});
    console.log(`Real custom save: ${loaded.length}/${actions.length} action scenes loaded custom courts; studio ads ${adsStatus}; ${stories.length} archived recaps.`);
