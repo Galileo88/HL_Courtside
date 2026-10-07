@@ -136,14 +136,16 @@
       }
       if(s.GP>0&&Number.isFinite(s.PTS)&&s.PTS>=0&&Number.isFinite(s.OPP)&&s.OPP>=0){
         const margin=(s.PTS-s.OPP)/s.GP;
-        text+=` They averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')}. ${margin>0?(winning>.5?'The scoring backs up the winning record:':'There is something to build on despite the record:')+` they outscored opponents by ${margin.toFixed(1)} a game.`:margin<0?(winning>.5?'The concern is the scoring gap. Despite the wins,':'The problem shows up on the scoreboard:')+` they were outscored by ${Math.abs(margin).toFixed(1)} a game.`:'Scoring and points allowed finished even. There was little cushion in those numbers.'}`;
+        text+=` They averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')}. ${margin>0?(winning>.5?'The scoring backs up the winning record:':'There is something to build on despite the record:')+` on average, they beat teams by ${margin.toFixed(1)} points a game.`:margin<0?(winning>.5?'The concern is the scoring gap. Despite the wins,':'The problem shows up on the scoreboard:')+` on average, they lost by ${Math.abs(margin).toFixed(1)} points a game.`:'Scoring and points allowed finished even. There was little cushion in those numbers.'}`;
       }
       paragraphs.push(text);
     }
     for(const [i,p] of players.entries()){
       const s=p.s,secondary=['AST','REB'].filter(k=>Number.isFinite(s[k])&&s[k]>0).sort((a,b)=>s[b]-s[a])[0];
+      const awardName=story.seasonSnapshot?.mvpAward?.name|| (story.seasonSnapshot?.leagueType===1?'Player of the Year':'Most Valuable Player');
       const won=(p.mvpWins||[]).includes(story.seasonSnapshot?.year);
-      let text=`${won?`${p.name} won the ${story.seasonSnapshot?.mvpAward?.name||'MVP award'}`:`${p.name} ${i===0?'leads':'is part of'} the MVP race`}, averaging ${avg(s,'PTS')} points${secondary?` and ${avg(s,secondary)} ${secondary==='AST'?'assists':'rebounds'}`:''}.`;
+      const standing=won?`${p.name} won the ${awardName}`:i===0?`The award calculation puts ${p.name} first for the ${awardName}`:`${p.name} ranks among the three strongest candidates for the ${awardName}`;
+      let text=`${standing}, averaging ${avg(s,'PTS')} points${secondary?` and ${avg(s,secondary)} ${secondary==='AST'?'assists':'rebounds'}`:''}.`;
       if(s.FGA>0&&s.FGM>=0&&s.FGM<=s.FGA){
         text+=` ${pct(s,'FGM','FGA')} shooting from the field ${s.FGM/s.FGA>=.5?'strengthens that case.':s.FGM/s.FGA<.4?'is the weakness in that season. The scoring was there; the efficiency was not.':'leaves room for a better shooting season.'}`;
       }

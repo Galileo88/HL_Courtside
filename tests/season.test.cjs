@@ -35,6 +35,14 @@ test('MVP race uses configured weights, eligibility, total calculation and recor
  delete snapshot.mvpAward.c;snapshot.mvpAward.calculation=1;snapshot.reviewPlayers[0].s.GP=8;snapshot.reviewPlayers[1].s.PTS=0;snapshot.reviewPlayers[1].s.REB=100;assert.equal(S.mvpRace(snapshot)[0].name,'Scorer');
  snapshot.mvpAward.calculation=2;assert.deepEqual(S.mvpRace(snapshot),[]);
 });
+test('season review names the configured pro or college award and gives each candidate a real standing',()=>{
+ const base={season:1967,seasonSnapshot:{leagueType:0,teamRecords:[{teamId:1,record:{W:60,L:20}}],mvpAward:{name:'Most Valuable Player'},reviewPlayers:[
+  {name:'Alex',mvpWins:[],s:{GP:80,PTS:2000,REB:500,AST:400,FGM:700,FGA:1400}},
+  {name:'Sam',mvpWins:[],s:{GP:80,PTS:1900,REB:900,AST:200,FGM:650,FGA:1300}},
+  {name:'Pat',mvpWins:[],s:{GP:80,PTS:1800,REB:400,AST:800,FGM:600,FGA:1200}}],mvpAward:{enabled:true,phase:0,calculation:0,minGames:0,PTS:1},scheduledGames:80},relatedTeams:[{id:1,name:'Stars'}]};
+ const text=S.seasonReviewArticle(base).join(' ');assert.match(text,/award calculation puts Alex first for the Most Valuable Player/);assert.match(text,/ranks among the three strongest candidates for the Most Valuable Player/);
+ base.seasonSnapshot.leagueType=1;delete base.seasonSnapshot.mvpAward.name;assert.match(S.seasonReviewArticle(base).join(' '),/Player of the Year/);assert.doesNotMatch(S.seasonReviewArticle(base).join(' '),/MVP race|MVP data unavailable/);
+});
 test('season reviews avoid inventing shooting and comparisons when records are incomplete',()=>{
  const story={type:'Regular-season review',relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{teamRecords:[{teamId:1,record:{W:3,L:1}},{teamId:2,record:{W:2,L:2}}]}};
  const text=S.seasonReviewArticle(story).join(' ');assert.match(text,/Stars.*3-1.*Moons.*2-2/);assert.doesNotMatch(text,/points|shoot|undefined|NaN/);
