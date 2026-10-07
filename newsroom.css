@@ -14,7 +14,7 @@
 .wire-heading > a { position:absolute; right:0; top:12px; }
 .wire-opening { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:24px; align-items:start; }
 .wire-main { min-width:0; grid-column:1; grid-row:1; }
-.wire-opening > .wire-headlines { grid-column:2; grid-row:1 / span 2; }
+.wire-opening > .wire-sidebar { grid-column:2; grid-row:1 / span 2; }
 .wire-opening > .wire-supporting { grid-column:1; grid-row:2; margin-top:0; }
 .wire-card { display:block; min-width:0; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:4px; overflow:hidden; text-decoration:none; }
 .wire-card:hover h2,.wire-card:hover h3,.wire-headlines a:hover strong { color:#79fff4; }
@@ -41,7 +41,7 @@
 .wire-tv h2 { font-size:28px; margin:10px 0; }
 .wire-tv p { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.5; }
 .front-page :is(a,button):focus-visible,.wire-scores:focus-visible,.article-back:focus-visible { outline:3px solid #79fff4; outline-offset:3px; }
-@media(max-width:1099px) { .wire-opening { grid-template-columns:1fr; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; }.wire-opening > :is(.wire-main,.wire-headlines,.wire-supporting) { grid-column:auto; grid-row:auto; } }
+@media(max-width:1099px) { .wire-opening { grid-template-columns:1fr; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; }.wire-opening > :is(.wire-main,.wire-sidebar,.wire-supporting) { grid-column:auto; grid-row:auto; } }
 @media(max-width:699px) { .wire-supporting,.wire-story-grid,.wire-tv { grid-template-columns:1fr; }.wire-heading { padding-right:0; }.wire-heading > a { position:static; display:inline-block; margin-top:10px; }.wire-heading h1 { font-size:28px; }.wire-card h2 { font-size:26px; }.wire-card-body { padding:16px; }.wire-tv { padding:16px; } }
 
 
@@ -110,3 +110,30 @@
   .wire-tv-air-row button { width:auto; padding:12px 14px; font-size:12px; }
   .wire-tv-timezone { display:block; font-size:10px; }
 }
+
+/* Local sponsor creative fills the desktop headline rail. */
+.wire-sidebar { min-width:0; display:grid; gap:20px; }
+.wire-promos { display:grid; gap:20px; }
+.wire-ad-label { display:block; font:9px Arial,Helvetica,sans-serif; color:#abc0ce; text-transform:uppercase; letter-spacing:1px; }
+.wire-suit-ad,.wire-drink-ad { overflow:hidden; text-align:center; background:#171d20; color:#ece3cf; border:1px solid #82734e; padding-top:10px; }
+.wire-suit-brand { font:26px Georgia,'Times New Roman',serif; letter-spacing:4px; margin:16px 0 4px; }
+.wire-suit-collection { font:9px Arial,Helvetica,sans-serif; letter-spacing:2px; color:#cfbc8b; }
+.wire-product-art { display:block; width:100%; height:auto; image-rendering:pixelated; margin-top:12px; }
+.wire-suit-tagline { font:italic 20px Georgia,'Times New Roman',serif; margin:14px 8px 18px; }
+.wire-tv-ad { display:flex; flex-direction:column; align-items:center; gap:12px; padding:12px 20px 20px; border:1px solid var(--line); background:linear-gradient(125deg,#08131e 82%,#771323 82%); }
+.wire-tv-ad-show { color:#bdcfe4; font-size:10px; font-weight:800; letter-spacing:2px; }
+.wire-tv-ad img { display:block; width:100%; height:auto; }
+.wire-tv-ad-time { font-size:19px; }
+.wire-tv-ad button { min-height:44px; width:100%; }
+@media(max-width:1099px) {
+  .wire-sidebar { display:contents; }
+  .wire-promos { grid-row:4; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+}
+@media(max-width:699px) {
+  .wire-promos { margin:0 16px; grid-template-columns:1fr; }
+  .wire-tv-ad { display:none; }
+}
+
+.wire-drink-ad { background:#0b3245; border-color:#26869b; color:#f2ffff; }
+.wire-drink-brand { font:italic 900 31px Arial,Helvetica,sans-serif; letter-spacing:1px; margin:16px 0 4px; }
+.wire-drink-ad .wire-suit-collection { color:#7eefff; }

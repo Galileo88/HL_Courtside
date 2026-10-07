@@ -13,7 +13,7 @@
   function inputs(league) {
     const announcers = Array.from({length:4},(_,i) => defaults(i));
     const adTeam = (league.teams || []).find(t => t.frontOffice?.adsURL);
-    return {version:5,adSlots:randomAds(),leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
+    return {version:6,adSlots:randomAds(),leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
       announcers,adsURL:adTeam?.frontOffice?.adsURL || null,adSize:adTeam?.frontOffice?.adSize || 256,
       hostSource:"hoopwire"};
   }
@@ -21,7 +21,7 @@
     return Array.from({length:4},()=>Math.floor(Math.random()*7));
   }
   function render(input) {
-    input={...input,version:5,adSlots:input.adSlots || randomAds()};
+    input={...input,version:6,adSlots:input.adSlots || randomAds()};
     const key = JSON.stringify(input);
     if (!cache.has(key)) cache.set(key,compose(input).catch(error => {cache.delete(key);throw error;}));
     return cache.get(key);

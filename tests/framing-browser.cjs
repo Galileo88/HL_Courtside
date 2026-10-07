@@ -56,6 +56,6 @@ const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+new URL
  await page.reload();await ready();
  const backup=await page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{return JSON.parse(JSON.stringify(await a.exportData()));}finally{a.db.close();}});assert.ok(backup.stories.some(s=>s.sceneInputs?.pressLogoData?.startsWith('data:image/png;base64,')));assert.ok(backup.stories.some(s=>s.sceneInputs?.pressLeagueLogoData?.startsWith('data:image/png;base64,')));
  const after=await page.evaluate(async ids=>{const a=await new HoopWireArchive().open();try{return await Promise.all(ids.map(id=>a.get('stories',id)));}finally{a.db.close();}},before.map(s=>s.id));
- for(let i=0;i<before.length;i++){assert.equal(after[i].sceneInputs.version,13);assert.deepEqual(after[i].paragraphs,before[i].paragraphs);assert.deepEqual(after[i].playerStats,before[i].stats);assert.equal(after[i].createdAt,before[i].createdAt);}
+ for(let i=0;i<before.length;i++){assert.equal(after[i].sceneInputs.version,14);assert.deepEqual(after[i].paragraphs,before[i].paragraphs);assert.deepEqual(after[i].playerStats,before[i].stats);assert.equal(after[i].createdAt,before[i].createdAt);}
  assert.deepEqual(errors,[]);console.log('Framing checks passed: four interview views, four player action close-ups, distinct images and archived image upgrades preserving stories and stats.');
 }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e.stack);process.exitCode=1;});

@@ -56,7 +56,7 @@
     const saved = structuredClone(scene);
     const enriched = context ? inputs(context,story.id) : {};
     const action=actionDesign(story.id);
-    return {...saved,version:13,seed:story.id,attackDirection:action.side,action,interview:interviewDesign(story.id,saved.interview?.variant),
+    return {...saved,version:14,seed:story.id,attackDirection:action.side,action,interview:interviewDesign(story.id,saved.interview?.variant),
       ball:saved.ball || enriched.ball || {pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'},
       teammates:saved.teammates || enriched.teammates || [],
       opponents:saved.opponents || enriched.opponents || (saved.opponentPlayer ? [saved.opponentPlayer] : []),
@@ -72,7 +72,7 @@
     const featured = ctx.potg || ctx.scenePlayer;
     const teammates = (liveTeam?.roster || []).filter(p => p.id !== featured?.id).sort((a,b) => a.id-b.id).slice(0,2).map(playerSnapshot);
     const action=actionDesign(id);
-    return {version:13,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
+    return {version:14,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
       pose:action.pose,
       player:playerSnapshot(ctx.potg || ctx.scenePlayer),team:teamSnapshot(team),opponent:teamSnapshot(opponent),
       opponentPlayer:playerSnapshot(opponent?.roster?.[0]),
@@ -187,7 +187,7 @@
       imageAlt:caption(scene),imageCaption:caption(scene)};
   }
   async function refreshFraming(stories,leagues=[]){
-    const pending=stories.filter(s=>(s.sceneInputs?.kind==='interview'&&((s.sceneInputs.version||0)<13||leagues.some(l=>l.id===s.fingerprint&&l.logoURL&&l.logoURL!==s.sceneInputs.league?.logoURL)))||(s.sceneInputs?.kind==='action'&&(s.sceneInputs.version||0)<10)),updated=[];
+    const pending=stories.filter(s=>(s.sceneInputs?.kind==='interview'&&((s.sceneInputs.version||0)<14||leagues.some(l=>l.id===s.fingerprint&&l.logoURL&&l.logoURL!==s.sceneInputs.league?.logoURL)))||(s.sceneInputs?.kind==='action'&&(s.sceneInputs.version||0)<10)),updated=[];
     for(let i=0;i<pending.length;i+=4){
       updated.push(...await Promise.all(pending.slice(i,i+4).map(async story=>{
         const scene=upgrade(story.sceneInputs,story),league=leagues.find(l=>l.id===story.fingerprint);

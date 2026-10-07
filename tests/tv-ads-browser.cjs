@@ -11,6 +11,12 @@ const server=http.createServer((req,res)=>{
  try{
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const url=`http://127.0.0.1:${server.address().port}`;await page.goto(url);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
+  const suitPixels=await page.evaluate(async()=>{
+    await HoopWirePlayer.ready();const person=HoopWireTV.inputs({teams:[]}).announcers[0];
+    person.suits=[{jacketC:'225588',shirtC:'FFFFFF',tieC:'FF0000',pantC:'336699',shoeC:'000000'}];
+    return ['left','right'].map(facing=>{const canvas=document.createElement('canvas');canvas.width=32;canvas.height=42;HoopWirePlayer.draw(canvas,person,null,0,0,'idle',facing);const ctx=canvas.getContext('2d');return [[15,25],[14,24],[13,24],[13,30]].map(([x,y])=>Array.from(ctx.getImageData(facing==='right'?31-x:x,y,1,1).data));});
+  });
+  for(const pixels of suitPixels)assert.deepEqual(pixels,[[255,0,0,255],[255,255,255,255],[24,59,95,255],[51,102,153,255]],'Native tie, shirt, jacket and pants masks must stay distinct, including mirrored models');
   const fixtures=await page.evaluate(()=>Object.fromEntries(['horizontal','vertical'].map(layout=>{
    const c=document.createElement('canvas');c.width=layout==='horizontal'?2048:256;c.height=256;const ctx=c.getContext('2d');
    if(layout==='horizontal')c.height=64;
@@ -30,10 +36,10 @@ const server=http.createServer((req,res)=>{
     }
     return {pixels,behind,status:studio.adsStatus,version:studio.inputs.version,random:HoopWireTV.inputs({teams:[]}).adSlots};
    },layout);
-   assert.equal(result.status,'loaded');assert.equal(result.version,5);assert.equal(result.random.length,4);assert.ok(result.random.every(n=>Number.isInteger(n)&&n>=0&&n<7));const colors=[[215,25,32,255],[18,107,210,255],[231,168,33,255],[197,75,153,255]];result.pixels.forEach((pixels,i)=>pixels.forEach(pixel=>assert.deepEqual(pixel,colors[i])));result.behind.forEach((pixel,i)=>assert.deepEqual(pixel,colors[i]));
+   assert.equal(result.status,'loaded');assert.equal(result.version,6);assert.equal(result.random.length,4);assert.ok(result.random.every(n=>Number.isInteger(n)&&n>=0&&n<7));const colors=[[215,25,32,255],[18,107,210,255],[231,168,33,255],[197,75,153,255]];result.pixels.forEach((pixels,i)=>pixels.forEach(pixel=>assert.deepEqual(pixel,colors[i])));result.behind.forEach((pixel,i)=>assert.deepEqual(pixel,colors[i]));
   }
   await page.locator('#sponsorPreview').screenshot({path:path.join(root,'artifacts/tv-desk-ads.png')});
-  await page.reload();await page.waitForFunction(async()=>{const a=await new HoopWireArchive().open();try{return (await a.get('leagues','sponsor-upgrade'))?.studios?.[1]?.inputs?.version===5;}finally{a.db.close();}});
+  await page.reload();await page.waitForFunction(async()=>{const a=await new HoopWireArchive().open();try{return (await a.get('leagues','sponsor-upgrade'))?.studios?.[1]?.inputs?.version===6;}finally{a.db.close();}});
   assert.deepEqual(errors,[]);console.log('Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop and saved-studio upgrade.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});

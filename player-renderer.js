@@ -1,10 +1,10 @@
 /* Static player renderer adapted from HoopLeagueStudio's game-asset preview. */
 (()=>{
  const root='./player-assets/';
- const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','jersey-numbers'];
+ const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers'];
  const images={};
  const flightBall=new Image();flightBall.src='./scene-assets/ball-seams.png';images['flight-ball']=flightBall;
- for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','jersey-numbers'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
+ for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
  const hex=(value,fallback)=>/^#?[\da-f]{6}$/i.test(String(value||''))?'#'+String(value).replace('#',''):fallback;
  const color=(value,team,fallback)=>{
   const slot={PRI:0,SEC:1,TER:2}[String(value||'').toUpperCase()];
@@ -38,7 +38,8 @@
  }
  const shortsStarts=[21,22,23,22];
  function body(ctx,frame,player,team,uniformIndex,pose='idle',ball={}){
-  const image=(player.isCoach||player.wearsSuit)&&pose==='idle'?images['staff-idle']:images[pose];if(!image.complete||!image.naturalWidth)return null;
+  const nativeSuit=(player.isCoach||player.wearsSuit)&&(pose==='idle'||pose==='suit-standing');
+  const image=nativeSuit?images['staff-idle-alt']:images[pose];if(!image.complete||!image.naturalWidth)return null;
   const off=document.createElement('canvas');off.width=off.height=32;
   const columns=image.naturalWidth/32;
   const layer=off.getContext('2d',{willReadFrequently:true});layer.drawImage(image,(frame%columns)*32,Math.floor(frame/columns)*32,32,32,0,0,32,32);
@@ -68,7 +69,17 @@
    const r=source[i],g=source[i+1],b=source[i+2],pixel=Math.floor(i/4),x=pixel%32,y=Math.floor(pixel/32);
    let next;
    const skinScale=skinShades[`${r},${g},${b}`];
-   if(ballColors[`${r},${g},${b}`])next=ballColors[`${r},${g},${b}`];
+   if(nativeSuit&&suit){
+    // Native suit atlas (texture 787): dedicated clothing masks, no overlays.
+    const suitColor=(key,fallback)=>rgb(color(suit[key],team,fallback));
+    if(r===195&&g===36&&b===58)next=suitColor('shoeC','#000000');
+    else if(skinScale!==undefined)next=shade(skin,skinScale);
+    else if(b===255&&r<=35){
+     const key=r===5?'tieC':r===10?'shirtC':r===25||r===35?'pantC':'jacketC';
+     next=shade(suitColor(key,key==='shirtC'?'#ffffff':'#262539'),r===30||r===35?.7:1);
+    }else if(r===200&&g===255&&b===255)next=suitColor('laceC',color(suit.shoeC,team,'#000000'));
+    else if(r===205&&g===172&&b===190)next=suitColor('soleC','#000000');
+   }else if(ballColors[`${r},${g},${b}`])next=ballColors[`${r},${g},${b}`];
    else if(skinScale!==undefined)next=shade(skin,skinScale);
    else if(suit&&y>=14&&['163,172,190','103,112,139','38,36,58','57,58,86','20,16,32'].includes(`${r},${g},${b}`)){
     const base=rgb(color(y>=27?suit.shoeC:y>=22?suit.pantC:suit.jacketC,team,'#262539'));
@@ -130,7 +141,7 @@
   const offsetY=9;
   sceneCtx.save();sceneCtx.translate(0,offsetY);
   const bodyState=body(sceneCtx,frame,player,team,uniformIndex,pose,ball);sceneCtx.restore();
-  if(player.isCoach||player.wearsSuit){
+  if((player.isCoach||player.wearsSuit)&&pose!=='idle'&&pose!=='suit-standing'){
    const suit=player.suits?.[0]||{};sceneCtx.save();sceneCtx.translate(0,offsetY);
    paint(sceneCtx,images['coach-jacket'],0,0,color(suit.jacketC,team,'#262539'));
    paint(sceneCtx,images['coach-undershirt'],0,0,color(suit.shirtC,team,'#ffffff'));
