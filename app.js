@@ -178,10 +178,19 @@ branch.append(summary);
       const paragraphs=window.HoopWireSeason.articleParagraphs(story);
       const reviewLists=story.type==='Regular-season review'?window.HoopWireSeason.seasonReviewLists(story):[];
       for(const group of reviewLists){
+        const section=document.createElement('section');section.className='season-summary';
         const heading=document.createElement('h3');heading.textContent=group.label;
-        const list=document.createElement('ul');
-        for(const text of group.items){const item=document.createElement('li');item.textContent=text;list.appendChild(item);}
-        node.querySelector('.article-body').append(heading,list);
+        const list=document.createElement('ul');list.className='season-summary-list';
+        for(const text of group.items){
+          const item=document.createElement('li'),separator=text.indexOf(': ');
+          if(separator>=0){
+            const name=document.createElement('strong');name.textContent=text.slice(0,separator);
+            const stats=document.createElement('span');stats.textContent=' '+text.slice(separator+2);
+            item.append(name,stats);
+          }else item.textContent=text;
+          list.appendChild(item);
+        }
+        section.append(heading,list);node.querySelector('.article-body').appendChild(section);
       }
       for (const text of reviewLists.length?[]:paragraphs) {
         const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);

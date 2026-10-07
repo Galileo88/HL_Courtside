@@ -269,6 +269,25 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 
 .article-body p:last-child { margin-bottom: 0; }
 
+.season-summary + .season-summary { margin-top: 30px; }
+.season-summary h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  line-height: 1.3;
+  margin: 0 0 16px;
+}
+.season-summary-list { list-style: none; padding: 0; margin: 0; }
+.season-summary-list li {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0 0 16px;
+}
+.season-summary-list li:last-child { padding-bottom: 0; }
+.season-summary-list strong { display: block; font-weight: 700; }
+.season-summary-list span { display: block; font-size: 18px; line-height: 1.65; color: #c4d9ed; }
+
 .hidden { display: none; }
 
 @media (max-width: 720px) {
