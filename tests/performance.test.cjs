@@ -32,15 +32,24 @@ test('one story per player includes both teams, pregame averages, mixed results 
   assert.doesNotMatch(prose,/%|percent|50%|player of the game/i);assert.match(prose,/20\.0/);
   assert.equal(story.performanceSnapshot.comparisons[0].key,'PTS');
  }
- assert.match(rows.find(x=>x.story.playerId===11).story.headline,/big scoring night/);
- assert.match(rows.find(x=>x.story.playerId===22).story.headline,/quiet scoring night/);
+ assert.match(rows.find(x=>x.story.playerId===11).story.headline,/Alex (?:pours in 30|erupts for 30|goes for 30)/);
+ assert.match(rows.find(x=>x.story.playerId===22).story.headline,/Sam limited to 10|Quiet night for Sam/);
+ assert.match(rows.find(x=>x.story.playerId===11).story.paragraphs[0],/Alex scored 30 points in the Stars' 30-10 win over the Moons/);
  assert.deepEqual(P.candidates(l).map(x=>x.story.id),rows.map(x=>x.story.id));
 });
 test('turnovers alone can lead positive or negative coverage',()=>{
- const l=fixture();for(const t of l.teams){const p=t.roster[0];Object.assign(p.stats[0].season[0],{PTS:p.gameStats.PTS*11,REB:p.gameStats.REB*11,AST:p.gameStats.AST*11,STL:p.gameStats.STL*11});}
+ const l=fixture();l.teams[0].roster[0].gameStats.TO=0;l.teams[1].roster[0].gameStats.TO=4;
+ for(const t of l.teams){const p=t.roster[0];Object.assign(p.stats[0].season[0],{PTS:p.gameStats.PTS*11,REB:p.gameStats.REB*11,AST:p.gameStats.AST*11,STL:p.gameStats.STL*11,TO:20+p.gameStats.TO});}
  const stories=P.candidates(l).map(x=>x.story);
  assert.equal(stories.length,2);assert.ok(stories.every(s=>s.performanceSnapshot.comparisons.filter(c=>c.qualifies)[0].key==='TO'));
  assert.equal(stories.find(s=>s.playerId===11).type,'Above expectations');assert.equal(stories.find(s=>s.playerId===22).type,'Below expectations');
+});
+test('a bench line that barely moves the numbers does not become a story',()=>{
+ const l=fixture();Object.assign(l.teams[1].roster[0].gameStats,{PTS:0,REB:0,AST:0,STL:0,TO:0});
+ l.teams[1].roster[0].stats[0].season[0]={tid:2,GP:11,PTS:5,REB:2,AST:2,STL:1,TO:1};
+ assert.ok(!P.candidates(l).some(x=>x.story.playerId===22));
+ const story=P.candidates(l).find(x=>x.story.playerId===11).story;
+ assert.doesNotMatch(story.paragraphs.join(' '),/0\.\d+ steals|also recorded/);
 });
 test('first appearances, DNPs, ambiguous games and unverified box scores do not create stories',()=>{
  for(const change of [l=>l.teams.forEach(t=>t.roster[0].stats[0].season[0].GP=1),

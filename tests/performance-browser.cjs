@@ -24,7 +24,7 @@ const server=http.createServer((req,res)=>{
   async function upload(){await page.locator('#saveFile').setInputFiles({name:'performance.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(save))});await page.waitForFunction(()=>!document.getElementById('saveFile').disabled,null,{timeout:120000});}
   async function archived(){return page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{return (await a.all('stories')).filter(s=>s.performanceSnapshot);}finally{a.db.close();}});}
   await upload();const stories=await archived();assert.equal(stories.length,2);
-  const poor=stories.find(s=>s.playerId===away.roster[0].id);assert.match(poor.headline,/quiet scoring night/);
+  const poor=stories.find(s=>s.playerId===away.roster[0].id);assert.match(poor.headline,/Quiet night for|limited to/);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tvStorySelect').selectOption({label:poor.headline},{force:true});
   const transcript=await page.locator('#tvTranscript').textContent();assert.match(transcript,/10 points.*20\.0/);assert.doesNotMatch(transcript,/%|percent/i);
   const table=page.locator('#tvSegment table');assert.equal(await table.locator('tbody tr').count(),5);assert.match(await table.textContent(),/This game.*Season average/);

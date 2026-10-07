@@ -38,7 +38,14 @@
     const d=data(league),snap=d.snapshots.find(s=>s.pid===story.playerId&&s.gid===story.gid);
     const facts=snap&&contextFor(d,snap);if(!facts)return story;
     const {player,season,career,period}=facts,stage=period==='season'?'regular season':'playoffs';
-    story.paragraphs.push(`${C.playerDisplay(player)} is averaging ${(season.PTS/season.GP).toFixed(1)} points, ${(season.REB/season.GP).toFixed(1)} rebounds and ${(season.AST/season.GP).toFixed(1)} assists per game in the ${stage}${Number.isFinite(season.MIN)?`, playing ${(season.MIN/season.GP).toFixed(1)} minutes a night`:''}.`);
+    const last=player.ln||C.surname(C.playerDisplay(player)),avg=k=>(season[k]/season.GP).toFixed(1),game=story.playerStats||facts.gameStats;
+    const big=season.GP>1&&valid(game?.PTS)&&game.PTS>=1.75*season.PTS/season.GP&&game.PTS-season.PTS/season.GP>=3;
+    const minutes=Number.isFinite(season.MIN)?` in ${avg('MIN')} minutes`:'';
+    const line=`${last} is averaging ${avg('PTS')} points, ${avg('REB')} rebounds and ${avg('AST')} assists per game${minutes} ${period==='season'?'this season':'in the playoffs'}.`;
+    // Season context belongs beside the box score, ahead of the postgame quotes.
+    const he=C.pronoun(player),text=big?`That was a big night by ${C.possessive(last)} standards. ${he?`${C.capitalize(he)} came into the night`:last+' came in'} averaging ${((season.PTS-game.PTS)/(season.GP-1)).toFixed(1)} points per game ${period==='season'?'this season':'in the playoffs'}.`:line;
+    const at=story.paragraphs.findIndex(p=>/^[“"]/.test(p));
+    if(at>=0)story.paragraphs.splice(at,0,text);else story.paragraphs.push(text);
     story.cumulativeStats=structuredClone({season,career,period,year:d.year,leagueType:league.leagueType});
     story.statContextVersion=1;return story;
   }
@@ -49,7 +56,7 @@
       if(!team||!paragraphs.length)return;
       const opponent=lookup.teams.get(game?.homeTeam===team.id?game.awayTeam:game?.homeTeam)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type,headline,paragraphs,
-        importance:type==='Record watch'?75:105,templateVersion:5,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:type==='Record watch'?75:105,templateVersion:5,editorialVersion:1,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:[{id:team.id,name:C.teamDisplay(team),logoURL:team.logoURL||null}],
         seasonSnapshot:{headers:['Category','Mark','Context'],rows:evidence.map(e=>[e.label,e.value,e.detail]),evidence:structuredClone(evidence),source:'uploaded-save'}};
       const context={winner:team,loser:opponent,home:lookup.teams.get(game?.homeTeam)||team,game:game||{homeTeam:team.id},scenePlayer:player||team.roster?.[0],potg:player,
@@ -67,16 +74,16 @@
         for(const [scope,total,step] of [['season',season,steps[k]],['career',career,steps[k]*2]]){
           if(!step||!valid(total[k])||total[k]<value||scope==='career'&&career.GP===season.GP)continue;
           const mark=Math.floor(total[k]/step)*step;
-          if(mark>=step&&total[k]-value<mark){paragraphs.push(`${name} reached ${mark.toLocaleString('en-US')} ${scope==='career'?'career ':''}${stage} ${label}, adding ${value} against ${C.teamDisplay(lookup.teams.get(game.homeTeam===team.id?game.awayTeam:game.homeTeam))} to bring the total to ${total[k].toLocaleString('en-US')}.`);evidence.push({label:`${scope} ${label}`,value:total[k],detail:`Milestone: ${mark}`,before:total[k]-value,mark,stats:structuredClone(total),gameId:game.gId});}
+          if(mark>=step&&total[k]-value<mark){paragraphs.push(`${paragraphs.length?C.surname(name):name} reached ${mark.toLocaleString('en-US')} ${scope==='career'?'career ':''}${stage} ${label}${paragraphs.length?'':`, adding ${value} against ${C.teamRef(lookup.teams.get(game.homeTeam===team.id?game.awayTeam:game.homeTeam)).full}`} ${paragraphs.length?'as well':`to bring the total to ${total[k].toLocaleString('en-US')}`}.`);evidence.push({label:`${scope} ${label}`,value:total[k],detail:`Milestone: ${mark}`,before:total[k]-value,mark,stats:structuredClone(total),gameId:game.gId});}
         }
         const high=player.careerStats?.[period==='season'?'seasonHighs':'playoffHighs']?.[k];
-        if(career.GP>=10&&valid(high)&&high===value&&value>=notableHigh[k]){paragraphs.push(`${name}'s ${value} ${label} were a career best in a ${stage} game.`);evidence.push({label:`Career game high: ${label}`,value,detail:stage,source:'careerStats',gameId:game.gId});}
+        if(career.GP>=10&&valid(high)&&high===value&&value>=notableHigh[k]){paragraphs.push(`${paragraphs.length?C.surname(name):name} set a ${stage} career high with ${value} ${label}${paragraphs.length?' along the way':''}.`);evidence.push({label:`Career game high: ${label}`,value,detail:stage,source:'careerStats',gameId:game.gId});}
         const entries=(league.records?.[period]?.[k]||[]).filter(r=>valid(r.value)&&r.gameResults?.league===league.leagueType);
         const max=entries.length?Math.max(...entries.map(r=>r.value)):null;
         const record=entries.find(r=>r.pid===player.id&&r.yr===year&&r.gameResults.gId===game.gId&&r.value===value);
-        if(record&&value===max){paragraphs.push(`${name}'s ${value} ${label} also stand atop the league's ${stage} single-game record book.`);evidence.push({label:`League game record: ${label}`,value,detail:stage,record:structuredClone(record)});}
+        if(record&&value===max){paragraphs.push(`Those ${value} ${label} also stand atop the league's ${stage} single-game record book.`);evidence.push({label:`League game record: ${label}`,value,detail:stage,record:structuredClone(record)});}
         const teamEntries=entries.filter(r=>r.tid===team.id);
-        if(record&&teamEntries.length&&value===Math.max(...teamEntries.map(r=>r.value))){paragraphs.push(`That performance also stands as the ${C.teamDisplay(team)} single-game ${label} mark in the league record book.`);evidence.push({label:`Team player game record: ${label}`,value,detail:C.teamDisplay(team),record:structuredClone(record)});}
+        if(record&&teamEntries.length&&value===Math.max(...teamEntries.map(r=>r.value))){paragraphs.push(`It is also the ${C.teamDisplay(team)} franchise record for ${label} in a game.`);evidence.push({label:`Team player game record: ${label}`,value,detail:C.teamDisplay(team),record:structuredClone(record)});}
       }
       if(paragraphs.length)add(`milestone-${period}-${player.id}-${game.gId}`,evidence.some(e=>e.mark)?'Milestone':'Single-game record',evidence[0].mark?`${name} reaches ${evidence[0].mark.toLocaleString('en-US')} ${evidence[0].label}`:`${name} posts ${evidence[0].label.startsWith('Career')?'a career-best':'a record-book'} ${evidence[0].value} ${evidence[0].label.split(': ').at(-1)}`,paragraphs,team,player,evidence,game);
     }
@@ -91,7 +98,7 @@
         const p=players.get(record.pid),team=lookup.teams.get(record.tid);
         if(!played||!p||!team||result.some(x=>x.story.seasonSnapshot.evidence.some(e=>e.record?.pid===p.id&&e.record?.gameResults?.gId===played.game.gId&&e.record?.value===record.value)))continue;
         add(`single-game-${period}-${p.id}-${k.toLowerCase()}-${played.game.gId}`,'Single-game record',`${C.playerDisplay(p)} posts a league-record ${record.value} ${label}`,
-          [`${C.playerDisplay(p)}'s ${record.value} ${label} against ${C.teamDisplay(lookup.teams.get(played.game.homeTeam===team.id?played.game.awayTeam:played.game.homeTeam))} stand atop the league's ${period==='season'?'regular-season':period==='finals'?'Finals':'playoff'} single-game record book.`],team,p,
+          [`${C.possessive(C.playerDisplay(p))} ${record.value} ${label} against ${C.teamRef(lookup.teams.get(played.game.homeTeam===team.id?played.game.awayTeam:played.game.homeTeam)).full} stand atop the league's ${period==='season'?'regular-season':period==='finals'?'Finals':'playoff'} single-game record book.`],team,p,
           [{label:`Single-game ${label}`,value:record.value,detail:period,record:structuredClone(record)}],played.game);
       }
     }
@@ -114,7 +121,7 @@
             if(f?.period==='season'&&valid(snap.stats[k])&&snap.stats[k]>0&&(gap===0?total[k]-snap.stats[k]<record.s[k]:total[k]-snap.stats[k]<=record.s[k])&&(!otherCurrent.length||total[k]>=Math.max(...otherCurrent))){
               const name=C.playerDisplay(player),holder=C.playerDisplay(record.p);
               add(`record-${scope}-${gap===0?'tie':'break'}-${player.id}-${k.toLowerCase()}-${record.s[k]}`,'League record',`${name} ${gap===0?'ties':'passes'} ${holder} in the record book`,
-                [`${name} has ${total[k]} ${scope==='season'?'regular-season':'career regular-season'} ${label}, ${gap===0?'matching':'surpassing'} ${holder}'s ${record.s[k]}. ${snap.stats[k]} against ${C.teamDisplay(lookup.teams.get(f.game.homeTeam===team.id?f.game.awayTeam:f.game.homeTeam))} put ${name} ${gap===0?'level':'over the top'}.`],team,player,
+                [`${name} has ${total[k]} ${scope==='season'?'regular-season':'career regular-season'} ${label}, ${gap===0?'matching':'surpassing'} ${holder}'s ${record.s[k]}. ${snap.stats[k]} against ${C.teamRef(lookup.teams.get(f.game.homeTeam===team.id?f.game.awayTeam:f.game.homeTeam)).full} put ${C.surname(name)} ${gap===0?'level':'over the top'}.`],team,player,
                 [{label:`${scope} ${label}`,value:total[k],detail:`Previous mark: ${record.s[k]}`,holder:record.p.id,source:'player.stats'}],f.game);
             }
             continue;
@@ -124,7 +131,7 @@
           if(scope==='season'&&(team.season||[]).find(s=>s.yr===year)?.seasonStats?.GP>=league.season?.totalGames)continue;
           const name=C.playerDisplay(player),holder=C.playerDisplay(record.p),title=scope==='season'?'single-season mark':'career lead';
           add(`watch-${scope}-${player.id}-${k.toLowerCase()}-${record.p.id}-${record.s[k]}`,'Record watch',`${name} closes in on ${holder}'s ${title}`,
-            [`${name} is ${gap} ${label} shy of ${holder}'s ${record.s[k]} ${scope==='season'?'single-season total':'career total'} in ${league.shortName||league.leagueName}. ${name} has ${total[k]} ${scope==='season'?'this season':'for his league career'}.`],team,player,
+            [`${name} is ${gap} ${label} shy of ${C.possessive(holder)} ${record.s[k]}, the ${scope==='season'?'single-season':'career'} record in ${league.shortName||league.leagueName}. ${C.surname(name)} has ${total[k]} ${scope==='season'?'this season':'in a league career'}${scope==='season'?', with the chase still on':''}.`],team,player,
             [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,recordYear:record.yr??null,source:'player.stats'}]);
         }
       }
@@ -140,8 +147,10 @@
         const value=score(entry.game),high=Math.max(...earlier.map(x=>score(x.game))),low=Math.min(...earlier.map(x=>score(x.game)));
         if(value<=high&&value>=low)continue;
         const direction=value>high?'high':'low';
-        add(`team-scoring-${direction}-${team.id}-${entry.game.gId}`,'Team record',`${C.teamDisplay(team)} hit a season ${direction} with ${value} points`,
-          [`${C.teamDisplay(team)} scored ${value} against ${C.teamDisplay(lookup.teams.get(entry.game.homeTeam===team.id?entry.game.awayTeam:entry.game.homeTeam))}, a new season ${direction}. Their previous ${direction} was ${direction==='high'?high:low}.`],team,null,
+        const T=C.teamRef(team),O=C.teamRef(lookup.teams.get(entry.game.homeTeam===team.id?entry.game.awayTeam:entry.game.homeTeam));
+        add(`team-scoring-${direction}-${team.id}-${entry.game.gId}`,'Team record',`${T.nickname} ${C.verb(T,'hit')} season ${direction} with ${value} points`,
+          [direction==='high'?`${C.capitalize(T.full)} scored ${value} points against ${O.full}, their most in a game this season. The previous high was ${high}.`:
+            `${C.capitalize(T.full)} managed just ${value} points against ${O.full}, their lowest output of the season. The previous low was ${low}.`],team,null,
           [{label:`Team season scoring ${direction}`,value,detail:`Previous: ${direction==='high'?high:low}`,gameId:entry.game.gId,source:'season.schedule'}],entry.game);
       }
     }

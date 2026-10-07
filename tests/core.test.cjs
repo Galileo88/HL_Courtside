@@ -27,8 +27,9 @@ test('verified award coverage retains zeros and shooting stats with or without q
   assert.ok(ctx.potgStatsTrusted);
   for (const quotes of [false,true]) {
     const story=C.generateArticle(ctx,C.buildFingerprint(l),quotes);
-    assert.match(story.paragraphs[1],/10 points, 0 rebounds, 0 assists/);
-    assert.match(story.paragraphs[1],/4-for-7 from the field/);
+    const text=story.paragraphs.join(' ');
+    assert.match(story.paragraphs[0],/Alex Star scored 10 points.*Stars.*10-8/);
+    assert.match(text,/4-of-7 shooting/);assert.match(story.headline,/Stars .*Moons 10-8/);
     assert.equal(story.paragraphs.some(p=>p.includes('said.')),quotes);
   }
 });
@@ -50,15 +51,15 @@ test('a live game prevents matching its partial player stats to the previous fin
 test('a losing-side award recipient does not get a fictional victory quote',()=>{
   const l=league(); l.season.schedule[1].results[0].potg=22;
   const ctx=context(l), story=C.generateArticle(ctx,C.buildFingerprint(l),true);
-  assert.ok(story.playerStats); assert.match(story.paragraphs[1],/Sam Moon/);
-  assert.doesNotMatch(story.paragraphs.join(' '),/said\./);
+  assert.ok(story.playerStats); assert.match(story.paragraphs.join(' '),/Sam Moon was the best player on the floor in a losing effort/);
+  assert.doesNotMatch(story.paragraphs.join(' '),/said\./);assert.doesNotMatch(story.headline,/Moon\b(?!s)/);
 });
 test('head coach identity comes from the team staff and quotes honor the quote toggle',()=>{
   const l=league();
   l.teams[0].frontOffice={staff:[{id:100,tid:1,pos:1,fn:'Dana',ln:'Coach',appearance:{},suits:[]},{id:101,tid:1,pos:2,fn:'Other',ln:'Staff'}]};
   const ctx=context(l), fp=C.buildFingerprint(l);
   assert.equal(ctx.coach.id,100);
-  assert.match(C.generateArticle(ctx,fp,true).paragraphs.at(-1),/head coach Dana Coach said/);
+  assert.match(C.generateArticle(ctx,fp,true).paragraphs.at(-1),/^“.+,” Stars coach Dana Coach said\./);
   assert.doesNotMatch(C.generateArticle(ctx,fp,false).paragraphs.join(' '),/said/);
   l.teams[0].frontOffice.staff.push({id:102,tid:1,pos:1,fn:'Duplicate',ln:'Coach'});
   assert.equal(C.coachForTeam(l.teams[0]),null);
@@ -78,7 +79,8 @@ test('identities separate seasons and leagues and upgrade only current template 
   const other=structuredClone(l); other.leagueName='Other'; assert.notEqual(fp,C.buildFingerprint(other));
   assert.equal(C.shouldGenerate({templateVersion:3,playerStats:null},ctx),true);
   assert.equal(C.shouldGenerate({templateVersion:2},ctx),false);
-  assert.equal(C.shouldGenerate({templateVersion:3,playerStats:ctx.potgStats},ctx),false);
+  assert.equal(C.shouldGenerate({templateVersion:3,playerStats:ctx.potgStats},ctx),true,'older prose upgrades');
+  assert.equal(C.shouldGenerate({templateVersion:3,editorialVersion:2,playerStats:ctx.potgStats},ctx),false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient',()=>{
   const save=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../sample_save'),'utf8'));
@@ -90,5 +92,18 @@ test('sample save selects Day 33 in both leagues and verifies every latest-day a
     assert.ok(contexts.every(ctx=>ctx.potgStatsTrusted)); counts.push(contexts.length);
   }
   assert.deepEqual(counts,[3,14]);
+});
+test('recaps read like wire copy: short references, AP numbers and box-score context',()=>{
+  const l=league(),fp=C.buildFingerprint(l);
+  l.teams[0].city='Logan';l.teams[0].name='Wolverines';l.teams[1].city='Tucson';l.teams[1].name='Cactus';
+  l.teams[0].roster.push({id:12,tid:1,fn:'Clyde',ln:'Pearson',gameStats:{GP:1,GS:0,PTS:0,REB:6,AST:1,STL:0,BLK:0,FGM:0,FGA:3,TPM:0,TPA:0,FTM:0,FTA:0}});
+  const story=C.generateArticle(context(l),fp,true),text=story.paragraphs.join(' ');
+  assert.match(story.paragraphs[0],/the Logan Wolverines (?:beat|edged|slipped past) the Tucson Cactus 10-8/);
+  assert.match(text,/Logan (?:improved|moved above)/);assert.doesNotMatch(text.replace(story.paragraphs[0],''),/Logan Wolverines/);
+  assert.match(story.headline,/^Wolverines (?:edge|slip past|get past) Cactus/);assert.match(text,/“[^”]+,” Star said\./);
+  assert.doesNotMatch(text,/undefined|NaN|buzzer|comeback|rallied|held on|survived/);
+  assert.equal(C.teamRef({name:'Tucson Cactus'}).plural,false);assert.equal(C.verb(C.teamRef({name:'Logan Wolverines'}),'beat'),'beat');
+  assert.equal(C.verb(C.teamRef({name:'Thunder'}),'beat'),'beats');assert.equal(C.num(7),'seven');assert.equal(C.num(12),'12');
+  assert.equal(C.gamesBetter([21,8],[16,13]),'five games');assert.equal(C.gamesBetter([21,8],[20,8]),'a half-game');
 });
 module.exports={league};

@@ -107,7 +107,7 @@ test('angle thresholds match core policy and a close score cannot manufacture ga
   const s=story(game(1,1,true,[1,0],[0,1]));s.playerStats=null;
   for(const [margin,expected] of [[1,'close'],[3,'close'],[4,'routine'],[11,'routine'],[12,'blowout']]){
     s.gameSummary.home.score=s.gameSummary.away.score+margin;
-    assert.equal(angle(s,{}),expected);assert.ok(B.script(s).length<=4);
+    assert.equal(angle(s,{}),expected);assert.ok(B.script(s).length<=6);
     assert.doesNotMatch(B.script(s).map(t=>t.text).join(' '),/comeback|collapse|buzzer|fourth quarter|rallied|escaped/);
   }
 });
