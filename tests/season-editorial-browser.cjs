@@ -11,12 +11,12 @@ const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req
   const url=`http://127.0.0.1:${server.address().port}`;await page.goto(url);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.evaluate(async stories=>{const a=await new HoopWireArchive().open();try{await a.write({stories,leagues:[{id:'editorial-test',name:'Test League'}],meta:[{id:'active-leagues',ids:['editorial-test']}]});}finally{a.db.close();}},stories);
   await page.goto(url+'/#story/review');await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
-  const body=page.locator('.article-body');assert.equal(await body.locator(':scope > p').count(),2);assert.match(await body.textContent(),/set the pace.*scoring backs up/s);
+  const body=page.locator('.article-body');assert.equal(await body.locator(':scope > p').count(),2);assert.match(await body.textContent(),/(?:owned|set the pace in).*outscored opponents by/s);
   assert.equal(await body.locator(':scope > :first-child').evaluate(e=>e.tagName),'P');assert.equal(await body.locator('table').count(),1);
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});await body.screenshot({path:path.join(root,'artifacts/season-review-article.png')});
   await page.goto(url+'/#story/leaders');await page.waitForFunction(()=>document.querySelector('.article-headline')?.textContent==='The statistical leaders');
-  assert.equal(await body.locator('p').count(),3);assert.match(await body.textContent(),/assists comfortably outnumber/);assert.doesNotMatch(await body.textContent(),/Old statistical list/);
+  assert.equal(await body.locator('p').count(),3);assert.match(await body.textContent(),/clean ratio for a lead playmaker/);assert.doesNotMatch(await body.textContent(),/Old statistical list/);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   assert.deepEqual(errors,[]);console.log('Archived reviews and leaders render full articles; prose precedes reference tables and fits mobile.');
  }finally{await browser?.close();await new Promise(r=>server.close(r));}

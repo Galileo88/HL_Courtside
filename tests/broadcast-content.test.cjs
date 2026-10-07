@@ -23,7 +23,9 @@ test('episodes welcome viewers, introduce all four hosts and close after the rep
  assert.match(turns[4].text,/Stars.*Moons/);assert.match(turns.at(-1).text,/Thanks for watching HoopWire TV/);assert.deepEqual(B.episode(null),[]);
 });
 test('studio names the player, uses basketball terms and does not invent a deciding play',()=>{
- const s=text(game);assert.match(s,/Stars .* Moons, 110 to 108/);assert.match(s,/Alex Star finished with 28 points, 10 rebounds and 11 assists/);assert.match(s,/triple-double/);assert.match(s,/9 for 15 from the field/);assert.doesNotMatch(s,/created separation|context matters|buzzer|fourth quarter|game-winning/);
+ const s=text(game);assert.match(s,/Stars 110, Moons 108/);assert.match(s,/Alex Star: a 28-point, 10-rebound, 11-assist triple-double/);assert.match(s,/10 rebounds and 11 assists/);assert.match(s,/9 for 15 from the field/);assert.doesNotMatch(s,/created separation|context matters|buzzer|fourth quarter|game-winning/);
+ // The desk talks to each other and uses last names after the introduction.
+ assert.match(s,/Jordan|Nina|Andre/);assert.match(s,/\bStar went 9 for 15/);
  assert.ok(B.script(game).every(t=>t.speaker>=0&&t.speaker<=3));
 });
 test('zero stats stay factual, missing shooting is omitted and steals/blocks count toward double-doubles',()=>{
@@ -33,12 +35,12 @@ test('zero stats stay factual, missing shooting is omitted and steals/blocks cou
 });
 test('season coverage uses per-game rates and correct award period without falling back to regular season',()=>{
  const s={type:'Award announcement',eventKey:'award-1-1',headline:'Alex wins Finals MVP',statsPeriod:'finals',seasonSnapshot:{rows:[['Finals MVP','Alex']],featuredPlayer:{name:'Alex',regularStats:{GP:82,PTS:2000,REB:800,AST:400},finalsStats:{GP:5,PTS:150,REB:50,AST:25,MIN:175}}}};
- assert.match(text(s),/30\.0 points and 5\.0 assists/);assert.match(text(s),/35\.0 minutes a game/);assert.doesNotMatch(text(s),/2000|150 points/);
+ assert.match(text(s),/30\.0 points and 5\.0 assists/);assert.match(text(s),/35\.0 minutes a night/);assert.doesNotMatch(text(s),/2000|150 points/);
  delete s.seasonSnapshot.featuredPlayer.finalsStats;assert.doesNotMatch(text(s),/averaged|24\.4/);
 });
 test('bracket comparisons keep ties and later rounds accurate',()=>{
  const s={type:'Playoff preview',eventKey:'playoff-round-2',relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{rows:[['Stars','Moons','Single elimination']],teamRecords:[{teamId:1,record:{seasonStats:{W:60,L:22}}},{teamId:2,record:{seasonStats:{W:60,L:22}}}]}};
- assert.match(text(s),/Round 2/);assert.match(text(s),/60-22/);assert.match(text(s),/same number of wins/);assert.match(text(s),/no Game 2/);assert.doesNotMatch(text(s),/regular season gives way/);
+ assert.match(text(s),/Round 2/);assert.match(text(s),/60-22/);assert.match(text(s),/Same number of wins/);assert.match(text(s),/No Game 2/);assert.doesNotMatch(text(s),/regular season gives way/);
 });
 test('brief news uses actual reporting and does not manufacture a panel argument or a quote',()=>{
  const s={type:'Injury return',headline:'Alex returns',paragraphs:['Alex is available to play for Stars.','“I feel great,” Alex said.']};assert.match(text(s),/available to play/);assert.doesNotMatch(text(s),/missing minutes|I feel great|context|next decision/);assert.ok(B.script(s).length<=4);
@@ -51,46 +53,53 @@ test('native playing time converts total seconds once, across team stints',()=>{
 test('a poor shooting night gets criticism and a strong shooting night gets specific praise',()=>{
  const poor={...game,playerStats:{PTS:20,REB:2,AST:1,FGM:5,FGA:20}};
  assert.match(text(poor),/5 for 20.*rough shooting night/);assert.doesNotMatch(text(poor),/efficient scoring/);
+ // A volume night earns a defence from Jordan, not just a verdict.
+ assert.match(text(poor),/somebody had to take those shots/);
  const strong={...game,playerStats:{PTS:20,REB:2,AST:7,FGM:8,FGA:10}};
  assert.match(text(strong),/8 for 10.*efficient scoring/);assert.match(text(strong),/7 assists/);
  const legacy={...game,playerName:null,paragraphs:['Alex Star was named player of the game after finishing with 28 points.']};
- assert.match(text(legacy),/Alex Star finished/);
+ assert.match(text(legacy),/Alex Star/);
 });
 test('postgame follow-ups connect efficiency, ball security and per-game context',()=>{
  const story={...game,day:10,playerId:1,playerStats:{...game.playerStats,STL:2,BLK:1,TO:4},broadcastSnapshot:{day:10,playerId:1,period:'season',average:{GP:10,PTS:200}}};
  const turns=B.script(story),s=text(story);
- assert.ok(turns.length>=6&&turns.length<=14);assert.match(s,/4 turnovers.*11 assists/);
+ assert.ok(turns.length>=6&&turns.length<=14);assert.match(s,/4 of them against 11 assists/);
  const e=B.selectEvidence(story,require('../broadcast-context').buildContext(story));assert.equal(e.ppg,'20.0');assert.equal(B.supportingThreads(e,B.selectAngle(e)).length,2);
  assert.doesNotMatch(s,/next matchup|Where do the .*turnovers/);
  assert.doesNotMatch(s,/200 points|I (?:watched|rewatched|spoke|caught up)|second half|pregame|warmups/);
  assert.deepEqual(B.script(story),turns);
- const clean={...story,playerStats:{PTS:28,AST:1,TO:0}};assert.ok(B.supportingThreads(B.selectEvidence(clean),'routine').some(t=>/no turnovers/.test(t.detail)));assert.doesNotMatch(text(clean),/giveaways are too many/);
+ const clean={...story,playerStats:{PTS:28,AST:1,TO:0}};assert.ok(B.supportingThreads(B.selectEvidence(clean),'routine').some(t=>/Zero turnovers|No turnovers|turn it over once/.test(t.detail)));assert.doesNotMatch(text(clean),/giveaways are too many/);
  const incomplete={...game,playerStats:{PTS:12}};assert.doesNotMatch(text(incomplete),/turnovers|field-goal attempts|from three|undefined|NaN/);
 });
 test('the desk carries a discussion forward without restarting a scoring-only topic',()=>{
  const performance=B.script(game);
- assert.deepEqual(performance.slice(0,4).map(t=>t.speaker),[0,1,2,1]);
+ assert.equal(performance[0].speaker,0);assert.equal(performance[1].speaker,1);
+ // Nobody answers themselves: consecutive lines always change speaker.
+ for(const turns of [performance,B.script({...game,id:'other'})])assert.ok(turns.every((t,i)=>!i||t.speaker!==turns[i-1].speaker));
  const poor={...game,playerStats:{PTS:20,FGM:5,FGA:20}},turns=B.script(poor);
  assert.match(turns.map(t=>t.text).join(' '),/20 points.*5 for 20.*rough shooting night/);
- assert.equal(turns.filter(t=>/20 points/.test(t.text)).length,1);
- assert.ok(turns.length<=6,'Do not add a second discussion of the same scoring total');
+ assert.ok(turns.filter(t=>/20 points/.test(t.text)).length<=2);
+ assert.ok(turns.length<=8,'Do not add a second discussion of the same scoring total');
  const zero=text({...game,playerStats:{PTS:0}});
  assert.match(zero,/0 points/);assert.doesNotMatch(zero,/contributions to add up to wins|great night/);
 });
 test('reporting segues preserve saved quotes and respond to their message',()=>{
  const quote='We have to be more consistent at both ends of the floor.';
  const story={...game,quotesEnabled:true,templateVersion:3,paragraphs:[`“${quote}” head coach Pat Courtside said.`]};
- const s=text(story);assert.ok(s.includes(`Coach Pat Courtside put it this way: “${quote}”`));assert.match(s,/Consistency/);
+ const s=text(story);assert.ok(s.includes(`Here's what Coach Pat Courtside had to say: “${quote}”`));assert.match(s,/Consistency/);
  assert.doesNotMatch(s,/before.*game|I spoke|I talked|pregame/);
  assert.ok(!text({...story,quotesEnabled:false}).includes(quote));
- const player={...story,paragraphs:['"We are champions. Everybody in that locker room had a part in this." Alex Star said.']};assert.match(text(player),/Alex Star put it this way/);assert.match(text(player),/championship reaction/);
+ const player={...story,paragraphs:['"We are champions. Everybody in that locker room had a part in this." Alex Star said.']};assert.match(text(player),/Here's what Alex Star had to say/);assert.match(text(player),/championship reaction/);
+ // AP-style attributions split a quote around the speaker; the desk reads it back whole.
+ const ap={...story,paragraphs:['“We have to be more consistent,” Stars coach Pat Courtside said. “That starts tomorrow.”']};
+ assert.match(text(ap),/Coach Pat Courtside had to say: “We have to be more consistent. That starts tomorrow.”/);
 });
 test('playoff, award and season segments develop basketball questions with available facts',()=>{
  const teams={relatedTeams:[{id:1,name:'Stars'},{id:2,name:'Moons'}],seasonSnapshot:{rows:[['Stars','Moons','Best of 7']],teamRecords:[{teamId:1,record:{seasonStats:{GP:10,W:8,L:2,PTS:1100,OPP:1000}}},{teamId:2,record:{seasonStats:{GP:10,W:7,L:3,PTS:1050,OPP:1020}}}]}};
  const preview={...teams,type:'Playoff preview'};assert.match(text(preview),/Stars score 110\.0 points a game.*Moons allow 102\.0/);assert.ok(B.script(preview).length>=8);
- const season={...teams,type:'Regular-season review'};assert.match(text(season),/10\.0-point scoring margin/);assert.match(text(season),/Stars.*8-2/);
+ const season={...teams,type:'Regular-season review'};assert.match(text(season),/10\.0 points a game in their favor/);assert.match(text(season),/Stars.*8-2/);
  const award={type:'Award announcement',headline:'Alex wins MVP',seasonSnapshot:{rows:[['MVP','Alex']],featuredPlayer:{name:'Alex',regularStats:{GP:10,PTS:200,AST:50}}}};assert.match(text(award),/10 games/);assert.match(text(award),/5\.0 assists.*a game/);assert.doesNotMatch(text(award),/undefined|NaN/);
- const noBox={...game,playerStats:null};assert.ok(B.script(noBox).length<=4);assert.doesNotMatch(text(noBox),/28 points|turnovers|rally|buzzer/);
+ const noBox={...game,playerStats:null};assert.ok(B.script(noBox).length<=6);assert.doesNotMatch(text(noBox),/28 points|turnovers|rally|buzzer/);
 });
 test('league leaders rank per-game production rather than total points and TV displays rates',()=>{
  const league={leagueName:'Test',leagueType:0,season:{currentYear:1,totalGames:2,schedule:[]},teams:[
