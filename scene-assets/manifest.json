@@ -168,6 +168,14 @@
     "height": 32
   },
   {
+    "file": "hoop-land-logo.png",
+    "texture": 813,
+    "sourceName": "hoop_land",
+    "sourceFile": "sharedassets0.assets",
+    "width": 64,
+    "height": 64
+  },
+  {
     "file": "jersey-numbers.png",
     "sourceFile": "sharedassets0.assets",
     "width": 320,

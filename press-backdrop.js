@@ -39,21 +39,47 @@
     })().catch(()=>{logos.delete(url);return null;}));
     return logos.get(url);
   }
+  // Hoop Land draws a varsity letter for a team without a logo. The letter
+  // sheet's tones are palette slots (red 20 fill, 10 inner line, 5 outer
+  // line) that take the team's primary, secondary and tertiary colors.
+  const sheet=new Image();sheet.src='player-assets/team-letters.png';
+  const defaultLeague=new Image();defaultLeague.src='scene-assets/hoop-land-logo.png';
+  const ready=image=>image.complete&&image.naturalWidth?Promise.resolve(image):image.decode().then(()=>image);
+  const color=(hex,fallback)=>{const v=/^#?[\da-f]{6}$/i.test(String(hex||''))?String(hex).replace('#',''):fallback;return [0,2,4].map(i=>parseInt(v.slice(i,i+2),16));};
+  async function varsityLetter(team){
+    const letter=String(team?.city||team?.name||'').match(/[A-Za-z]/)?.[0]?.toUpperCase();
+    if(!letter)return null;
+    await ready(sheet);
+    const index=letter.charCodeAt(0)-65,canvas=document.createElement('canvas');canvas.width=canvas.height=32;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(sheet,index%8*32,Math.floor(index/8)*32,32,32,0,0,32,32);
+    const tones={20:color(team?.teamColors?.[0],'1d428a'),10:color(team?.teamColors?.[1],'ffffff'),5:color(team?.teamColors?.[2]||team?.teamColors?.[0],'1d428a')};
+    const pixels=ctx.getImageData(0,0,32,32),data=pixels.data;
+    for(let i=0;i<data.length;i+=4){const tone=tones[data[i]];if(data[i+3]&&tone){data[i]=tone[0];data[i+1]=tone[1];data[i+2]=tone[2];}}
+    ctx.putImageData(pixels,0,0);
+    return {image:canvas,pixel:true};
+  }
+  async function hoopLand(){await ready(defaultLeague);return {image:defaultLeague,pixel:true};}
   async function render(background,team,savedData,{scale:resolution=1,league=null,leagueData=null}={}){
     const base=template(background),canvas=document.createElement('canvas');canvas.width=background.width*resolution;canvas.height=background.height*resolution;
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(base.canvas,0,0,canvas.width,canvas.height);
-    const [logo,leagueLogo]=await Promise.all([logoFor(team,savedData).catch(()=>null),logoFor(league,leagueData).catch(()=>null)]);
+    const [loaded,leagueLoaded]=await Promise.all([logoFor(team,savedData).catch(()=>null),logoFor(league,leagueData).catch(()=>null)]);
+    // Fall back the way the game does: a varsity letter, then the Hoop Land mark.
+    const logo=loaded||await varsityLetter(team).catch(()=>null),leagueLogo=leagueLoaded||await hoopLand().catch(()=>null);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    function marks(image,slots,fraction){
-      if(!image)return;
+    function marks(mark,slots,fraction){
+      const image=mark?.image;if(!image)return;
+      // Pixel-art marks stay crisp; photographs and vector logos are smoothed.
+      ctx.imageSmoothingEnabled=!mark.pixel;
       for(const slot of slots){
         const scale=Math.min((slot.width-2)*resolution*fraction/image.width,(slot.height-2)*resolution*fraction/image.height),w=image.width*scale,h=image.height*scale;
         ctx.drawImage(image,Math.round(slot.x*resolution+(slot.width*resolution-w)/2),Math.round(slot.y*resolution+(slot.height*resolution-h)/2),Math.round(w),Math.round(h));
       }
     }
-    marks(logo?.image,base.slots,1);
-    marks(leagueLogo?.image,base.leagueSlots,.5);
-    return {canvas,logoData:logo?.data||null,leagueLogoData:leagueLogo?.data||null,leagueStatus:leagueLogo?'loaded':league?.logoURL?'unavailable':'missing',status:logo?'loaded':team?.logoURL?'unavailable':'missing',slots:base.slots,leagueSlots:base.leagueSlots,tileWidth:background.width*2,tileHeight:background.height*2};
+    marks(logo,base.slots,1);
+    marks(leagueLogo,base.leagueSlots,.5);
+    return {canvas,logoData:loaded?.data||null,leagueLogoData:leagueLoaded?.data||null,
+      leagueStatus:leagueLoaded?'loaded':leagueLogo?'default':league?.logoURL?'unavailable':'missing',
+      status:loaded?'loaded':logo?'letter':team?.logoURL?'unavailable':'missing',slots:base.slots,leagueSlots:base.leagueSlots,tileWidth:background.width*2,tileHeight:background.height*2};
   }
 
   function paint(ctx,wall,camera){
