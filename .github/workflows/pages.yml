@@ -37,6 +37,13 @@ jobs:
       - name: Run unit tests
         run: node --test tests/*.test.cjs
 
+      - name: Stamp asset versions
+        # Browsers keep cached scripts across deploys; a version query forces fresh code.
+        run: |
+          version="${GITHUB_SHA::8}"
+          sed -i -E "s#(src|href)=\"([A-Za-z0-9_./-]+\.(js|css))\"#\1=\"\2?v=${version}\"#g" index.html
+          grep -c "?v=${version}" index.html
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:

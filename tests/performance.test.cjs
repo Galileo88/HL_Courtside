@@ -106,4 +106,27 @@ test('archived stories from the old percentage rule still play on TV',()=>{
   performanceSnapshot:{baseline:{GP:10,PTS:200},comparisons:[{key:'PTS',label:'points',actual:30,expected:20,favorable:true,qualifies:true}]}};
  const text=B.script(old).map(t=>t.text).join(' ');assert.match(text,/Alex Star/);assert.match(text,/20\.0/);assert.doesNotMatch(text,/undefined|NaN/);
 });
+test('stories archived under the old rule are judged again: noise leaves, real news is rewritten with its stakes',()=>{
+ const game={home:{id:1,name:'Chattanooga Bridgekeepers',score:70},away:{id:2,name:'Cumberland Kestrels',score:71}},team={id:2,city:'Cumberland',name:'Kestrels'};
+ const old=(name,box,baseline)=>({id:name,kind:'performance',playerName:name,playerStats:box,gameSummary:game,sceneInputs:{team},
+  performanceSnapshot:{baseline,comparisons:[{key:'PTS',label:'points',actual:box.PTS,expected:baseline.PTS/baseline.GP,favorable:false,qualifies:true}]},
+  paragraphs:[`${name} has a quiet scoring night, finishing with ${box.PTS} points, compared with a season average of 9.0.`]});
+ // Two points from a nine-point scorer was a story under the 50% rule. It isn't news.
+ assert.equal(P.rejudge(old('Sean Cizikas',{GP:1,PTS:2,REB:3,AST:1,STL:0,TO:0,FGM:1,FGA:4},{GP:32,PTS:288,REB:96,AST:64,STL:19,TO:19}),{playoffs:true,title:true,college:true}),null);
+ const craig=P.rejudge(old('Kelly Craig',{GP:1,PTS:7,REB:6,AST:1,STL:0,TO:1,FGM:3,FGA:12},{GP:32,PTS:579,REB:83,AST:40,STL:20,TO:30}),{playoffs:true,title:true,college:true});
+ assert.ok(craig);assert.equal(craig.editorialVersion,3);
+ const text=[craig.headline,...craig.paragraphs,...B.script(craig).map(t=>t.text)].join(' ');
+ assert.match(craig.paragraphs[0],/in the national championship game/);assert.match(text,/won the national championship, 71-70/);
+ assert.match(text,/against (?:the )?Bridgekeepers/);assert.doesNotMatch(text,/against the Chattanooga|also recorded|compared with a season average|The comparison uses|%/);
+ assert.equal(P.rejudge(craig),craig,'Current stories pass through untouched');
+});
+test('playoff performance stories carry the game and round',()=>{
+ const l=fixture();l.season.schedule[0].results[0].tRound=1;l.season.schedule[0].results[0].tId=0;
+ l.season.schedule[0].results[0].homeRecord=[3,1];l.season.schedule[0].results[0].awayRecord=[1,3];
+ const filler=[3,5,7].map(id=>({topSeed:id,lowerSeed:id+1,firstTo:4,currentGame:0,winner:0}));
+ l.season.playoffs=[{yr:8,rounds:[{series:[{topSeed:1,lowerSeed:2,firstTo:4,currentGame:4,winner:0},...filler]}]}];
+ for(const t of l.teams)for(const p of t.roster){const s=p.stats[0].season[0],g=p.gameStats;for(const k of ['GS','PTS','REB','AST','STL','TO'])s[k]-=g[k];s.GP=10;}
+ const story=P.candidates(l).find(x=>x.story.playerId===11).story;
+ assert.match(story.paragraphs[0],/in Game 4 of the first round/);assert.match(B.script(story).map(t=>t.text).join(' '),/Game 4/);
+});
 module.exports={fixture};

@@ -54,6 +54,15 @@
         } catch (error) { tx.abort(); reject(error); }
       });
     }
+    async remove(name, ids) {
+      if (!ids.length) return;
+      await new Promise((resolve, reject) => {
+        const tx = this.db.transaction(name, "readwrite");
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error("Archive delete failed."));
+        for (const id of ids) tx.objectStore(name).delete(id);
+      });
+    }
     async migrate() {
       if (await this.get("meta", "legacy-migrated")) return;
       let text;
