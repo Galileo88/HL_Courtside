@@ -63,10 +63,15 @@
     const box=snaps.map(x=>({pid:x.pid,tid:x.team.id,name:C.playerDisplay(x.player),last:x.player?.ln||C.surname(C.playerDisplay(x.player)),stats:x.stats}));
     const average=context.average?.day===story.day&&context.average?.playerId===story.playerId?context.average:null;
     const doubles=Object.keys(labels).filter(k=>validCount(s[k])&&s[k]>=10);
-    const winnerPre=preRecord(context.game,homeWon?'home':'away',true),loserPre=preRecord(context.game,homeWon?'away':'home',false);
+    const F=story.facts?.version>=1?story.facts:null,series=F?.series||null;
+    // Playoff games carry series records, so season comparisons come from the facts.
+    const playoffGame=F?F.playoffs:context.game?.tRound>0;
+    const winnerPre=F?(record(F.records?.[winner.id]?.pre)?F.records[winner.id].pre:null):playoffGame?null:preRecord(context.game,homeWon?'home':'away',true);
+    const loserPre=F?(record(F.records?.[loser.id]?.pre)?F.records[loser.id].pre:null):playoffGame?null:preRecord(context.game,homeWon?'away':'home',false);
     const percentage=r=>r[0]/(r[0]+r[1]);
-    const upset=winnerPre&&loserPre&&winnerPre.reduce((a,b)=>a+b)>=policy.upsetGames&&loserPre.reduce((a,b)=>a+b)>=policy.upsetGames&&percentage(loserPre)-percentage(winnerPre)>policy.upsetGap;
-    const histories=[winner,loser].map(team=>({team,ref:team===winner?W:L,history:context.teams?.[team.id]}));
+    const upset=!playoffGame&&winnerPre&&loserPre&&winnerPre.reduce((a,b)=>a+b)>=policy.upsetGames&&loserPre.reduce((a,b)=>a+b)>=policy.upsetGames&&percentage(loserPre)-percentage(winnerPre)>policy.upsetGap;
+    const fromFacts=id=>{const f=F?.form?.[id];return f?{streak:f.ended?{won:f.streak.won,length:1,ended:f.ended}:f.streak,recent:[]}:null;};
+    const histories=[winner,loser].map(team=>({team,ref:team===winner?W:L,history:F?fromFacts(team.id):playoffGame?null:context.teams?.[team.id]}));
     const streak=histories.find(x=>x.history?.streak?.ended?.length>=policy.streak)||histories
       .filter(x=>x.history?.streak?.length>=policy.streak)
       .sort((a,b)=>b.history.streak.length-a.history.streak.length||Number(a.history.streak.won)-Number(b.history.streak.won))[0];
@@ -76,19 +81,25 @@
     const side=me?(me.team.id===winner.id?'winner':me.team.id===loser.id?'loser':null):null;
     const teamScore=side==='winner'?winner.score:side==='loser'?loser.score:null;
     const share=validCount(s.PTS)&&teamScore>0?s.PTS/teamScore:null;
-    const exceptional=!!name&&(doubles.length>=3||s.PTS>=Math.max(8,policy.exceptionalPoints*scale)||
-      (ppg!==null&&s.PTS-Number(ppg)>=Math.max(3,policy.aboveAverage*scale))||(share!==null&&share>=.45&&s.PTS>=6));
+    // With a known average, exceptional means exceptional for this player.
+    const aboveNorm=ppg!==null&&s.PTS-Number(ppg)>=Math.max(3,policy.aboveAverage*scale);
+    const exceptional=!!name&&(doubles.length>=3||aboveNorm||ppg===null&&(s.PTS>=Math.max(8,policy.exceptionalPoints*scale)||(share!==null&&share>=.45&&s.PTS>=6)));
     // Consequences need explicit evidence, never a score or phase number.
-    const consequence=context.consequence?.verified===true&&['championship','elimination'].includes(context.consequence.kind)?context.consequence:null;
+    const consequence=series?.title?{kind:'championship',verified:true}:context.consequence?.verified===true&&['championship','elimination'].includes(context.consequence.kind)?context.consequence:null;
     const player=name?{full:name,last:me?.player?.ln||C.surname(name),he:C.pronoun(me?.player)}:null;
-    return {story,winner,loser,W,L,margin:winner.score-loser.score,name,player,s,average,ppg,doubles,upset,winnerPre,loserPre,streak,exceptional,consequence,box,side,share,teamScore,scale};
+    return {story,series,facts:F,winner,loser,W,L,margin:winner.score-loser.score,name,player,s,average,ppg,doubles,upset,winnerPre,loserPre,streak,exceptional,consequence,box,side,share,teamScore,scale};
   }
   function selectAngle(e){
     if(!e)return 'brief';
     if(e.consequence)return e.consequence.kind;
+    if(e.series)return e.series.clinched?'clinch':'series';
     if(e.upset)return 'upset';
-    if(e.streak)return 'streak';
+    // A huge individual night outranks a streak; a long streak outranks a big margin.
+    const run=e.streak?.history.streak,long=run&&(run.ended?.length>=5||run.length>=5);
     if(e.exceptional)return 'performance';
+    if(long)return 'streak';
+    if(e.margin>=policy.blowout*2*Math.max(e.scale,.5))return 'blowout';
+    if(e.streak)return 'streak';
     if(e.margin>=policy.blowout)return 'blowout';
     if(e.margin<=policy.close)return 'close';
     return 'routine';
@@ -118,10 +129,58 @@
       upset:[`Nobody saw this one coming. ${score}. ${J}, are you surprised?`,`Upset alert. ${score}. ${J}, talk to me.`,`${cap(W.nick)} just knocked off ${L.nick}, ${ws}-${ls}. ${J}, what are we making of this?`,`${score}, and that's not the result the records pointed to. ${J}?`],
       streak:[`${sentence(streakLead)} ${score}. ${J}, what does it mean?`,`${sentence(streakLead)} Final: ${score}. ${J}, you first.`,`${score}. ${sentence(streakLead)} ${J}?`,`${sentence(streakLead)} ${W.nickname} ${ws}, ${L.nickname} ${ls}. ${J}, go.`],
       performance:[`${e.player?.full} went off. ${cap(achievement(e))}, and ${W.nick} beat ${L.nick} ${ws}-${ls}. ${J}?`,`We have to start with ${e.player?.full}: ${achievement(e)}. ${score}. ${J}, your reaction.`,`${score}, but the story is ${e.player?.full}. ${cap(achievement(e))}. ${J}?`,`${e.player?.full} finishes with ${achievement(e)}. ${score}. ${J}, where does that rank?`],
+      ...seriesOpenings(e,score,J),
       championship:[`Your champions: ${W.full}! ${score}. ${J}, take it away.`,`${W.display}. Champions. ${score}. ${J}, say it.`,`${cap(W.nick)} ${C.verb(W,'win')} it all, ${ws}-${ls}. ${J}, how do we sum up this team?`,`It's over, and ${W.nick} ${C.verb(W,'are')} champions. ${score}. ${J}?`],
       elimination:[`${cap(L.nick)}' run is over. ${score}. ${J}?`.replace(`${cap(L.nick)}' `,C.possessive(cap(L.nick))+' '),`${cap(W.nick)} ${C.verb(W,'move')} on. ${cap(L.nick)} ${C.verb(L,'go')} home. ${score}. ${J}?`,`Season over for ${L.nick}. ${score}. ${J}, your thoughts.`,`${score}, and that ends it for ${L.nick}. ${J}?`]
     };
     return pick(story,leads[angle],angle+':opening');
+  }
+  // Playoff segments: the series state is the story.
+  function seriesOpenings(e,score,J){
+    const S=e.series;if(!S)return {};
+    const {W,L}=e,ws=e.winner.score,ls=e.loser.score,lead=`${S.wins}-${S.losses}`;
+    const clinch=S.sweep?[`Brooms out. ${score}, and ${W.nick} ${C.verb(W,'finish')} off a ${C.num(S.firstTo)}-game sweep. ${J}?`,`${cap(W.nick)} ${C.verb(W,'sweep')} ${L.nick}. ${score} in Game ${S.gameNumber}. ${J}, are you impressed?`,`Sweep. ${score}. ${J}, say something nice about ${L.nick}.`,`${C.num(S.firstTo)} and done. ${cap(W.nick)} ${C.verb(W,'sweep')} ${L.nick}. ${J}?`.replace(/^./,c=>c.toUpperCase())]:
+      S.decider?[`Game ${S.gameNumber}. Winner take all. ${score}, and ${W.nick} ${C.verb(W,'move')} on. ${J}?`,`${cap(W.nick)} ${C.verb(W,'win')} Game ${S.gameNumber}, ${ws}-${ls}. ${J}, what a series.`,`It took ${C.num(S.gameNumber)} games, but ${W.nick} ${C.verb(W,'are')} through. ${score}. ${J}?`,`${score} in Game ${S.gameNumber}. ${cap(L.nick)} ${C.verb(L,'are')} done. ${J}?`]:
+      S.firstTo===1?[`${score}. ${cap(W.nick)} ${C.verb(W,'advance')}, ${L.nick} ${C.verb(L,'go')} home. ${J}?`,`Win or go home, and ${W.nick} won. ${score}. ${J}?`,`${cap(W.nick)} ${C.verb(W,'are')} moving on to the ${S.nextRound||'next round'}. ${score}. ${J}?`,`${score}, and that's the end of the road for ${L.nick}. ${J}?`]:
+      [`${cap(W.nick)} ${C.verb(W,'close')} it out in ${C.num(S.gameNumber)}. ${score}. ${J}?`,`Series over. ${score}, ${W.nick} ${C.verb(W,'win')} it ${lead}. ${J}?`,`${cap(W.nick)} ${C.verb(W,'are')} moving on to the ${S.nextRound||'next round'}. ${score} in Game ${S.gameNumber}. ${J}?`,`${score}, and ${W.nick} ${C.verb(W,'take')} the series ${lead}. ${J}, your thoughts.`];
+    const series=S.tied&&S.wins===S.firstTo-1?[`We're going to Game ${S.bestOf}! ${score}. ${J}?`,`${cap(W.nick)} ${C.verb(W,'force')} a Game ${S.bestOf}. ${score}. ${J}, who wins it?`,`Game ${S.bestOf}, everybody. ${score}. ${J}?`,`${score}, and this series is going the distance. ${J}?`]:
+      S.savedSeason?[`${cap(W.nick)} ${C.verb(W,'are')} still alive. ${score} in Game ${S.gameNumber}. ${J}?`,`Not yet. ${cap(W.nick)} ${C.verb(W,'stave')} off elimination, ${ws}-${ls}. ${J}?`,`${score}. ${cap(L.nick)} still ${C.verb(L,'lead')} ${S.losses}-${S.wins}, but ${W.nick} ${C.verb(W,'are')} breathing. ${J}?`,`${cap(W.nick)} ${C.verb(W,'refuse')} to go home. ${score}. ${J}?`]:
+      S.tied?[`All square. ${score} in Game ${S.gameNumber}, and we're tied ${lead}. ${J}, who's got the edge now?`,`${cap(W.nick)} ${C.verb(W,'even')} it up, ${ws}-${ls}. ${J}?`,`${lead}. ${score} in Game ${S.gameNumber}. ${J}, what changed?`,`Tied series. ${score}. ${J}, go.`]:
+      S.gameNumber===1?[`Game 1 goes to ${W.nick}, ${ws}-${ls}. ${J}, how much does an opener tell you?`,`${score} in Game 1. ${J}?`,`First blood: ${W.nick}. ${score}. ${J}?`,`${cap(W.nick)} ${C.verb(W,'take')} the opener, ${ws}-${ls}. ${J}, overreaction time?`]:
+      S.wins===S.firstTo-1?[`${cap(W.nick)} ${C.verb(W,'are')} one win away. ${score}, and they lead ${lead}. ${J}?`,`${lead}, ${W.nick}. ${score} in Game ${S.gameNumber}. ${J}, is it over?`,`${score}. ${cap(L.nick)} ${C.verb(L,'are')} on the brink. ${J}?`,`${cap(W.nick)} ${C.verb(W,'go')} up ${lead}. ${score}. ${J}, can ${L.nick} come back?`]:
+      S.wins>S.losses?[`${cap(W.nick)} ${C.verb(W,'take')} a ${lead} lead. ${score}. ${J}?`,`${lead}, ${W.nick}. ${score} in Game ${S.gameNumber}. ${J}?`,`${score}. ${J}, are ${L.nick} in trouble?`,`${cap(W.nick)} ${C.verb(W,'are')} in control, ${lead}. ${J}?`]:
+      [`${cap(W.nick)} ${C.verb(W,'get')} one back. ${score}. ${J}?`,`${score} in Game ${S.gameNumber}. ${cap(L.nick)} still ${C.verb(L,'lead')} ${S.losses}-${S.wins}. ${J}?`,`${cap(W.nick)} ${C.verb(W,'cut')} it to ${S.losses}-${S.wins}. ${J}, is there a series here?`,`Game ${S.gameNumber} goes to ${W.nick}. ${J}?`];
+    // A huge individual night leads the segment before the series talk.
+    if(e.exceptional&&e.player){const lead=`${e.player.full} with ${achievement(e)}. `;for(const list of [clinch,series])list.forEach((t,i)=>{list[i]=lead+t.charAt(0).toLowerCase()+t.slice(1);});}
+    return {clinch,series};
+  }
+  function seriesDebates(e,n){
+    const S=e.series;if(!S)return {};
+    const {W,L}=e,[M,J,A,N]=n,rec=t=>{const r=e.facts?.records?.[t.id]?.post;return record(r)?`${r[0]}-${r[1]}`:'';};
+    const need=S.firstTo-S.wins,leaderNeeds=S.firstTo-S.losses;
+    const clinch=S.sweep?[
+      [[1,`Brooms! ${cap(W.nick)} didn't just win the series, they embarrassed ${L.nick}. Not one win. Not one!`],[2,`Embarrassed is strong. ${cap(L.nick)} ${rec(e.loser)?`won ${rec(e.loser).split('-')[0]} games this year`:'had a season'}. But a sweep is a statement, no question.`],[3,`And ${W.nick} get rest before the ${S.nextRound||'next round'}. That matters.`]],
+      [[1,`I said ${W.nick} in four, and I want my flowers.`],[3,`Did you say that, Jordan?`],[1,`I thought it very loudly.`],[2,`Either way, that's as clean as a series gets.`]]]:
+      S.decider?[
+      [[1,`That's why we love this time of year. ${C.num(S.gameNumber)} games, and ${W.nick} came up with the one that mattered.`],[2,`Credit both teams. ${cap(L.nick)} took it the distance. Somebody had to go home.`],[3,`And the final was ${e.winner.score}-${e.loser.score}. ${e.margin<=5?`Tight to the end. That's a Game ${S.gameNumber}.`:`Not close in the end, which is a little surprising for a Game ${S.gameNumber}.`}`]]]:
+      [[[1,`Job done. ${cap(W.nick)} ${S.firstTo===1?'won the game they had to win':`won ${S.wins} of ${S.gameNumber}`}, and they never looked like the team in trouble.`],[2,`"Never looked" is a stretch, Jordan. ${S.losses?`${cap(L.nick)} took ${S.losses===1?'a game':`${C.num(S.losses)} games`} off them.`:`They won the games, though.`}`],[1,`And then they lost the series.`],[3,`The ${S.nextRound||'next round'} is a different animal. We'll see if this holds up.`]],
+       [[1,`${cap(W.nick)} ${C.verb(W,'are')} moving on, and honestly, I'm not surprised.`],[3,`${rec(e.winner)&&rec(e.loser)?`Regular season said ${W.nick} at ${rec(e.winner)}, ${L.nick} at ${rec(e.loser)}. `:''}${S.winnerHigherSeed?'The higher seed held serve.':'And it was the lower seed that advanced, for the record.'}`],[2,`Seeds don't win series. Players do. ${cap(W.nick)} had more of them.`]]];
+    const series=S.tied&&S.wins===S.firstTo-1?[
+      [[1,`Game ${S.bestOf}. The two best words in sports. I've got ${W.nick}, and I'm not thinking twice.`],[2,`Of course you're not. You never think twice.`],[3,`For the record, this series is ${S.wins}-${S.losses}. Nobody has separated. One game for everything.`]]]:
+      S.savedSeason?[
+      [[1,`Still alive! I'm not saying they're coming back, but ${W.nick} have a pulse.`.replace(` ${W.nick} have`,` ${W.nick} ${C.verb(W,'have')}`)],[3,`They still need ${C.plural(need,'more win')} in a row, Jordan. ${cap(L.nick)} ${C.verb(L,'need')} ${leaderNeeds===1?'one more':C.plural(leaderNeeds,'more win')}.`],[2,`One game at a time. That's all you can do down ${S.losses}-${S.wins}.`]]]:
+      S.tied?[
+      [[1,`Momentum is all ${W.nick} right now. All of it.`],[3,`Momentum lasts until the next tip, Jordan. It's ${S.wins}-${S.losses}. Best-of-${C.num(S.bestOf-S.gameNumber)}.`],[2,`I'm with Nina. Nobody's taken control of this series yet.`]],
+      [[1,`I didn't believe in ${W.nick} three days ago. I'm starting to.`],[2,`Three days ago? It's tied, Jordan. Calm down.`],[1,`I'm calm. I'm evolving.`]]]:
+      S.gameNumber===1?[
+      [[1,`Game 1 matters. Don't let anybody tell you different. ${cap(W.nick)} set the tone.`],[3,`It's one game, Jordan. Ask me after Game 3.`],[2,`It's one game, but you'd still rather be up than down.`]],
+      [[1,`I'll overreact. ${cap(W.nick)} in ${C.num(Math.min(S.bestOf,S.firstTo+1))}.`],[2,`You'll say that about whoever wins Game 2, too.`],[1,`Probably. But I'm right this time.`]]]:
+      S.wins===S.firstTo-1?[
+      [[1,`It's over. I'm sorry, it's over. ${cap(L.nick)} ${C.verb(L,'are')} not winning ${C.num(need===1?leaderNeeds:need)} straight against this team.`.replace(/not winning \w+ straight/,`not winning ${C.num(S.firstTo-S.losses)} straight`)],[2,`Nothing's over until somebody gets win number ${C.num(S.firstTo)}, Jordan.`],[3,`${cap(L.nick)} need ${C.num(S.firstTo-S.losses)} in a row. Tall order. Not zero.`.replace(` ${L.nick} need`,` ${L.nick} ${C.verb(L,'need')}`)]]]:
+      S.wins>S.losses?[
+      [[1,`${cap(W.nick)} ${C.verb(W,'are')} in control, and I don't see that changing.`],[2,`${S.wins}-${S.losses} isn't control. It's a lead. There's a difference.`],[3,`They do need ${C.plural(need,'more win')}, Jordan.`]]]:
+      [[[1,`Okay, now we've got a series. ${cap(W.nick)} punched back.`],[3,`They're still down ${S.losses}-${S.wins}. ${cap(L.nick)} need ${C.plural(leaderNeeds,'win')}.`.replace(` ${L.nick} need`,` ${L.nick} ${C.verb(L,'need')}`)],[2,`But this is how comebacks start. One game.`]]];
+    return {clinch,series};
   }
   // The argument that follows the opening. Each variant is one coherent exchange.
   function angleDebate(story,e,angle,n){
@@ -177,7 +236,8 @@
       streak:sf?[
         sf.ended?(sf.won?[[1,`It was going to end eventually. ${sf.length} straight is a heck of a run. I'm not panicking over one loss.`],[3,`Agreed. The question is whether it's one loss or the start of a slide. One game won't tell you that.`],[2,`Get back on the floor and win the next one. That's the only answer.`]]:
           [[1,`Finally! ${sf.length} straight losses, and ${sf.t.nick} finally get one. You could feel the weight lifting off that group.`.replace(` ${sf.t.nick} finally get`,` ${sf.t.nick} finally ${C.verb(sf.t,'get')}`)],[2,`You can't feel anything from here, Jordan. But I get it. A win's a relief after a run like that.`],[3,`One win doesn't fix ${sf.length} losses. But it's a start.`]]):
-        sf.won?[[1,`${sf.length} straight. At what point do we start taking ${sf.t.nick} seriously? Because I'm there.`],[2,`I'm getting there. You don't stack ${sf.length} wins by accident.`],[3,sf.victims.length?`And look who they've beaten: ${join(sf.victims)}. Say what you want about the schedule, ${sf.length} in a row is ${sf.length} in a row.`:`I want to see who they've been beating, but ${sf.length} in a row is ${sf.length} in a row.`]]:
+        sf.won&&sf.length>=8?[[1,`${sf.length} in a row! Nobody can beat ${sf.t.nick} right now. Nobody.`],[3,`${sf.length} straight wins. The last time ${sf.t.nick} lost was ${C.num(sf.length)} games ago, Jordan. That's a long time in this league.`],[2,`What I like is they're not letting up. You get comfortable on a run like this, and they haven't.`]]:
+        sf.won?[[1,sf.t===e.W&&record(e.facts?.records?.[e.winner.id]?.post)&&e.facts.records[e.winner.id].post[0]/(e.facts.records[e.winner.id].post[0]+e.facts.records[e.winner.id].post[1])>=.6?`${sf.length} straight. This team is rolling, and I don't see anybody slowing them down.`:`${sf.length} straight. At what point do we start taking ${sf.t.nick} seriously? Because I'm there.`],[2,`I'm getting there. You don't stack ${sf.length} wins by accident.`],[3,sf.victims.length?`And look who they've beaten: ${join(sf.victims)}. Say what you want about the schedule, ${sf.length} in a row is ${sf.length} in a row.`:`I want to see who they've been beating, but ${sf.length} in a row is ${sf.length} in a row.`]]:
           [[1,`${sf.length} in a row. At some point this stops being a slump and it's just who you are.`],[2,`That's harsh, Jordan.`],[1,`Is it wrong, though?`],[3,`It's not right yet. ${sf.length} games is a rough stretch, not a verdict. But they need to stop it soon.`]]
       ]:[[[1,`I'll take the win.`]]],
       performance:[
@@ -185,6 +245,7 @@
         [[1,`That's a star turn right there. When ${e.player?.last} plays like that, ${W.nick} are a different team.`.replace(` ${W.nick} are`,` ${W.nick} ${C.verb(W,'are')}`)],[3,`One game, Jordan. But it's a heck of a game.`]],
         [[1,`I need everybody to stop what they're doing and look at ${C.possessive(e.player?.last||'that')} line.`],[3,`I've seen it, Jordan. It holds up.`]]
       ],
+      ...seriesDebates(e,n),
       championship:[
         [[1,`They did it. Whatever you thought about ${W.nick} at the start of the year, they're the last team standing. That's all that matters now.`],[2,`You've got to soak this in. Everybody wants this, and almost nobody gets it.`],[3,`And nobody hands you a ring. ${cap(W.nick)} earned every bit of it.`]],
         [[1,`Champions! I don't want to hear a single criticism about ${W.nick} today. Not one.`],[2,`Nobody's criticizing, Jordan. Let them celebrate.`]]
@@ -219,7 +280,7 @@
           strong?say('strong',[`Efficiently. ${p.last} went ${line} from the field. That's efficient scoring, about as clean as it gets.`,`${line} from the field. That's efficient scoring. Barely a wasted possession.`,`On ${line} shooting. That's efficient scoring, and that's the part I love.`]):
           say('fine',[`${p.last} went ${line} from the field. Nothing crazy, nothing to complain about.`,`${line}. Respectable. Not a shooting clinic, not a problem.`]),
         response:poor?`I hear you, ${N}, but somebody had to take those shots.${pts?` ${cap(pts)} is ${pts}.`:''}`:
-          strong?say('strong-r',[`That's a bucket-getter. Didn't need volume. Just cashed in.`,`Give me that every night. You don't need 20 shots when you're making them.`,`Professional. That's a pro's night right there.`]):say('fine-r',[`Solid. I'd look at what else came with it before I get too high or too low.`,`Fine. I want to know what else was in that box score.`]),
+          strong?say('strong-r',s.FGA>=Math.max(8,20*e.scale)?[`${s.FGA} shots, ${s.FGM} makes. That's not normal. That's a player in a zone.`,`That's volume and efficiency. You almost never get both.`,`Professional. That's a pro's night right there.`]:[`That's a bucket-getter. Didn't need volume. Just cashed in.`,`Give me that every night. You don't need a ton of shots when you're making them.`,`Professional. That's a pro's night right there.`]):say('fine-r',[`Solid. I'd look at what else came with it before I get too high or too low.`,`Fine. I want to know what else was in that box score.`]),
         rebuttal:poor?`It's not just "somebody had to." It's ${s.FGA} shots, Jordan. Make a couple more of those and it's a different night.`:null});
     }
     if(validCount(s.TO)&&(s.TO>=4||(s.TO===0&&s.PTS>=Math.max(6,20*e.scale))||(s.AST>=5&&s.AST>s.TO))){
@@ -238,7 +299,9 @@
         response:near?say('avg-near',["That's what I love about it. You know what you're getting every night.","Reliable. Coaches love reliable."]):
           delta>0?say('avg-up',["So don't tell me it's just another night. That's a breakout, and I'm enjoying it.","That's a different gear. I want to see it again.","Somebody's been holding out on us."]):say('avg-down',["Quiet night by those standards. Happens. I'm not worried about one game.","Off night. Everybody gets one."])});
     }
-    const contribution=['AST','REB','BLK','STL'].filter(k=>validCount(s[k])&&s[k]>=({AST:3,REB:5,BLK:2,STL:2}[k])).sort((a,b)=>s[b]-s[a])[0];
+    // What counts as a notable secondary line grows with the length of the game.
+    const notable={AST:Math.max(3,7*e.scale),REB:Math.max(5,10*e.scale),BLK:Math.max(2,3*e.scale),STL:Math.max(2,3*e.scale)};
+    const contribution=['AST','REB','BLK','STL'].filter(k=>validCount(s[k])&&s[k]>=notable[k]).sort((a,b)=>s[b]/notable[b]-s[a]/notable[a])[0];
     // A scoring-only follow-up repeats the shooting discussion. Keep it when
     // it's the main story, or when we have another contribution to discuss.
     if(contribution||(validCount(s.PTS)&&(angle==='performance'||!threads.some(t=>t.key==='shooting')))){
@@ -286,6 +349,8 @@
       upset:[`Don't sleep on ${W.nick}. That's the lesson tonight.`,`The records said one thing. The scoreboard said another.`,`We'll find out soon enough if ${W.nick} can back it up.`,`Upset of the night. Let's keep it moving.`],
       streak:[`That's the streak watch. We'll keep an eye on it.`,`We'll see where it goes from here.`,`Streaks make the season interesting. This one's no exception.`,`All right. Next topic.`],
       performance:[`${p?.last} owned the night. That's where we'll leave it.`,`What a night for ${p?.last}.`,`${p?.last} gets the headline. ${cap(W.nick)} get the W.`.replace(`${cap(W.nick)} get`,`${cap(W.nick)} ${C.verb(W,'get')}`),`Tip of the cap to ${p?.last}.`],
+      clinch:[`${cap(W.nick)} ${C.verb(W,'move')} on. ${cap(L.nick)} ${C.verb(L,'go')} home.`,`On to the ${e.series?.nextRound||'next round'} for ${W.nick}.`,`Series over. We'll see you in the ${e.series?.nextRound||'next round'}.`,`That's a wrap on that series.`],
+      series:[`On to Game ${(e.series?.gameNumber||0)+1}.`,`Game ${(e.series?.gameNumber||0)+1} can't come soon enough.`,`Series ${e.series?.wins>e.series?.losses?`${e.series?.wins}-${e.series?.losses}, ${W.nick}`:e.series?.wins===e.series?.losses?`tied ${e.series?.wins}-${e.series?.losses}`:`${e.series?.losses}-${e.series?.wins}, ${L.nick}`}. Stay tuned.`,`That's where the series stands. Let's keep it moving.`],
       championship:[`Tonight belongs to the champions. Congratulations to ${W.nick}.`,`The offseason questions can wait. Enjoy it, ${W.nick}.`,`Champions. Hard to say it any better than that.`,`A title for ${W.nick}. What a way to finish.`],
       elimination:[`${cap(L.nick)} ${C.verb(L,'are')} out. Tough way to go.`,`${cap(W.nick)} ${C.verb(W,'move')} on. ${cap(L.nick)} ${C.verb(L,'are')} done.`,`That's the end of the road for ${L.nick}.`,`Season over for ${L.nick}. That one stings.`]
     };
@@ -330,7 +395,53 @@
   function frame(story,kind,openings,closings,body){
     return [turn(0,pick(story,openings,kind+':opening')),...body,turn(0,pick(story,closings,kind+':closing'))];
   }
+  // Award segments argue about the evidence that fits the award.
+  function awardDesk(story,n){
+    const snap=story.seasonSnapshot,a=snap.award,p=snap.featuredPlayer,s=featuredStats(story),[M,J,A,N]=n;
+    const name=p.name,last=C.surname(name),r=k=>rate(s,k),rec=a.teamRecord?`${a.teamRecord[0]}-${a.teamRecord[1]}`:null,he=a.pronoun||last;
+    const T=a.teamName?C.teamRef({city:a.teamCity,name:a.teamNickname||a.teamName}):null,body=[];
+    const honors=Season.honorLines(story).slice(0,1).map(t=>turn(3,`And worth noting: ${t.replace(/^It's/,"it's")}`));
+    const takes={
+      mvp:[`Deserved. No debate. ${last} was the best player in this league, and it wasn't close.`,`I had ${last} on my ballot from day one. Day one!`,`Easiest call of the year. I'm not even entertaining other names.`],
+      finals:[`Biggest stage, biggest games, and ${last} delivered. That's what this award is for.`,`You want to know who shows up when it matters? There's your answer.`],
+      dpoy:[`Finally, somebody gets credit for the other end of the floor. ${last} earned it.`,`Nobody wants to drive on ${last}. That's the whole case.`],
+      roy:[`The kid can play. I'm not surprised one bit.`,`Rookie of the Year, and I think we're just getting started with ${last}.`],
+      sixth:[`I love this award. It's for the players who take the role and own it.`,`${last} could start for half this league. That's the case right there.`],
+      mip:[`Talk about a jump. ${last} came back a different player.`,`That's the award for the work nobody saw. Love it.`],
+      PTS:[`Bucket-getter. ${last} got buckets all year, and now there's hardware to prove it.`],REB:[`${last} lived on the glass. Every board, every night.`],AST:[`${last} made everybody around them better. That's what a point guard does.`.replace('them',a.pronoun==='she'?'her':a.pronoun==='he'?'him':'them')],
+      STL:[`Quick hands. ${last} made life miserable for ball handlers.`],BLK:[`Don't come in the paint. ${last} has been sending that message all season.`]
+    }[a.kind]||[`Good for ${last}. That's recognition that was a long time coming.`];
+    body.push(turn(1,pick(story,takes,'award:take')));
+    if(s?.GP>0){
+      const evidence={
+        mvp:`${r('PTS')} points, ${r('REB')} rebounds and ${r('AST')} assists a game${rec?`, for a team that went ${rec}`:''}.`,
+        finals:s.GP===1?`In the title game: ${s.PTS} points, ${s.REB} rebounds, ${s.AST} assists.`:`${r('PTS')} points and ${r('REB')} rebounds a game over ${C.plural(s.GP,'Finals game')}.`,
+        dpoy:`${r('BLK')} blocks and ${r('STL')} steals a game${a.allowedRank?`, and that defense ranked ${a.allowedRank===1?'first':`No. ${a.allowedRank}`} in points allowed`:''}.`,
+        roy:`${r('PTS')} points and ${r('REB')} rebounds a game as a rookie${Number.isFinite(s.GS)?`, with ${s.GS} starts in ${s.GP} games`:''}.`,
+        sixth:Number.isFinite(s.GS)?`${r('PTS')} points a game, and ${s.GP-s.GS} of ${s.GP} games off the bench.`:`${r('PTS')} points a game.`,
+        mip:a.previous?`${(a.previous.PTS/a.previous.GP).toFixed(1)} points a game last year. ${r('PTS')} this year.`:`${r('PTS')} points a game.`,
+        PTS:`${r('PTS')} points a game${s.FGA>0?` on ${(100*s.FGM/s.FGA).toFixed(1)} percent shooting`:''}.`,REB:`${r('REB')} rebounds a game.`,AST:`${r('AST')} assists a game${Number.isFinite(s.TO)?` against ${r('TO')} turnovers`:''}.`,STL:`${r('STL')} steals a game.`,BLK:`${r('BLK')} blocks a game.`
+      }[a.kind]||`${r('PTS')} points a game.`;
+      body.push(turn(3,`The numbers: ${evidence}`));
+      const angle={
+        mvp:rec&&a.teamRecord[0]<a.teamRecord[1]?`And I'll push back a little. ${rec}. Can the most valuable player be on a losing team?`:`And it showed up in the standings. That matters for an MVP.`,
+        finals:`Remember this one. Those are the games people talk about for years.`,
+        roy:`Most rookies are just trying to survive. ${last} was producing.`,
+        sixth:`That's a starter's production in a bench role. That's the award.`,
+        mip:`That's not luck. That's a summer of work.`,
+        dpoy:`Defense doesn't always show up in a box score. Some of it does, and ${last}'s does.`,
+        other:`Good season. Well earned.`
+      }[a.kind]||`Leading the league over ${C.plural(s.GP,'game')} isn't a hot streak. That's a season.`;
+      body.push(turn(2,angle));
+      if(a.kind==='mvp'&&rec&&a.teamRecord[0]<a.teamRecord[1])body.push(turn(1,`Yes! Value doesn't care about the standings.`));
+    }
+    if(a.alsoWon?.length)body.push(turn(0,`And ${last} also won ${join(a.alsoWon)}. ${A}?`),turn(2,a.alsoWon.length>1?`That's a trophy case. What a season.`:`Two awards. That's a season people remember.`));
+    body.push(...honors);
+    return frame(story,'award',[`${name}${T?` of ${T.nick}`:''} is your ${a.name}. ${J}, your reaction?`,`${a.name} goes to ${name}. ${J}?`,`It's official: ${name} wins ${a.name}. ${J}, did they get it right?`,`Hardware for ${name}: ${a.name}. ${J}, go.`],
+      [`Congratulations to ${name}. Well earned.`,`${last} gets the hardware. We'll leave it there.`,`An award to be proud of. Congrats, ${last}.`,`That's recognition for the work already done.`],body);
+  }
   function awardScript(story,n=first()){
+    if(story.seasonSnapshot?.award&&story.seasonSnapshot?.featuredPlayer)return awardDesk(story,n);
     const row=story.seasonSnapshot?.rows?.[0],p=story.seasonSnapshot?.featuredPlayer;
     const name=p?.name||row?.[1]||String(story.headline).split(' wins ')[0],award=row?.[0]||String(story.headline).split(' wins ').slice(1).join(' wins ')||'the award';
     const last=C.surname(name),J=n[1];
@@ -351,7 +462,8 @@
   }
   function playoffScript(story,n=first()){
     const rows=story.seasonSnapshot?.rows||[];if(!rows.length)return genericScript(story,n);
-    const teams=teamRecords(story),round=Number(String(story.eventKey||'').split('-').at(-1)),J=n[1];
+    const teams=teamRecords(story),round=Number(String(story.eventKey||'').match(/playoff-round-(\d+)/)?.[1]),J=n[1];
+    if(rows[0].length>=4)return seriesTracker(story,rows,n);
     const paired=rows.map(row=>({row,a:teams.find(t=>t.name===row[0]),b:teams.find(t=>t.name===row[1])}));
     const pair=paired.filter(x=>x.a&&x.b).sort((a,b)=>Math.abs(a.a.r.W-a.b.r.W)-Math.abs(b.a.r.W-b.b.r.W))[0]||paired[0];
     const {row,a,b}=pair,A=C.teamRef({name:row[0]}),B=C.teamRef({name:row[1]});
@@ -371,13 +483,36 @@
     return frame(story,'playoff',[`${round>1?`Round ${round}`:'The playoffs'}: ${rows.length} ${rows.length===1?'matchup':'matchups'} set. ${J}, where are you looking?`,`It's ${round>1?`Round ${round}`:'playoff time'}. Let's look at the matchups. ${J}, you first.`,`${round>1?`Round ${round}`:'The playoff field'} is locked in. ${J}, which series has your attention?`,`Win or go home time. ${J}, what's the series to watch?`],
       ["The matchups are set. Let the games begin.","We'll be watching when they tip off.","I can't wait for this round.","We'll revisit after they play. Somebody's going to be wrong."],body);
   }
+  // Mid-round: the desk works through the open series.
+  function seriesTracker(story,rows,n){
+    const ref=name=>C.teamRef({name}),score=r=>r[3].split('-').map(Number),firstTo=r=>(Number(String(r[2]).match(/\d+/)?.[0])+1)/2||1;
+    const done=rows.filter(r=>Math.max(...score(r))===firstTo(r)),live=rows.filter(r=>!done.includes(r));
+    const tied=live.filter(r=>score(r)[0]===score(r)[1]),brink=live.filter(r=>Math.max(...score(r))===firstTo(r)-1&&score(r)[0]!==score(r)[1]);
+    const lead=r=>{const [a,b]=score(r);return a>=b?[ref(r[0]),ref(r[1]),a,b]:[ref(r[1]),ref(r[0]),b,a];};
+    const body=[];
+    const focus=tied[0]||brink[0]||live[0];
+    if(focus){
+      const [x,y,a,b]=lead(focus);
+      body.push(turn(1,a===b?`${cap(x.nick)} and ${y.nick}, tied ${a}-${b}. That's the series. Everything else is noise.`:`${cap(x.nick)} up ${a}-${b} on ${y.nick}. ${a===firstTo(focus)-1?"Put a fork in it.":"They're in control."}`));
+      body.push(turn(3,a===b?`It's a best-of-${C.num(firstTo(focus)*2-1-a-b)} now. Nobody's separated.`:`${cap(y.nick)} need ${C.num(firstTo(focus)-b)} to win it. ${a===firstTo(focus)-1?"Tall order.":"Plenty of time."}`.replace(` ${y.nick} need`,` ${y.nick} ${C.verb(y,'need')}`)));
+    }
+    if(brink.length>1||(brink.length&&brink[0]!==focus))body.push(turn(2,`And keep an eye on ${join(brink.filter(r=>r!==focus).map(r=>{const [x,y,a,b]=lead(r);return `${x.nick} up ${a}-${b} on ${y.nick}`;}))}. Closeout games are the hardest ones to win.`));
+    if(done.length)body.push(turn(1,`Shout-out to ${join(done.map(r=>lead(r)[0].nick))}. ${done.length>1?'Already moving on.':'Already moving on.'} ${done.filter(r=>Math.min(...score(r))===0).length>=2?'Brooms everywhere.':''}`.trim()));
+    return frame(story,'tracker',[`Playoff check-in. ${C.plural(done.length,'series')} done, ${C.plural(live.length,'still going')}. ${n[1]}, where are you looking?`.replace('series','series'),`Let's run through the bracket. ${n[1]}?`,`Where every series stands. ${n[1]}, start us off.`,`Playoff tracker time. ${n[1]}?`],
+      ["That's the bracket. Buckle up.","Lots of basketball left. Stay tuned.","We'll check back after the next round of games.","Somebody's season ends soon. Let's see who."],body);
+  }
   function championshipScript(story,n=first()){
     const row=story.seasonSnapshot?.rows?.[0]||[],champ=row[0]||story.relatedTeams?.[0]?.name;
     if(!champ)return genericScript(story,n);
     const T=C.teamRef({name:champ}),J=n[1];
     const body=Season.honorLines(story).slice(0,2).map(text=>turn(3,text)),team=teamRecords(story).find(t=>t.name===champ);
     body.unshift(turn(1,pick(story,[`They did it! I don't want to hear anything negative about ${T.nick} today. Nothing.`,`Champions. Say it with me. That's the only word that matters now.`,`Whatever you thought about ${T.nick} at the start of the year, they're the last team standing.`],'title:take')));
-    if(row[1]&&row[1]!=='Not available')body.push(turn(2,`And beating ${C.teamRef({name:row[1]}).nick} to finish it? That's a worthy final. That's the one they'll tell their kids about.`));
+    const run=story.seasonSnapshot?.run||[],mvp=story.seasonSnapshot?.finalsMvp,last=run.at(-1);
+    if(row[1]&&row[1]!=='Not available')body.push(turn(2,last?.firstTo>1?(last.losses===0?`And a sweep in the Finals? Against ${C.teamRef({name:row[1]}).nick}? That's a statement.`:`${last.wins}-${last.losses} over ${C.teamRef({name:row[1]}).nick} in the Finals. They'll tell their kids about that one.`):
+      `And beating ${C.teamRef({name:row[1]}).nick}${story.seasonSnapshot?.finalScore?` ${story.seasonSnapshot.finalScore}`:''} to finish it? That's the one they'll tell their kids about.`));
+    const sevens=run.filter(r=>r.firstTo>1&&r.games===r.firstTo*2-1).length;
+    if(sevens>=2)body.push(turn(3,`And don't forget how they got there. ${C.capitalize(C.num(sevens))} series that went the distance. That's a tough team.`));
+    if(mvp)body.push(turn(0,`${mvp.name} took ${mvp.award}. ${n[2]}?`),turn(2,mvp.GP===1?`${mvp.PTS} points and ${mvp.REB} rebounds in the title game. Big stage, big night.`:`${(mvp.PTS/mvp.GP).toFixed(1)} points a game in the Finals. When it mattered most, the ball found ${C.surname(mvp.name)}.`));
     if(team){
       body.push(turn(0,`${n[3]}, what did the regular season look like?`));
       body.push(turn(3,`${team.r.W}-${team.r.L}. ${team.r.W>team.r.L*2?"In control from the jump.":team.r.W>team.r.L?"Good, not overwhelming. Which makes this run even better.":"Not great, honestly. Which makes this one of the better stories in a while."}`));
@@ -407,7 +542,7 @@
       const other=teams[1];body.push(turn(1,`And don't forget ${C.teamRef({name:other.name}).nick} at ${other.r.W}-${other.r.L}. ${team.r.W===other.r.W&&team.r.L===other.r.L?"Same record. Nobody separated.":"They were right there."}`));
     }
     const verdict=team.r.W>team.r.L?'a winning season':team.r.W<team.r.L?'a losing season':'a .500 season';
-    return frame(story,'season',[`${T.display} finish with ${verdict}. ${J}, grade it.`,`${cap(verdict)} for ${T.nick}. ${J}, are you satisfied?`,`${T.display}: regular season's in the books. ${J}?`,`Let's put a bow on ${possessive(T.nick)} regular season. ${J}?`],
+    return frame(story,'season',[`${cap(T.full)} ${C.verb(T,'finish')} with ${verdict}. ${J}, grade it.`,`${cap(verdict)} for ${T.nick}. ${J}, are you satisfied?`,`${T.display}: regular season's in the books. ${J}?`,`Let's put a bow on ${possessive(T.nick)} regular season. ${J}?`],
       ["They'll want more next year.","That's the season. On to what's next.","We'll see what they do with it.","Grade's in. Moving on."],body);
   }
   function leadersScript(story,n=first()){
@@ -458,19 +593,61 @@
     const body=detail?[turn(2,detail),turn(1,pick(story,take,'brief:take'))]:[turn(1,pick(story,take,'brief:take'))];
     return frame(story,'brief',openings,closings,body.slice(0,2));
   }
+  // Offseason roundups: the desk argues about the names at the top.
+  function roundupScript(story,n=first()){
+    const r=story.seasonSnapshot.roundup,items=r.items||[],top=items[0];if(!top)return genericScript(story,n);
+    const T=x=>C.teamRef({city:x.teamCity,name:x.teamNickname||x.team}).nick,line=c=>c?`${c.PTS} points${c.REB?` and ${c.REB} rebounds`:''}`:'',last=x=>C.surname(x.name),[M,J,A,N]=n;
+    const body=[];let open,close;
+    if(r.type===2){
+      const second=items[1],third=items[2],sleeper=items.slice(3).filter(x=>x.college).sort((a,b)=>Number(b.college.PTS)-Number(a.college.PTS))[0];
+      open=pick(story,[`${cap(T(top))} ${C.verb(C.teamRef({city:top.teamCity,name:top.teamNickname||top.team}),'take')} ${top.name} No. ${top.pick||1}. ${J}, grade the pick.`,`The draft's in the books, and ${top.name} goes first to ${T(top)}. ${J}?`,`${top.name}, No. ${top.pick||1} overall. ${J}, did ${T(top)} get it right?`,`Draft night. ${top.name} to ${T(top)} at the top. ${J}, go.`],'draft:open');
+      body.push(turn(1,top.college?pick(story,[`I like it. ${line(top.college)} in college. You don't overthink the top pick.`,`Solid, not spectacular. ${line(top.college)} in college is good. I want to see it translate.`,`A-minus. ${last(top)} can play, and ${T(top)} needed somebody who can play.`],'draft:take'):`I like it. You don't overthink the top pick.`));
+      if(second)body.push(turn(3,`${second.name} went second to ${T(second)}${second.college?` after ${line(second.college)} a night in college`:''}.${third?` ${third.name} went third to ${T(third)}${third.college?`, ${third.college.PTS} points a night`:''}.`:''}`));
+      if(sleeper&&Number(sleeper.college.PTS)>Number(top.college?.PTS||0))body.push(turn(2,`My guy is ${sleeper.name} at No. ${sleeper.pick}. ${sleeper.college.PTS} points a night in college, more than the top pick. ${cap(T(sleeper))} might have gotten a steal.`),turn(1,`Steal is a strong word, ${A}. Let's see the kid play first.`));
+      body.push(turn(3,`${C.plural(r.count,'player')} drafted in all. Most of them are going to fight for minutes.`));
+      close=pick(story,["Grades are in. Now they have to play.","Draft night is about hope. Now comes the hard part.","We'll revisit these grades in a year. Somebody's going to look silly.","That's the draft. On to free agency."],'draft:close');
+    }else if(r.type===3){
+      const vets=items.filter(x=>!x.rookie),rookies=r.count-vets.length;
+      open=vets.length?pick(story,[`Free agency is moving. ${top.name} signs with ${T(top)}. ${J}, winners and losers?`,`Big signing: ${top.name} to ${T(top)}. ${J}?`,`${top.name} has a new home: ${T(top)}. ${J}, your reaction.`,`Let's talk free agency. ${top.name} to ${T(top)}. ${J}?`],'fa:open'):
+        pick(story,[`${C.capitalize(C.plural(r.count,'rookie'))} put pen to paper. ${J}, anything there?`,`Rookie contracts are signed. ${top.name} leads the way with ${T(top)}. ${J}?`],'fa:open');
+      if(vets.length){
+        body.push(turn(1,top.last?.PTS?`${top.last.PTS} points a night last year. ${cap(T(top))} just got better. I don't need to overthink that.`:`I like the fit. ${cap(T(top))} needed bodies, and they got a real one.`));
+        body.push(turn(2,top.years?`${C.capitalize(C.num(top.years))} years, though. That's a real commitment.${top.age?` ${last(top)}'s ${top.age}.`:''}`:`I want to see where ${last(top)} fits in that rotation before I start celebrating.`));
+        if(vets.length>1)body.push(turn(3,`Also moving: ${join(vets.slice(1,4).map(x=>`${x.name} to ${T(x)}`))}.${rookies?` And ${C.plural(rookies,'rookie')} signed first deals.`:''}`));
+      }else body.push(turn(1,"Rookie contracts don't win championships. Wake me up when a real free agent moves."),turn(3,`Mostly rookie deals, Jordan. ${top.name} with ${T(top)} is the headliner.`));
+      close=pick(story,["The market's open. We'll keep tracking it.","More moves to come. Stay tuned.","Free agency isn't over. Not even close.","That's the latest from the market."],'fa:close');
+    }else if(r.type===14){
+      open=pick(story,[`Recruiting news. ${top.name} commits to ${T(top)}. ${J}?`,`${C.capitalize(C.plural(r.count,'commitment'))} in one day, and ${top.name} headlines it. ${J}?`,`${top.name} picks ${T(top)}. ${J}, how big is that?`,`Signing day energy. ${top.name} to ${T(top)}. ${J}?`],'rec:open');
+      body.push(turn(1,pick(story,[`That's a get. ${cap(T(top))} just won the day.`,`Huge. That's the kind of name that changes a program.`,`I love it. You recruit, you win. Simple.`],'rec:take')));
+      if(items.length>1)body.push(turn(2,`Don't overlook the rest: ${join(items.slice(1,4).map(x=>`${x.name} to ${T(x)}`))}.`));
+      body.push(turn(3,`${C.capitalize(C.plural(r.count,'recruit'))} made their choices. Plenty of rosters just changed.`));
+      close=pick(story,["The recruiting trail never stops.","We'll see who pans out.","Programs get built on days like this.","That's the recruiting roundup."],'rec:close');
+    }else{
+      open=pick(story,[`${C.capitalize(C.plural(r.count,'player'))} have declared for the draft, led by ${top.name}. ${J}?`,`Early entrants: ${top.name} headlines the list. ${J}, ready for the pros?`,`${top.name} is turning pro. ${J}?`,`Draft declarations are in. ${top.name} leads the group. ${J}?`],'dec:open');
+      body.push(turn(1,top.season?.PTS?`${top.season.PTS} a night. Go get paid. That's ready.`:`Bet on yourself. I respect it.`));
+      if(items.length>1)body.push(turn(3,`Also declaring: ${join(items.slice(1,4).map(x=>`${x.name}${x.season?.PTS?` at ${x.season.PTS} points a game`:''}`))}.`));
+      body.push(turn(2,`Not all of them are ready. Some of them are going to wish they'd stayed.`));
+      close=pick(story,["Draft night just got more interesting.","Now we wait for draft day.","Big decisions all around.","That's the early-entry list."],'dec:close');
+    }
+    return [turn(0,open),...body,turn(0,close)];
+  }
   function reportedReaction(story,n=first()){
     if(!story.quotesEnabled||!story.templateVersion)return [];
     const quotes=(story.paragraphs||[]).flatMap(p=>typeof p==='string'?[...p.matchAll(/[“"]([^”"]+)[”"]\s+([^.!?“"]+?) said\.(?:\s+[“"]([^”"]+)[”"])?/g)]:[]).filter(q=>q[1].length<=240);
     const q=quotes.find(q=>/\bcoach\s/.test(q[2]))||quotes[0];if(!q)return [];
     const coach=/\bcoach\s+(.+)$/.exec(q[2]),who=coach?`Coach ${coach[1]}`:q[2];
     const words=(q[1].replace(/,$/,'.')+(q[3]&&q[1].length+q[3].length<=200?' '+q[3]:'')).trim();
-    const response=/consisten/i.test(words)?"Consistency. That's the challenge: doing it again next game, and the game after that.":/champion|title|finish the job/i.test(words)?"That's a championship reaction I can understand. Let them enjoy it.":
+    const award=story.eventKey?.startsWith('award-')||story.type==='Award announcement',title=story.type==='Championship review'||story.eventKey==='championship';
+    const response=award?pick(story,["Love that. You can hear what it means.","That's a coach who's been watching every day. That carries weight.","Humble. I respect it.","Well said. Now go get another one."],'quote:award'):
+      title?pick(story,["That's a championship reaction I can understand. Let them enjoy it.","You can feel it. That's a group that went through something together."],'quote:title'):
+      /consisten/i.test(words)?"Consistency. That's the challenge: doing it again next game, and the game after that.":/champion|title|finish the job/i.test(words)?"That's a championship reaction I can understand. Let them enjoy it.":
       /responsib|not good enough|higher|better|identity/i.test(words)?"Fair. Now show me. Saying it is the easy part.":/proud|earned/i.test(words)?"And they should be proud. That's a group that earned it.":/records|believ|chance|nothing to lose/i.test(words)?"That's a locker room that believes. I love that.":
       /film|clean up|work/i.test(words)?"That's the right mentality. Enjoy the win, fix the mistakes.":null;
     return response?[turn(0,`Here's what ${who} had to say: “${words}”`),turn(pick(story,[1,2],'quote:reactor'),response)]:[];
   }
   function baseScript(story,context,n){
     if(story.performanceSnapshot)return Performance.script(story,n);
+    if(story.seasonSnapshot?.roundup)return roundupScript(story,n);
     if(story.type==='Season leaders')return leadersScript(story,n);
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return awardScript(story,n);
     if(story.type==='Playoff preview'||story.eventKey?.startsWith('playoff-round-'))return playoffScript(story,n);
@@ -484,7 +661,10 @@
     context||=Context.buildContext(story);
     const n=first(names),turns=baseScript(story,context,n),reaction=reportedReaction(story,n),budget=turns.length<=4?4:14;
     if(reaction.length&&turns.length+reaction.length<=budget)turns.splice(turns.length-1,0,...reaction);
-    return turns;
+    // Back-to-back lines from one host read as a single answer.
+    const merged=[];
+    for(const t of turns){const last=merged.at(-1);if(last&&last.speaker===t.speaker)last.text+=' '+t.text;else merged.push({...t});}
+    return merged;
   }
   function episode(story,names=defaultNames,context){
     if(!story)return [];

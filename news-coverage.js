@@ -12,6 +12,87 @@
     const last=player.ln||C.surname(C.playerDisplay(player)),a=k=>(s[k]/s.GP).toFixed(1);
     return `${last} ${player.retired?'averaged':'is averaging'} ${a('PTS')} points, ${a('REB')} rebounds and ${a('AST')} assists in ${C.plural(s.GP,'game')} this season.`;
   }
+  const roundupTypes=new Set([2,3,14,15]),roundupSize=4;
+  const perGame=(s,k)=>s?.GP>0&&Number.isFinite(s[k])?(s[k]/s.GP).toFixed(1):null;
+  function college(p){const s=p?.history?.collegeStats?.season;return s?.GP>0&&Number.isFinite(s.PTS)?s:null;}
+  function contextFor(team,lookup,league,player){
+    const opponent=[...lookup.teams.values()].find(t=>t.id!==team.id);
+    return {winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:player||team.roster?.[0],potg:player||null,potgStatsTrusted:!!player,
+      gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}};
+  }
+  function roundup(list,{league,lookup,players,year,fp,result}){
+    const type=list[0].type,short=league.shortName||league.leagueName,cap=C.capitalize;
+    const rows=list.map(n=>({n,p:players.get(n.pid),t:lookup.teams.get(n.tid)})).filter(x=>x.p&&x.t);
+    if(!rows.length)return;
+    const T=t=>C.teamRef(t),name=p=>C.playerDisplay(p),last=p=>p.ln||C.surname(name(p));
+    let headline,paragraphs=[],table,lead,storyType,headers;
+    if(type===2){
+      rows.sort((a,b)=>(a.n.data?.draftPick?.rd||9)-(b.n.data?.draftPick?.rd||9)||(a.n.data?.draftPick?.pk||99)-(b.n.data?.draftPick?.pk||99));
+      const pick=x=>x.n.data?.draftPick||{},via=x=>{const o=lookup.teams.get(pick(x).otid);return o&&o.id!==x.t.id?` (from ${T(o).nick})`:'';};
+      const resume=x=>{const c=college(x.p);return c?` ${C.capitalize(x.p.age?`the ${x.p.age}-year-old`:last(x.p))} averaged ${perGame(c,'PTS')} points, ${perGame(c,'REB')} rebounds and ${perGame(c,'AST')} assists in college.`:'';};
+      lead=rows[0];storyType='Draft';
+      headline=`${T(lead.t).nickname} ${C.verb(T(lead.t),'take')} ${name(lead.p)} No. ${pick(lead).pk||1} in ${year} draft`;
+      paragraphs.push(`${cap(T(lead.t).full)} selected ${name(lead.p)} with the No. ${pick(lead).pk||1} pick in the ${year} ${short} draft${via(lead)}.${resume(lead)}`);
+      const next=rows.slice(1,3);
+      if(next.length)paragraphs.push(next.map(x=>`${cap(T(x.t).full)} took ${name(x.p)} at No. ${pick(x).pk}${via(x)}.${resume(x)}`).join(' '));
+      const rest=rows.slice(3,10);
+      if(rest.length)paragraphs.push(`The rest of the top ${C.num(Math.min(10,rows.length))}: ${C.listJoin(rest.map(x=>`${name(x.p)} to ${T(x.t).nick} at No. ${pick(x).pk}`))}.`);
+      const roundsUsed=new Set(rows.map(x=>pick(x).rd)).size;
+      paragraphs.push(`In all, ${C.plural(rows.length,'player')} ${rows.length===1?'was':'were'} selected over ${C.plural(roundsUsed,'round')}.`);
+      headers=['Pick','Team','Player'];table=rows.map(x=>[`${pick(x).rd}-${pick(x).pk}`,C.teamDisplay(x.t),name(x.p)]);
+    }else if(type===3){
+      const rookie=x=>x.p.history?.draft?.yr===year||x.p.yrs===0;
+      const prior=x=>S.stats(x.p,league,year-1)||S.stats(x.p,league,year);
+      const vets=rows.filter(x=>!rookie(x)).sort((a,b)=>(Number(perGame(prior(b),'PTS'))||0)-(Number(perGame(prior(a),'PTS'))||0));
+      const rookies=rows.filter(rookie).sort((a,b)=>(a.p.history?.draft?.rd||9)-(b.p.history?.draft?.rd||9)||(a.p.history?.draft?.pk||99)-(b.p.history?.draft?.pk||99));
+      const deal=x=>x.n.data?.contract?.yrs>0?`${C.num(x.n.data.contract.yrs)}-year deal`:'deal';
+      lead=vets[0]||rookies[0];storyType='Free agency';
+      const line=x=>{const s=prior(x),ppg=perGame(s,'PTS');return ppg?` ${C.capitalize(last(x.p))} averaged ${ppg} points and ${perGame(s,'REB')} rebounds last season.`:'';};
+      if(vets.length){
+        headline=`${name(vets[0].p)} signs with ${T(vets[0].t).nickname}${vets.length>1?` as free agency heats up`:''}`;
+        paragraphs.push(`${name(vets[0].p)} signed a ${deal(vets[0])} with ${T(vets[0].t).full}, the biggest name in a busy stretch of free agency.${line(vets[0])}`);
+        if(vets.length>1)paragraphs.push(`Also on the move: ${C.listJoin(vets.slice(1,6).map(x=>`${name(x.p)} to ${T(x.t).nick}`))}${vets.length>6?`, among ${C.plural(vets.length-6,'other veteran')}`:''}.`);
+      }else{
+        const top=rookies.find(x=>x.p.history?.draft?.yr===year)||rookies[0],no=top.p.history?.draft?.yr===year&&top.p.history.draft.rd===1?`No. ${top.p.history.draft.pk} pick `:'';
+        headline=`${C.plural(rookies.length,'rookie')} sign first contracts, led by ${name(top.p)}`;
+        paragraphs.push(`${C.capitalize(C.plural(rookies.length,'rookie'))} signed ${rookies.length===1?'a first contract':'their first contracts'}, led by ${no}${name(top.p)} with ${T(top.t).full}.`);
+      }
+      if(vets.length&&rookies.length)paragraphs.push(`The rest was routine business: ${C.plural(rookies.length,'rookie')} signed first contracts, including ${name(rookies[0].p)} with ${T(rookies[0].t).full}.`);
+      headers=['Team','Player','Years'];table=rows.map(x=>[C.teamDisplay(x.t),name(x.p),x.n.data?.contract?.yrs||'—']);
+    }else if(type===14){
+      rows.sort((a,b)=>(b.p.pot||0)-(a.p.pot||0)||(b.p.rating||0)-(a.p.rating||0)||a.p.id-b.p.id);
+      lead=rows[0];storyType='Recruiting';
+      const counts=new Map();for(const x of rows)counts.set(x.t.id,(counts.get(x.t.id)||0)+1);
+      const busiest=[...counts].sort((a,b)=>b[1]-a[1])[0];
+      headline=`${name(lead.p)} headlines a ${rows.length}-commitment recruiting haul`;
+      paragraphs.push(`${name(lead.p)}${lead.p.age?`, ${lead.p.age},`:''} committed to ${T(lead.t).full}, the headliner on a day when ${C.plural(rows.length,'recruit')} made their college choices.`);
+      if(rows.length>1)paragraphs.push(`Other top names: ${C.listJoin(rows.slice(1,5).map(x=>`${name(x.p)} to ${T(x.t).nick}`))}.`);
+      if(busiest&&busiest[1]>=3)paragraphs.push(`${cap(T(lookup.teams.get(busiest[0])).full)} had the busiest day, landing ${C.plural(busiest[1],'commitment')}.`);
+      headers=['School','Recruit','Age'];table=rows.map(x=>[C.teamDisplay(x.t),name(x.p),x.p.age||'—']);
+    }else{
+      const s=x=>S.stats(x.p,league,year);
+      rows.sort((a,b)=>(Number(perGame(s(b),'PTS'))||0)-(Number(perGame(s(a),'PTS'))||0));
+      lead=rows[0];storyType='Draft declaration';
+      headline=`${name(lead.p)} leads ${C.plural(rows.length,'early entrant')} into the draft`;
+      const ppg=x=>perGame(s(x),'PTS');
+      paragraphs.push(`${name(lead.p)} of ${T(lead.t).full} declared for the draft${ppg(lead)?` after averaging ${ppg(lead)} points and ${perGame(s(lead),'REB')} rebounds this season`:''}, headlining a group of ${C.plural(rows.length,'player')} who are turning pro.`);
+      if(rows.length>1)paragraphs.push(`Also declaring: ${C.listJoin(rows.slice(1,6).map(x=>`${name(x.p)} (${T(x.t).nick}${ppg(x)?`, ${ppg(x)} points per game`:''})`))}.`);
+      headers=['Player','School','PPG'];table=rows.map(x=>[name(x.p),C.teamDisplay(x.t),ppg(x)||'—']);
+    }
+    const item=x=>{const c=college(x.p),cur=S.stats(x.p,league,year),prev=S.stats(x.p,league,year-1);
+      return {name:name(x.p),team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,age:x.p.age||null,pick:x.n.data?.draftPick?.pk||null,round:x.n.data?.draftPick?.rd||null,
+        years:x.n.data?.contract?.yrs||null,rookie:x.p.yrs===0,college:c?{PTS:perGame(c,'PTS'),REB:perGame(c,'REB'),AST:perGame(c,'AST')}:null,
+        season:cur?.GP>0?{PTS:perGame(cur,'PTS'),REB:perGame(cur,'REB')}:null,last:prev?.GP>0?{PTS:perGame(prev,'PTS'),REB:perGame(prev,'REB')}:null};};
+    const ordered=type===2?rows:type===3?[...rows].sort((a,b)=>Number(a.p.yrs===0)-Number(b.p.yrs===0)):rows;
+    const key=`roundup-${type}-${list[0].phase}-${type===2?year:list[0].date}`;
+    if(result.some(x=>x.story.eventKey===key))return;
+    const related=[...new Map(rows.map(x=>[x.t.id,x.t])).values()];
+    const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:Math.max(1,C.buildLookups(league).latestDay+1),type:storyType,headline,paragraphs,
+      importance:type===2?120:95,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+      relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
+      seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
+    result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
+  }
   function candidates(league){
     const lookup=C.buildLookups(league),year=C.seasonYear(league),fp=C.buildFingerprint(league),players=new Map(lookup.players),result=[];
     for(const p of [...(league.retirees||[]),...(league.hallOfFame||[])])if(p&&Number.isInteger(p.id)&&!players.has(p.id))players.set(p.id,p);
@@ -19,8 +100,18 @@
     for(const t of lookup.teams.values())for(const p of t.frontOffice?.staff||[])coaches.set(p.id,p);
     const currentDay=Number.isInteger(league.season?.currentDay)?league.season.currentDay:lookup.latestDay;
     const firstDay=lookup.latestDay<=currentDay?Math.max(0,lookup.latestDay):Math.max(0,currentDay);
-    const events=(league.season?.news||[]).filter(n=>n.league===league.leagueType&&n.phase===league.season.phase&&Number.isInteger(n.date)&&n.date>=firstDay&&n.date<=currentDay&&types[n.type]);
-    for(const event of events){
+    const phase=league.season?.phase;
+    // Offseason phases turn over quickly; the draft, signings and recruiting
+    // from the last few phases are still today's news.
+    const recentPhase=n=>Number.isInteger(n.phase)&&n.phase<phase&&n.phase>=phase-3&&roundupTypes.has(n.type);
+    const events=(league.season?.news||[]).filter(n=>n.league===league.leagueType&&Number.isInteger(n.date)&&types[n.type]&&
+      (n.phase===phase?n.date>=firstDay&&n.date<=currentDay:recentPhase(n)));
+    // A day with many routine moves becomes one roundup instead of a feed of briefs.
+    const grouped=new Map();
+    for(const n of events)if(roundupTypes.has(n.type)){const k=`${n.type}:${n.phase}:${n.type===2?'all':n.date}`;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(n);}
+    const bundled=new Set([...grouped.values()].filter(list=>list.length>=roundupSize||list[0].type===2).flat());
+    for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,year,fp,result});
+    for(const event of events.filter(n=>!bundled.has(n))){
       const info=event.data||{},jersey=info.retiredNumber;
       let coachEvent=[26,27,28,29].includes(event.type);
       const personId=event.type===25&&jersey?.pid>0?jersey.pid:event.pid;
@@ -57,7 +148,7 @@
         const lead=playerAssets[0];
         headline=lead?`${C.teamRef(lead.to).nickname} ${C.verb(C.teamRef(lead.to),'acquire')} ${C.playerDisplay(lead.player)} from ${C.teamRef(lead.from).nickname}`:`${related.map(t=>C.teamRef(t).nickname).join(' and ')} ${related.length===2?'swap':'complete'} draft picks`;
       }else if(event.type===13){
-        if(!team)continue;headline=`${C.teamRef(team).nickname} crowned ${year} champions`;paragraphs=[`${C.capitalize(C.teamRef(team).full)} are the ${year} ${league.shortName||league.leagueName} champions.`];rows=[['Champion',teamName,year]];
+        if(!team)continue;headline=`${C.teamRef(team).nickname} crowned ${year} champions`;paragraphs=[`${C.capitalize(C.teamRef(team).full)} are the ${year} ${league.shortName||league.leagueName} champions.`];rows=[[teamName,'Not available',year]];
       }else{
         if(!player)continue;
         if(!team&&[16,17,22,29].includes(event.type)){team=lookup.teams.get(player.tid);related=team?[team]:[];}
@@ -71,7 +162,7 @@
           case 10:{const games=info.injury?.gamesOut,known=Number.isInteger(games)&&games>0;headline=known?`${name} out ${C.plural(games,'game')} for ${nick}`:`${nick} ${C.verb(T,'lose')} ${name} to injury`;
             paragraphs=[`${name} will miss ${known?`an estimated ${C.plural(games,'game')}`:'time'} with an injury, a blow to ${T.full}${standing}.`,season?`${season} ${C.capitalize(T.short)} will have to find that production elsewhere.`:''].filter(Boolean);break;}
           case 11:headline=`${name} cleared to return for ${nick}`;paragraphs=[`${name} has recovered from injury, giving ${T.full} another option in the rotation.`,season].filter(Boolean);break;
-          case 12:{const award=(league.awards||[]).find(a=>a.id===info.awardId);if(!award||award.id===0)continue;headline=`${name} wins ${award.name}`;paragraphs=[`${name} has won the ${year} ${award.name} award in ${league.shortName||league.leagueName}.`];break;}
+          case 12:{const award=(league.awards||[]).find(a=>a.id===info.awardId);if(!award||award.id===0)continue;headline=`${name} wins ${award.name}`;paragraphs=[`${name} has won the ${year} ${award.name}${/award$/i.test(award.name)?'':' award'}.`];rows=[[award.name,name,year]];break;}
           case 14:headline=`${name} commits to ${nick}`;paragraphs=[`${Full} landed a commitment from ${name}.`];break;
           case 15:headline=`${name} declares for the draft`;paragraphs=[`${name} has declared for the draft.`,season.replace(' is averaging ',' averaged ')].filter(Boolean);break;
           case 16:headline=`${name} announces plans to retire`;paragraphs=[`${name} has announced plans to retire, putting a ${league.shortName||league.leagueName} career on its final lap.`];break;
@@ -91,7 +182,7 @@
           const career=R.history(player,league);
           if(career&&[16,17,22,25].includes(event.type)){paragraphs.push(`${C.surname(name)} averaged ${(career.PTS/career.GP).toFixed(1)} points, ${(career.REB/career.GP).toFixed(1)} rebounds and ${(career.AST/career.GP).toFixed(1)} assists over ${career.GP} regular-season games in ${league.shortName||league.leagueName}.`);rows.push(['Career PPG',(career.PTS/career.GP).toFixed(1),'Regular season'],['Career RPG',(career.REB/career.GP).toFixed(1),'Regular season'],['Career APG',(career.AST/career.GP).toFixed(1),'Regular season']);}
         }
-        rows.unshift(['Event',type,name]);
+        if(event.type!==12)rows.unshift(['Event',type,name]);
       }
       if(event.type===10&&team){const record=(team.season||[]).find(r=>r.yr===year);paragraphs.push(...S.quoteLines(`${fp}:${year}:injury:${event.pid}:${event.date}`,record,false,C.coachForTeam(team),player,'injury'));}
       // An unattached retired player can still receive league-wide Hall of Fame coverage.

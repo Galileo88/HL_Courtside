@@ -146,26 +146,86 @@
     return 0;
   }
 
+  /* Game facts: everything a writer may claim about a game, derived once from
+     the save. Playoff games carry the series record in home/awayRecord, so the
+     season record comes from the team's season line instead. */
+  const isRecord = r => Array.isArray(r) && r.length >= 2 && Number.isInteger(r[0]) && Number.isInteger(r[1]) && r[0] >= 0 && r[1] >= 0;
+  function bracketFor(league) { return (league.season?.playoffs || []).find(p => p.yr === seasonYear(league)) || null; }
+  function roundName(bracket, tRound, college) {
+    return nameForTeams((bracket?.rounds?.[tRound - 1]?.series || []).length * 2, tRound, college);
+  }
+  function nameForTeams(teams, tRound, college) {
+    if (teams === 2) return college ? {name: "national championship game", short: "title", final: true} : {name: "Finals", short: "Finals", final: true};
+    if (tRound === 1) return {name: "first round", short: "first-round", final: false};
+    if (college) return {name: ({4: "Final Four", 8: "Elite Eight", 16: "Sweet 16", 32: "round of 32"})[teams] || `round ${tRound}`, short: ({4: "Final Four", 8: "Elite Eight", 16: "Sweet 16"})[teams] || `round-${tRound}`, final: false};
+    return teams === 4 ? {name: "semifinals", short: "semifinal", final: false} : {name: tRound === 2 ? "second round" : "quarterfinals", short: tRound === 2 ? "second-round" : "quarterfinal", final: false};
+  }
+  function seriesFacts(game, league) {
+    if (!(game.tRound > 0)) return null;
+    const bracket = bracketFor(league), series = bracket?.rounds?.[game.tRound - 1]?.series?.[game.tId];
+    const loserId = game.winner === game.homeTeam ? game.awayTeam : game.homeTeam;
+    if (!series || ![series.topSeed, series.lowerSeed].includes(game.winner) || ![series.topSeed, series.lowerSeed].includes(loserId)) return null;
+    const firstTo = series.firstTo, wr = game.winner === game.homeTeam ? game.homeRecord : game.awayRecord, lr = game.winner === game.homeTeam ? game.awayRecord : game.homeRecord;
+    if (!(firstTo >= 1) || !isRecord(wr) || !isRecord(lr) || wr[0] !== lr[1] || wr[1] !== lr[0] || wr[0] < 1 || wr[0] > firstTo || wr[1] >= firstTo) return null;
+    const [wins, losses] = wr, round = roundName(bracket, game.tRound, league.leagueType === 1), clinched = wins === firstTo;
+    const teams = (bracket.rounds[game.tRound - 1].series || []).length * 2;
+    return {round: game.tRound, roundName: round.name, roundShort: round.short, final: round.final, firstTo, bestOf: firstTo * 2 - 1,
+      nextRound: teams > 2 ? nameForTeams(teams / 2, game.tRound + 1, league.leagueType === 1).name : null,
+      gameNumber: wins + losses, wins, losses, clinched, title: round.final && clinched, sweep: clinched && losses === 0 && firstTo > 1,
+      decider: firstTo > 1 && wins + losses === firstTo * 2 - 1, tied: wins === losses, savedSeason: firstTo > 1 && losses === firstTo - 1,
+      loserFacesElimination: !clinched && firstTo > 1 && wins === firstTo - 1, winnerHigherSeed: series.topSeed === game.winner};
+  }
+  // Streaks, recent form and the season series, from the save's own schedule.
+  function formFacts(game, dayIndex, lookups) {
+    if (game.tRound > 0 || game.gameType !== 0) return {};
+    const form = {}, played = lookups.completed.filter(x => x.dayIndex <= dayIndex && x.game.tRound === 0 && x.game.gameType === 0);
+    for (const tid of [game.homeTeam, game.awayTeam]) {
+      const games = played.filter(x => x.game.homeTeam === tid || x.game.awayTeam === tid).map(x => x.game);
+      const post = tid === game.homeTeam ? game.homeRecord : game.awayRecord;
+      // Only a complete record chain proves a streak.
+      if (!isRecord(post) || games.length !== post[0] + post[1] || games.at(-1)?.gId !== game.gId) continue;
+      const results = games.map(g => g.winner === tid), last = results.at(-1);
+      let length = 0; for (let i = results.length - 1; i >= 0 && results[i] === last; i--) length++;
+      let ended = 0; for (let i = results.length - 2; i >= 0 && results[i] !== last; i--) ended++;
+      const recent = results.slice(-10);
+      form[tid] = {streak: {won: last, length}, ended: ended >= 3 && length === 1 ? {won: !last, length: ended} : null,
+        last10: recent.length === 10 ? [recent.filter(Boolean).length, recent.filter(x => !x).length] : null};
+    }
+    const meetings = played.filter(x => [x.game.homeTeam, x.game.awayTeam].every(t => [game.homeTeam, game.awayTeam].includes(t))).map(x => x.game);
+    if (meetings.at(-1)?.gId === game.gId) form.series = {meetings: meetings.length, winnerWins: meetings.filter(g => g.winner === game.winner).length};
+    return form;
+  }
+  function seasonLine(team, league) {
+    const s = (team?.season || []).find(r => r.yr === seasonYear(league))?.seasonStats;
+    return isRecord([s?.W, s?.L]) && s.W + s.L > 0 ? [s.W, s.L] : null;
+  }
+  function priorSeason(team, league) {
+    const s = (team?.season || []).find(r => r.yr === Number(seasonYear(league)) - 1)?.seasonStats;
+    return isRecord([s?.W, s?.L]) && s.W + s.L > 0 ? [s.W, s.L] : null;
+  }
+
   function gameContext(game, dayIndex, league, lookups, snapshots = new Map(), fingerprint = buildFingerprint(league)) {
     const home = lookups.teams.get(game.homeTeam);
     const away = lookups.teams.get(game.awayTeam);
     const winner = lookups.teams.get(game.winner);
     const loser = game.winner === game.homeTeam ? away : home;
     const winnerIsHome = game.winner === game.homeTeam;
+    const series = seriesFacts(game, league), playoffs = game.tRound > 0;
 
     const winnerScore = winnerIsHome ? game.homeScore : game.awayScore;
     const loserScore = winnerIsHome ? game.awayScore : game.homeScore;
-    const winnerRecord = winnerIsHome ? game.homeRecord : game.awayRecord;
-    const loserRecord = winnerIsHome ? game.awayRecord : game.homeRecord;
-    const winnerPre = pregameRecord(winnerRecord, true);
-    const loserPre = pregameRecord(loserRecord, false);
+    // In the playoffs the game's records describe the series, not the season.
+    const winnerRecord = playoffs ? seasonLine(winner, league) : winnerIsHome ? game.homeRecord : game.awayRecord;
+    const loserRecord = playoffs ? seasonLine(loser, league) : winnerIsHome ? game.awayRecord : game.homeRecord;
+    const winnerPre = playoffs ? winnerRecord : pregameRecord(winnerRecord, true);
+    const loserPre = playoffs ? loserRecord : pregameRecord(loserRecord, false);
     const winnerPreGames = winnerPre[0] + winnerPre[1];
     const loserPreGames = loserPre[0] + loserPre[1];
 
     const margin = Math.abs(winnerScore - loserScore);
     const close = margin <= 3;
     const blowout = margin >= 12;
-    const upset =
+    const upset = !playoffs &&
       winnerPreGames >= 5 &&
       loserPreGames >= 5 &&
       percentage(winnerPre) + 0.15 < percentage(loserPre);
@@ -176,7 +236,7 @@
     if (close) importance += 10;
     if (blowout && margin >= 15) importance += 5;
     if (upset) importance += 20;
-    if (game.gameType && game.gameType !== 0) importance += 25;
+    if (playoffs) importance += 25 + (series?.clinched ? 15 : 0) + (series?.decider ? 10 : 0) + (series?.title ? 40 : 0);
 
     const snapshot = snapshots.get(snapshotId(fingerprint, seasonYear(league), game.gId, game.potg));
     const potgStatsTrusted = !!snapshot && validStats(snapshot.stats);
@@ -191,9 +251,19 @@
     }
     const slate = lookups.completed.filter(x => x.dayIndex === dayIndex).map(x => Math.abs(x.game.homeScore - x.game.awayScore));
     const season = league.season || {};
+    const form = formFacts(game, dayIndex, lookups);
+    const titles = winner?.championships && winner.championships.league === league.leagueType && Array.isArray(winner.championships.yearsWon) ? winner.championships.yearsWon : [];
     return {
+      college: league.leagueType === 1,
+      leagueShort: league.shortName || league.leagueName || "league",
+      titleCount: series?.title && titles.includes(seasonYear(league)) ? new Set(titles.filter(y => y <= seasonYear(league))).size : null,
       game,
       box,
+      series,
+      form,
+      playoffs,
+      winnerLastSeason: priorSeason(winner, league),
+      loserLastSeason: priorSeason(loser, league),
       dayGames: slate.length,
       widestOfDay: slate.length >= 3 && slate.filter(m => m >= margin).length === 1,
       gameBall: structuredClone(league.gameballs?.[Number(league.settings?.gameBall) || 0] ||
@@ -298,6 +368,9 @@
   }
 
   function gameType(ctx) {
+    if (ctx.series?.title) return ctx.college ? "National championship" : "Championship";
+    if (ctx.series?.clinched) return "Series clincher";
+    if (ctx.playoffs) return "Playoff game";
     if (ctx.upset) return "Upset";
     if (ctx.close) return "Close game";
     if (ctx.blowout) return "Statement win";
@@ -310,7 +383,8 @@
     return {name, last: ctx.potg.ln || surname(name), he: pronoun(ctx.potg), s, onWinner: ctx.potg.tid === ctx.game.winner,
       team: ctx.potg.tid === ctx.game.winner ? teamRef(ctx.winner) : teamRef(ctx.loser),
       teamScore: ctx.potg.tid === ctx.game.winner ? ctx.winnerScore : ctx.loserScore, doubles: doubles(s),
-      get headliner() { return this.doubles.length >= 2 || s.PTS >= 10 || (this.teamScore > 0 && s.PTS / this.teamScore >= .25); }};
+      // A headline line scales with how much scoring the game had.
+      get headliner() { const scale = Math.min(1, Math.max(.15, (ctx.winnerScore + ctx.loserScore) / 200)); return this.doubles.length >= 2 || s.PTS >= 22 * scale || (this.teamScore > 0 && s.PTS / this.teamScore >= .25); }};
   }
   // The headline clause for a stat line: "had 14 points and 11 rebounds".
   function statClause(p) {
@@ -329,6 +403,22 @@
     const W = teamRef(ctx.winner), L = teamRef(ctx.loser), w = W.nickname, l = L.nickname;
     const score = `${ctx.winnerScore}-${ctx.loserScore}`, p = featured(ctx), star = p?.onWinner && p.headliner ? p : null;
     const v = base => verb(W, base);
+    const S = ctx.series;
+    if (S) {
+      const by = star ? ` behind ${star.last}` : "";
+      const prize = ctx.college ? "national championship" : `${ctx.seasonYear} ${ctx.leagueShort} title`;
+      if (S.title) return choose(seed, [`${w} ${v("win")} ${prize}${by}`,
+        star ? `${star.last} leads ${w} to ${ctx.college ? "national" : ctx.leagueShort} championship` : `${w} ${v("claim")} ${prize} with ${score} win over ${l}`], "headline-title");
+      if (S.sweep) return choose(seed, [`${w} ${v("sweep")} ${l}${by}`, `${w} ${v("finish")} off sweep of ${l}, ${score}`], "headline-sweep");
+      if (S.clinched) return choose(seed, [`${w} ${v("eliminate")} ${l}, ${v("advance")} to ${S.nextRound || "next round"}`, `${w} ${v("close")} out ${l} in ${S.firstTo > 1 ? `Game ${S.gameNumber}` : `${score} win`}${by}`], "headline-clinch");
+      if (S.decider === false && S.tied && S.wins === S.firstTo - 1) return `${w} ${v("force")} Game ${S.bestOf} against ${l}${by}`;
+      if (S.tied) return choose(seed, [`${w} ${v("even")} series with ${l}${by}`, star ? `${star.last} scores ${star.s.PTS}, ${w} ${v("even")} series` : `${w} ${v("draw")} level with ${l}, ${S.wins}-${S.losses}`], "headline-even");
+      if (S.savedSeason) return choose(seed, [`${w} ${v("stay")} alive against ${l}${by}`, `${w} ${v("avoid")} elimination, ${score}`], "headline-alive");
+      if (S.gameNumber === 1) return choose(seed, [`${w} ${v("take")} Game 1 from ${l}${by}`, star ? `${star.last} scores ${star.s.PTS} as ${w} ${v("take")} Game 1` : `${w} ${v("strike")} first against ${l}`], "headline-g1");
+      if (S.wins > S.losses) return S.wins === S.firstTo - 1 ? choose(seed, [`${w} ${v("move")} one win from ${S.nextRound ? `the ${S.nextRound}` : "advancing"}`, `${w} ${v("take")} ${S.wins}-${S.losses} lead over ${l}${by}`], "headline-lead") :
+        choose(seed, [`${w} ${v("take")} ${S.wins}-${S.losses} series lead over ${l}`, star ? `${star.last} scores ${star.s.PTS}, ${w} ${v("go")} up ${S.wins}-${S.losses}` : `${w} ${v("go")} up ${S.wins}-${S.losses} on ${l}`], "headline-lead");
+      return `${w} ${v("cut")} series deficit to ${S.losses}-${S.wins}${by}`;
+    }
     if (star && star.doubles.length >= 3) {
       return choose(seed, [
         `${star.last} posts ${["","","","triple-double","quadruple-double","quintuple-double"][star.doubles.length]} as ${w} ${v("beat")} ${l}`,
@@ -370,7 +460,22 @@
   }
 
   function quoteBank(ctx, seed, salt) {
-    const pick = options => choose(seed, options, salt);
+    const pick = options => choose(seed, options, salt), S = ctx.series;
+    if (S && salt === "quote-coach") {
+      if (S.title) return pick(["Nobody can ever take this away from these guys. They earned every bit of it.", "I've been dreaming about this since I got into coaching. I'm so happy for this group.", "This is what we built all year for. Champions. I still can't believe I get to say it."]);
+      if (S.clinched) return pick(["Closing out a series is the hardest thing to do in this league. I'm proud of how we finished it.", "We'll enjoy it tonight. Tomorrow we get to work on the next one.", "That's a good team we just beat. Our guys earned this."]);
+      if (S.savedSeason) return pick(["Our guys weren't ready to go home. That was a team that refused to quit.", "We had our backs against the wall and responded. Now we have to do it again."]);
+      if (S.tied) return pick(["It's a new series. We'll regroup and go again.", "Nobody panicked. We knew we had a response in us."]);
+      return pick(S.gameNumber === 1 ? ["That's one. We need four against a team like this.".replace("four", num(S.firstTo)), "Good start. That's all it is."] :
+        ["We did our job tonight. It's not over until it's over.", "I liked our response. Now we have to keep our foot on the gas.", "Closeout games are the hardest ones. We'll be ready for it."].slice(0, S.wins === S.firstTo - 1 ? 3 : 2));
+    }
+    if (S) {
+      if (S.title) return pick(["We're champions. I don't even know what to say right now. This group deserved it.", "All the work, all those nights, it was all for this. I love these guys.", "I've wanted this my whole life. To do it with this team, it means everything."]);
+      if (S.clinched) return pick(["On to the next one. We're not satisfied yet.", "That's a good team over there. Closing them out feels good, but we want more.", "We came in with one goal. This was just a step."]);
+      if (S.savedSeason) return pick(["We're not ready to go home. Simple as that.", "Backs against the wall, you find out who you are. We found out tonight."]);
+      if (S.tied) return pick(["It's a brand-new series now. We'll be ready.", "We knew we'd respond. Now we have to keep it going."]);
+      return pick(["We did our job tonight. The series isn't over.", "Win the next possession, win the next game. That's all we're thinking about.", "Good win, but we haven't done anything yet."]);
+    }
     if (salt === "quote-coach") {
       if (ctx.close) return pick([
         "That was a grind. Neither team gave an inch, and I'm proud of how our group competed.",
@@ -471,7 +576,69 @@
     return options.sort((a, b) => b.score - a.score)[0]?.text || "";
   }
 
+  const ordinalWord = n => ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"][n] || `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th"}`;
+  // A short reference is singular when it's a city ("Logan has") or a singular nickname.
+  function shortVerb(team, base) { return team.city || !team.plural ? verb({plural: false}, base) : base; }
+  function seriesClause(ctx, S) {
+    const where = S.final ? "the Finals" : `their ${S.roundShort} series`;
+    if (S.title) return ctx.college ? "to win the national championship" : `to win the ${ctx.seasonYear} ${ctx.leagueShort} championship`;
+    if (S.firstTo === 1) return S.nextRound ? `to advance to the ${S.nextRound}` : "to advance";
+    if (S.sweep) return `to complete a ${num(S.firstTo)}-game sweep in the ${S.roundName}`;
+    if (S.clinched) return S.decider ? `in Game ${S.gameNumber} to win ${where} ${S.wins}-${S.losses}` : `to close out ${where} ${S.wins}-${S.losses}`;
+    if (S.tied && S.wins === S.firstTo - 1) return `to force a Game ${S.bestOf}`;
+    if (S.tied) return `to even ${where} at ${S.wins === 1 ? "a game" : `${num(S.wins)} games`} apiece`;
+    if (S.savedSeason) return "to stave off elimination";
+    if (S.gameNumber === 1) return `in Game 1 of ${S.final ? "the Finals" : `their ${S.roundShort} series`}`;
+    if (S.wins > S.losses) return `to take a ${S.wins}-${S.losses} lead in ${where}`;
+    return `to cut their deficit in ${S.final ? "the Finals" : "the series"} to ${S.losses}-${S.wins}`;
+  }
+  function playoffLede(ctx, seed, W, L, p) {
+    const score = `${ctx.winnerScore}-${ctx.loserScore}`, star = p?.onWinner && p.headliner ? p : null, clause = seriesClause(ctx, ctx.series);
+    const beat = ctx.close ? "edged" : ctx.blowout ? "routed" : "beat";
+    return capitalize(star ? choose(seed, [`${star.name} ${statClause(star)}, and ${W.full} ${beat} ${L.full} ${score} ${clause}.`,
+      `${W.full} ${beat} ${L.full} ${score} ${clause}, with ${star.name} finishing with ${statClause(star).replace(/^(?:had|scored) /, "")}.`], "playoff-lede") :
+      `${W.full} ${beat} ${L.full} ${score} ${clause}.`);
+  }
+  function playoffContext(ctx, seed, W, L) {
+    const S = ctx.series, wr = ctx.winnerRecord, lr = ctx.loserRecord, parts = [];
+    const records = isRecord(wr) && isRecord(lr) ? `${capitalize(W.short)} went ${recordText(wr)} in the regular season; ${L.short} went ${recordText(lr)}.` : "";
+    if (S.title) {
+      if (isRecord(wr)) parts.push(wr[0] < wr[1] ? `Not bad for a team that finished ${recordText(wr)} in the regular season.` : `It caps a ${recordText(wr)} regular season for ${W.short}.`);
+      if (ctx.titleCount) parts.push(ctx.titleCount === 1 ? "It is the franchise's first championship." : `It is the franchise's ${ordinalWord(ctx.titleCount)} championship.`);
+      return parts.join(" ");
+    }
+    if (S.clinched) {
+      parts.push(`${capitalize(W.short)} ${shortVerb(W, "advance")} to the ${S.nextRound || "next round"}.`);
+      const gap = isRecord(wr) && isRecord(lr) ? gamesBetter(lr, wr) : "";
+      if (gap && !S.winnerHigherSeed) parts.push(`It is a genuine upset: ${L.short} went ${recordText(lr)} in the regular season, ${gap} better than ${W.short}.`);
+      else parts.push(`${capitalize(possessive(L.short))} season ends${isRecord(lr) ? ` after a ${recordText(lr)} regular season` : ""}.`);
+      return parts.join(" ");
+    }
+    if (S.savedSeason && S.losses > S.wins) parts.push(`${capitalize(L.short)} still ${shortVerb(L, "lead")} the series ${S.losses}-${S.wins}, and Game ${S.gameNumber + 1} is next.`);
+    else if (S.wins === S.firstTo - 1) parts.push(`${capitalize(W.short)} can close out the series with a win in Game ${S.gameNumber + 1}, and ${L.short} ${shortVerb(L, "face")} elimination.`);
+    else if (S.tied) parts.push(`It's ${S.bestOf - S.gameNumber === 3 ? "a best-of-three" : `a best-of-${num(S.bestOf - S.gameNumber)}`} from here.`);
+    else parts.push(`Game ${S.gameNumber + 1} is next.`);
+    if (S.gameNumber <= 2 && records) parts.push(records);
+    return parts.join(" ");
+  }
+  function formNotes(ctx, W, L) {
+    const f = ctx.form || {}, notes = [], w = f[ctx.winner?.id], l = f[ctx.loser?.id];
+    if (w?.ended && !w.ended.won) notes.push(`The win snapped a ${num(w.ended.length)}-game losing streak.`);
+    else if (w?.streak.length >= 3) notes.push(`${capitalize(W.short)} ${shortVerb(W, "have")} won ${num(w.streak.length)} straight.`);
+    if (l?.ended && l.ended.won) notes.push(`The loss ended ${possessive(L.short)} ${num(l.ended.length)}-game winning streak.`);
+    else if (l?.streak.length >= 3) notes.push(`${capitalize(L.short)} ${shortVerb(L, "have")} lost ${num(l.streak.length)} straight.`);
+    const h = f.series;
+    if (notes.length < 2 && h?.meetings >= 2) {
+      const a = h.winnerWins, b = h.meetings - h.winnerWins;
+      notes.push(a === h.meetings ? `${capitalize(W.short)} ${shortVerb(W, "have")} won ${h.meetings === 2 ? "both" : `all ${num(h.meetings)}`} meetings this season.` :
+        a === b ? `The teams have split ${num(h.meetings)} meetings this season.` :
+        a > b ? `${capitalize(W.short)} ${shortVerb(W, "lead")} the season series ${a}-${b}.` : `${capitalize(L.short)} still ${shortVerb(L, "lead")} the season series ${b}-${a}.`);
+    }
+    return notes.slice(0, 2).join(" ");
+  }
+
   function lede(ctx, seed, W, L, p) {
+    if (ctx.series) return playoffLede(ctx, seed, W, L, p);
     const score = `${ctx.winnerScore}-${ctx.loserScore}`, star = p?.onWinner && p.headliner ? p : null;
     const pick = options => capitalize(choose(seed, options, "lede"));
     if (star) {
@@ -501,6 +668,10 @@
   }
 
   function contextParagraph(ctx, seed, W, L) {
+    if (ctx.series) return playoffContext(ctx, seed, W, L);
+    return [regularContext(ctx, seed, W, L), formNotes(ctx, W, L)].filter(Boolean).join(" ");
+  }
+  function regularContext(ctx, seed, W, L) {
     const wr = ctx.winnerRecord, lr = ctx.loserRecord, hasRecords = [wr, lr].every(r => Array.isArray(r) && r.length >= 2);
     const records = hasRecords ? `${capitalize(recordNote(W.short, ctx.winnerPre, wr, true))}, while ${recordNote(L.short, ctx.loserPre, lr, false)}.` : "";
     if (ctx.upset) {
@@ -563,7 +734,7 @@
       const s = helper.stats, bench = s.GS === 0 ? " off the bench" : "";
       const extra = ["REB", "AST"].filter(k => Number.isInteger(s[k]) && s[k] >= 4).map(k => plural(s[k], statLabels[k].replace(/s$/, ""), statLabels[k]));
       const verbText = p?.onWinner ? "added" : `led ${W.short} with`;
-      parts.push(`${helper.name} ${verbText} ${plural(s.PTS, "point")}${extra.length ? ` and ${listJoin(extra)}` : ""}${bench}.`);
+      parts.push(`${helper.name} ${verbText} ${listJoin([plural(s.PTS, "point"), ...extra])}${bench}.`);
     }
     const top = ranked(ctx.loser?.id).find(r => r.pid !== ctx.potg?.id);
     if (top) {
@@ -600,6 +771,10 @@
       playerId: ctx.potg?.id ?? null,
       playerName: ctx.potgStats ? ctx.potgName : null,
       gameSummary: {home: {...summary(ctx.home), score: ctx.game.homeScore}, away: {...summary(ctx.away), score: ctx.game.awayScore}},
+      // The verified facts behind the prose; TV reads the same evidence.
+      facts: structuredClone({version: 1, playoffs: ctx.playoffs, series: ctx.series, form: ctx.form, college: ctx.college, leagueShort: ctx.leagueShort,
+        titleCount: ctx.titleCount, upset: ctx.upset, records: {[ctx.winner.id]: {pre: ctx.winnerPre, post: ctx.winnerRecord, last: ctx.winnerLastSeason},
+          [ctx.loser.id]: {pre: ctx.loserPre, post: ctx.loserRecord, last: ctx.loserLastSeason}}}),
       quotesEnabled,
       coach: ctx.coach ? structuredClone(ctx.coach) : null,
       createdAt: new Date().toISOString()

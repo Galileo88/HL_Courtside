@@ -23,7 +23,7 @@ const server=http.createServer((req,res)=>{
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   async function upload(){await page.locator('#saveFile').setInputFiles({name:'performance.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(save))});await page.waitForFunction(()=>!document.getElementById('saveFile').disabled,null,{timeout:120000});}
   async function archived(){return page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{return (await a.all('stories')).filter(s=>s.performanceSnapshot);}finally{a.db.close();}});}
-  await upload();const stories=await archived();assert.equal(stories.length,2);
+  await upload();const stories=await archived();assert.equal(stories.length,1,"The player of the game belongs to the recap");
   const poor=stories.find(s=>s.playerId===away.roster[0].id);assert.match(poor.headline,/Quiet night for|limited to/);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tvStorySelect').selectOption({label:poor.headline},{force:true});
   const transcript=await page.locator('#tvTranscript').textContent();assert.match(transcript,/10 points.*20\.0/);assert.doesNotMatch(transcript,/%|percent/i);
@@ -33,7 +33,7 @@ const server=http.createServer((req,res)=>{
   assert.ok(await table.getByRole('columnheader',{name:'Season average'}).isVisible());
   assert.ok((await table.locator('caption').boundingBox()).height<100,'Caption stays readable on phones');
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});await page.locator('#tvSegment').screenshot({path:path.join(root,'artifacts/performance-tv-mobile.png')});
-  await upload();assert.equal((await archived()).length,2,'Reimport does not duplicate performance stories');
+  await upload();assert.equal((await archived()).length,1,'Reimport does not duplicate performance stories');
   await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tvStorySelect').selectOption({label:poor.headline},{force:true});
   assert.match(await page.locator('#tvTranscript').textContent(),/10 points.*20\.0/);

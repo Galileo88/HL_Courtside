@@ -4,7 +4,7 @@
   else root.HoopWireSeason=factory(root.HoopWireCore);
 })(globalThis,function(C){
   'use strict';
-  const keys=['GP','PTS','REB','AST','STL','BLK','FGM','FGA','TPM','TPA','FTM','FTA','TO'];
+  const keys=['GP','GS','PTS','REB','AST','STL','BLK','FGM','FGA','TPM','TPA','FTM','FTA','TO'];
   function honorHistory(name,label,records,leagueType,year,confirmed=false){
     const years=[...new Set(records.filter(r=>r.league===leagueType).flatMap(r=>r.yearsWon||[]).filter(y=>Number.isInteger(y)&&y>0&&y<=year).concat(confirmed?[year]:[]))].sort((a,b)=>a-b);
     let streak=0;for(let y=year;years.includes(y);y--)streak++;
@@ -30,11 +30,65 @@
     }
     const line=honorLine(h);return line?[line]:[];
   }
+  function awardKind(award){
+    const n=award?.name||'';
+    if(/all-star mvp/i.test(n)||award?.id===100)return 'asmvp';
+    if(/all-star/i.test(n)||award?.id===101)return 'allstar';
+    if(/3-point|three-point/i.test(n)||award?.id===96)return 'threes';
+    if(/defens/i.test(n))return 'dpoy';if(/rookie/i.test(n))return 'roy';if(/sixth/i.test(n))return 'sixth';if(/improv/i.test(n))return 'mip';
+    if(award?.id===1||/finals mvp|most outstanding/i.test(n))return 'finals';
+    if(award?.id===2||/most valuable|^player of the year$/i.test(n))return 'mvp';
+    if(/scor/i.test(n))return 'PTS';if(/rebound/i.test(n))return 'REB';if(/assist/i.test(n))return 'AST';if(/steal/i.test(n))return 'STL';if(/block/i.test(n))return 'BLK';
+    return 'other';
+  }
+  function awardHeadline(kind,name,award,team,year){
+    const T=team?C.teamRef(team):null,last=C.surname(name);
+    return {mvp:`${name} named ${year} ${award}`,finals:`${name} named ${award}${T?` as ${T.nickname} ${C.verb(T,'win')} title`:''}`,dpoy:`${name} wins ${award}`,
+      roy:`${name} runs away with ${award}`,sixth:`${last} wins ${award} off the ${T?`${T.nickname}'`.replace(/s'$/,"s'").replace(/([^s])'$/,"$1's"):''} bench`.replace(/off the  bench/,'off the bench'),mip:`${name} takes ${award} after breakout season`,
+      PTS:`${name} wins scoring title`,REB:`${name} wins rebounding title`,AST:`${name} wins assists title`,STL:`${name} wins steals title`,BLK:`${name} wins blocks title`}[kind]||`${name} wins ${award}`;
+  }
+  const statWord={PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks'};
+  function awardArticle(story){
+    const snap=story.seasonSnapshot,a=snap.award,p=snap.featuredPlayer;
+    // The award decides the period: Finals honors use Finals numbers.
+    const s=a?.kind==='finals'?p?.finalsStats||p?.playoffStats:featuredStatsForStory(story);
+    if(!a||!p)return null;
+    const name=p.name,last=C.surname(name),he=a.pronoun?C.capitalize(a.pronoun):last,league=story.leagueName||'the league';
+    const T=a.teamName?C.teamRef({city:a.teamCity,name:a.teamNickname||a.teamName}):null,team=T?` of ${T.full}`:'';
+    const rec=a.teamRecord?`${a.teamRecord[0]}-${a.teamRecord[1]}`:'',r=k=>s?.GP>0&&Number.isFinite(s[k])?(s[k]/s.GP).toFixed(1):null;
+    const out=[];
+    const lede={mvp:`${name}${team} is the ${story.season} ${a.name}.`,finals:`${name}${team} was named ${a.name}${a.champion?' after leading the way to the championship':''}.`,
+      roy:`${name}${team} is the ${story.season} ${a.name}.`}[a.kind]||`${name}${team} has won the ${story.season} ${a.name}${/award$|title$/i.test(a.name)?'':' award'}.`;
+    out.push(lede);
+    if(!s?.GP){out.push(...(snap.honorHistory?[]:[]));return out;}
+    const fg=s.FGA>0?` on ${pct(s,'FGM','FGA')} shooting`:'';
+    switch(a.kind){
+      case 'mvp':out.push(`${last} averaged ${line(s)}${rec?` for a team that went ${rec}`:''}.`);break;
+      case 'finals':out.push(s.GP===1?`In the ${story.leagueType===1||snap.leagueType===1?'title game':'Finals'}, ${last} had ${C.plural(s.PTS,'point')}, ${C.plural(s.REB,'rebound')} and ${C.plural(s.AST,'assist')}${s.FGA>0?` on ${s.FGM}-of-${s.FGA} shooting`:''}.`:
+        `${last} averaged ${r('PTS')} points, ${r('REB')} rebounds and ${r('AST')} assists over ${C.plural(s.GP,'game')} in the Finals${fg}.`);break;
+      case 'dpoy':out.push(`${last} averaged ${r('BLK')} blocks, ${r('STL')} steals and ${r('REB')} rebounds per game${a.allowedRank?`, anchoring a defense that ranked ${ordinal(a.allowedRank)} in points allowed`:''}.`);break;
+      case 'roy':out.push(`${last} averaged ${line(s)} as a first-year player${Number.isFinite(s.GS)?`, starting ${s.GS} of ${s.GP} games`:''}.`);break;
+      case 'sixth':out.push(Number.isFinite(s.GS)?`${last} came off the bench in ${s.GP-s.GS} of ${s.GP} games and still averaged ${r('PTS')} points${fg}.`:`${last} averaged ${line(s)}.`);break;
+      case 'mip':out.push(a.previous?`${last} jumped from ${(a.previous.PTS/a.previous.GP).toFixed(1)} points a game last season to ${r('PTS')}, and from ${(a.previous.REB/a.previous.GP).toFixed(1)} rebounds to ${r('REB')}.`:`${last} averaged ${line(s)}.`);break;
+      case 'PTS':case 'REB':case 'AST':case 'STL':case 'BLK':{
+        const k=a.kind;out.push(`${last} led the league at ${r(k)} ${statWord[k]} per game over ${C.plural(s.GP,'game')}.`);
+        if(k==='PTS'&&s.FGA>0)out.push(`${he} did it on ${pct(s,'FGM','FGA')} shooting from the field${s.TPA>0?` and ${pct(s,'TPM','TPA')} from 3-point range`:''}.`);
+        if(k==='AST'&&Number.isFinite(s.TO))out.push(`${he} turned it over ${r('TO')} times a game.`);
+        if(k==='REB'&&r('PTS'))out.push(Number(r('PTS'))>=10&&Number(r('REB'))>=10?`With ${r('PTS')} points a game as well, ${last} averaged a double-double.`:`${he} added ${r('PTS')} points a game.`);
+        break;}
+      default:out.push(`${last} averaged ${line(s)}.`);
+    }
+    if(a.alsoWon?.length)out.push(`${he} also won ${C.listJoin(a.alsoWon)} this season.`);
+    return out;
+  }
   function articleParagraphs(story){
     if(story.type==='Season leaders')return leadersArticle(story);
     if(story.type==='Regular-season review')return seasonReviewArticle(story);
-    const paragraphs=[...(story.paragraphs||[])],missing=honorLines(story).filter(line=>!paragraphs.some(p=>p.includes(line)));
-    if(missing.length){if(paragraphs.length)paragraphs[0]+=' '+missing.join(' ');else paragraphs.push(missing.join(' '));}
+    const award=story.seasonSnapshot?.award?awardArticle(story):null;
+    // Award prose is rebuilt from its evidence; saved quotes follow it.
+    const paragraphs=award?[...award,...(story.paragraphs||[]).filter(p=>/^[“"]/.test(p))]:[...(story.paragraphs||[])],missing=honorLines(story).filter(line=>!paragraphs.some(p=>p.includes(line)));
+    const later=award&&story.seasonSnapshot?.featuredPlayer?.name;
+    if(missing.length){const text=missing.map(l=>later?l.replace(later,C.surname(later)):l).join(' ');if(paragraphs.length)paragraphs[0]+=' '+text;else paragraphs.push(text);}
     return paragraphs;
   }
   function stats(player,league,year,period='season',teamId=null){
@@ -327,23 +381,74 @@
     if(player)lines.push(C.quoteParagraph(C.choose(id,playerQuotes[tone],'season-player'),C.playerDisplay(player)));
     return lines;
   }
-  function awardQuoteLines(id,player,coach){
+  function awardQuoteLines(id,player,coach,kind){
     if(!player)return [];
     const name=C.playerDisplay(player),lines=[];
     const last=player.fn||C.surname(name);
-    const coachQuotes=[
+    const kindQuotes={
+      mvp:[`${last} carried us all year. Nobody deserves this award more.`,`When the game got tight, everybody knew where the ball was going. ${last} earned this honor.`],
+      finals:[`${last} was the best player on the floor in the biggest games of the year. That's what this award is.`],
+      roy:[`You don't see rookies handle the pressure like ${last} did. This award is just the start.`],
+      sixth:[`${last} could start for a lot of teams. This award is recognition for taking a role and owning it.`],
+      mip:[`${last} came back a different player. That doesn't happen by accident. This honor is a summer of work.`],
+      dpoy:[`${last} sets the tone for our defense every night. It's great to see that recognized.`]
+    }[kind];
+    const coachQuotes=kindQuotes||[
       `Nobody worked harder than ${last} this year. This award is well deserved.`,
       `What ${last} brought every single day changed our team. This honor reflects all that work.`,
       `${last} kept raising the bar. It's great to see that recognized with this award.`
     ];
-    const playerQuotes=[
+    const playerQuotes=({
+      mvp:["This one is for my teammates. I just tried to be the best version of myself every night.","I don't take it lightly. There are a lot of great players in this league, and to be called the best of them means everything."],
+      finals:["I didn't care who got the MVP. We're champions. That's all that matters.","Honestly, I'd give this trophy to any of my teammates. We did this together."],
+      dpoy:["Defense is pride. I take it personally when somebody scores on me.","People notice the buckets. It means a lot that somebody noticed the other end."],
+      roy:["Coming in, I just wanted to earn my minutes. To win this as a rookie, I'm grateful.","The vets on this team made it easy for me. I learned something every day."],
+      sixth:["Whatever this team needs, I'm going to do it. Coming off the bench never bothered me.","Starting doesn't matter to me. Finishing does."],
+      mip:["I put a lot of work in last summer. It's nice to see it pay off.","Nobody outside this building expected this. I did."],
+      PTS:["It's a nice honor, but I'd trade it for more wins.","I'm just taking the shots that come to me. My teammates found me all year."],
+      REB:["Rebounding is about wanting it. I wanted every one of them.","Every board is an extra possession. That's how I see it."],
+      AST:["I love making my teammates better. The assists mean they're making shots.","The best feeling in basketball is the pass that leads to a bucket."],
+      STL:["I study tendencies. When you know where the ball's going, you get there first.","Defense wins. Steals are just the fun part."],
+      BLK:["Protecting the rim is my job. I take it seriously.","Every block is a message. Don't come in here."]
+    })[kind]||[
       "It means a lot to be recognized. A lot of people helped me get here, and I'm grateful for every one of them.",
       "I'm proud of the work that went into this. The award means a lot, but I'm not done.",
       "You never do this alone. I appreciate everybody who pushed me and trusted me all season."
     ];
     if(coach)lines.push(C.quoteParagraph(C.choose(id,coachQuotes,'award-coach'),`head coach ${C.playerDisplay(coach)}`));
-    lines.push(C.quoteParagraph(C.choose(id,playerQuotes,'award-player'),name));
+    lines.push(C.quoteParagraph(C.choose(id,playerQuotes,'award-player'),C.surname(name)));
     return lines;
+  }
+  // Series scores come from the playoff games in the schedule; a finished
+  // series falls back to the bracket's game count.
+  function seriesScore(series,roundIndex,lookup){
+    const games=lookup.completed.filter(x=>x.game.tRound===roundIndex+1&&[x.game.homeTeam,x.game.awayTeam].every(t=>[series.topSeed,series.lowerSeed].includes(t)));
+    let top=games.filter(x=>x.game.winner===series.topSeed).length,lower=games.length-top;
+    if(series.winner&&Math.max(top,lower)!==series.firstTo&&series.currentGame>=series.firstTo){
+      const other=series.currentGame-series.firstTo;[top,lower]=series.winner===series.topSeed?[series.firstTo,other]:[other,series.firstTo];
+    }
+    return {top,lower,games:top+lower};
+  }
+  function roundLabel(bracket,index,college){
+    const teams=(bracket?.rounds?.[index]?.series||[]).length*2;
+    if(teams===2)return college?'title game':'Finals';
+    if(index===0)return 'first round';
+    if(college)return ({4:'Final Four',8:'Elite Eight',16:'Sweet 16'})[teams]||`round ${index+1}`;
+    return teams===4?'semifinals':index===1?'second round':'quarterfinals';
+  }
+  function playoffRun(teamId,bracket,lookup,college){
+    return (bracket?.rounds||[]).flatMap((round,index)=>(round.series||[]).filter(x=>[x.topSeed,x.lowerSeed].includes(teamId)&&lookup.teams.has(x.topSeed)&&lookup.teams.has(x.lowerSeed)).map(x=>{
+      const score=seriesScore(x,index,lookup),mine=x.topSeed===teamId?score.top:score.lower,theirs=score.games-mine;
+      return {index,label:roundLabel(bracket,index,college),opponent:lookup.teams.get(x.topSeed===teamId?x.lowerSeed:x.topSeed),firstTo:x.firstTo,wins:mine,losses:theirs,games:score.games,
+        done:!!x.winner,won:x.winner===teamId};
+    }));
+  }
+  function runClause(r){
+    const opp=C.teamRef(r.opponent).nick,where=r.label==='Finals'?'in the Finals':r.label==='title game'?'in the title game':`in the ${r.label}`;
+    if(r.firstTo===1)return `beat ${opp} ${where}`;
+    if(r.losses===0)return `swept ${opp} ${where}`;
+    if(r.games===r.firstTo*2-1)return `outlasted ${opp} in ${C.num(r.games)} games ${where}`;
+    return `beat ${opp} in ${C.num(r.games)} games ${where}`;
   }
   function playoffPreviewParagraphs(active,records,lookup,league,index){
     const series=active.map(s=>{
@@ -369,7 +474,7 @@
     const paragraphs=[lead];
     const closest=[...series].sort((x,y)=>x.gap-y.gap||((y.ar.W??0)+(y.br.W??0))-((x.ar.W??0)+(x.br.W??0)))[0];
     if(Number.isFinite(closest?.gap)){
-      let detail=`The tightest pairing on paper is ${R(closest.aName).full} (${closest.ar.W}-${closest.ar.L}) against ${R(closest.bName).full} (${closest.br.W}-${closest.br.L}), separated by ${C.plural(closest.gap,'win')} in the regular season.`;
+      let detail=`The tightest pairing on paper is ${R(closest.aName).full} (${closest.ar.W}-${closest.ar.L}) against ${R(closest.bName).full} (${closest.br.W}-${closest.br.L}), ${closest.gap===0?'with identical win totals':`separated by ${C.plural(closest.gap,'win')}`} in the regular season.`;
       if(Number.isFinite(closest.ar.PTS)&&Number.isFinite(closest.br.OPP))detail+=` ${C.capitalize(R(closest.aName).nick)} averaged ${avg(closest.ar,'PTS')} points a night; ${R(closest.bName).nick} allowed ${avg(closest.br,'OPP')}.`;
       paragraphs.push(detail);
     }
@@ -400,7 +505,7 @@
     for(const p of [...(league.retirees||[]),...(league.hallOfFame||[])])if(!players.has(p.id))players.set(p.id,p);
     const results=[];
     const teamData=t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null});
-    function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110){
+    function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
         type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:4,
@@ -418,6 +523,7 @@
       const individualTable=related.length===1||eventKey==='championship'||awardStory;
       s.seasonSnapshot.tables=[{label:'Regular-season team statistics',headers:['Team','W','L','PPG','Opp PPG','RPG','APG','FG%','3P%','FT%'],rows:related.map(t=>{const r=records.find(x=>x.team.id===t.id)?.year?.seasonStats;return r?.GP>0?[C.teamDisplay(t),r.W,r.L,...['PTS','OPP','REB','AST'].map(k=>avg(r,k)),pct(r,'FGM','FGA'),pct(r,'TPM','TPA'),pct(r,'FTM','FTA')]:null;}).filter(Boolean)},playerTable(individualTable?'Regular-season player statistics':'Regular-season scoring leaders',individualTable?seasonPlayers:seasonPlayers.slice(0,15))];
       if(eventKey==='regular-wrap'){s.seasonSnapshot.mvpAward=structuredClone((league.awards||[]).find(a=>a.id===2&&a.phase===0)||null);s.seasonSnapshot.scheduledGames=expected;s.seasonSnapshot.reviewPlayers=seasonPlayers.map(({p,s})=>({id:p.id,name:C.playerDisplay(p),position:p.pos,yearsPro:p.yrs,mvpWins:[...new Set((p.awards||[]).filter(a=>a.id===2&&a.league===league.leagueType).flatMap(a=>a.yearsWon||[]))],s:{...s,...Object.fromEntries(['GS','PM','POS','ORB','PF','DD','TD','POTG','W','L'].flatMap(k=>{const entries=(p.stats||[]).filter(x=>x.league===league.leagueType&&x.yr===year).flatMap(x=>x.season||[]);return entries.length&&entries.every(x=>Number.isFinite(x[k]))?[[k,entries.reduce((sum,x)=>sum+x[k],0)]]:[];}))},previousStats:stats(p,league,year-1),teamStats:Object.fromEntries(related.map(t=>[t.id,stats(p,league,year,'season',t.id)]).filter(([,s])=>s)),honors:(league.awards||[]).filter(a=>a.enabled&&a.phase===0&&(p.awards||[]).some(h=>h.id===a.id&&h.league===league.leagueType&&h.yearsWon?.includes(year))).map(a=>honorHistory(C.playerDisplay(p),`the ${a.name}${/award$|title$/i.test(a.name)?'':' award'}`,(p.awards||[]).filter(h=>h.id===a.id),league.leagueType,year))}));}
+      if(extra)Object.assign(s.seasonSnapshot,structuredClone(extra));
       s.paragraphs=articleParagraphs(s);
       if(eventKey==='championship'||(featured&&(league.awards||[]).some(a=>eventKey.startsWith(`award-${a.id}-`)&&a.phase===3))){
         const postseason=[...players.values()].map(p=>({p,s:stats(p,league,year,'playoffs',eventKey==='championship'?team.id:null)})).filter(x=>x.s&&(eventKey==='championship'||x.p.id===featured?.id));
@@ -431,7 +537,7 @@
       const record=records.find(r=>r.team.id===team.id)?.year;
       const postseason=postseasonOutcome(team.id,bracket,winner?.id,lookup.teams);
       s.coach=coach;s.seasonOutcome=outcome(record,winner?.id===team.id,postseason);
-      if(eventKey.startsWith('award-')&&featured)s.paragraphs.push(...awardQuoteLines(s.id,featured,coach));
+      if(eventKey.startsWith('award-')&&featured)s.paragraphs.push(...awardQuoteLines(s.id,featured,coach,s.seasonSnapshot.award?.kind));
       else if(related.length===1||eventKey==='championship')s.paragraphs.push(...quoteLines(s.id,record,winner?.id===team.id,coach,featured&&featured.tid===team.id&&stats(featured,league,year)?.GP>0?featured:null,postseason));
       const ctx={winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,
         potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}};
@@ -466,9 +572,12 @@
           record.W>record.L?`${T.nickname} review: ${playoff?`${mark} and a ticket to the postseason`:identity==='defense'?`${mark}, built on defense`:identity==='offense'?`${mark}, powered by the offense`:winPct>=.6?`${a} ${mark} season worth building on`:`${mark}, and a winning season to show for it`}`:
           record.W===record.L?`${T.nickname} review: a .500 season, and the questions that come with it`:
           winPct<=.3?`${T.nickname} review: ${a} ${mark} season to forget`:`${T.nickname} review: ${mark} and searching for answers`;
-        const opener=`${cap(T.full)} ${winPct>=.7?'dominated the regular season, finishing':record.W>record.L?'closed the regular season at':record.W===record.L?'split the regular season at':'ended a difficult regular season at'} ${record.W}-${record.L}${playoff?', good for a place in the playoff field':''}.`;
-        const profile=margin===null?'':`${identity==='defense'?`Defense was the calling card. ${cap(T.short)} ranked ${rankText(defendingRank,'defense')} at ${avg(record,'OPP')} points allowed a night`:
-          identity==='offense'?`The offense carried them. ${cap(T.short)} ranked ${rankText(scoringRank,'scoring')} at ${avg(record,'PTS')} points a night`:
+        const run=playoffRun(r.team.id,bracket,lookup,league.leagueType===1),exit=run.find(x=>x.done&&!x.won),title=winner?.id===r.team.id,alive=run.length&&!exit&&!title;
+        const prior=(r.team.season||[]).find(x=>x.yr===year-1)?.seasonStats,change=prior&&Number.isInteger(prior.W)&&prior.W+prior.L>0?record.W-prior.W:null;
+        const post=title?', then won the championship':exit?`, then saw the season end in the ${exit.label} against ${C.teamRef(exit.opponent).full}${exit.firstTo>1?`, ${exit.losses}-${exit.wins}`:''}`:alive?`, and ${T.city||!T.plural?'is':'are'} still alive in the ${run.at(-1).label}`:playoff?', good for a place in the playoff field':'';
+        const opener=`${cap(T.full)} ${winPct>=.7?'dominated the regular season, finishing':record.W>record.L?'closed the regular season at':record.W===record.L?'split the regular season at':'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change!==null&&Math.abs(change)>=5?` That is ${C.plural(Math.abs(change),'win')} ${change>0?'better':'worse'} than last season's ${prior.W}-${prior.L}.`:''}`;
+        const profile=margin===null?'':`${identity==='defense'?`Defense was the calling card. ${cap(T.short)} ${defendingRank===1?`had the league's stingiest defense`:`ranked ${ordinal(defendingRank)} in points allowed`} at ${avg(record,'OPP')} points allowed a night`:
+          identity==='offense'?`The offense carried them. ${cap(T.short)} ${scoringRank===1?`had the league's top offense`:`ranked ${ordinal(scoringRank)} in scoring`} at ${avg(record,'PTS')} points a night`:
           identity==='both'?`${cap(T.short)} ${T.city||!T.plural?'was':'were'} good at both ends, ranking ${rankText(scoringRank,'scoring')} and ${rankText(defendingRank,'defense')}`:
           `${cap(T.short)} ranked ${ordinal(scoringRank)} of ${teamCount} in scoring (${avg(record,'PTS')} a night) and ${ordinal(defendingRank)} in points allowed (${avg(record,'OPP')})`}, and ${margin>=0?'outscored opponents by':`${T.city||!T.plural?'was':'were'} outscored by`} ${Math.abs(margin).toFixed(1)} points per game.`;
         const shooting=record.FGA>0?`They shot ${pct(record,'FGM','FGA')} from the floor${record.TPA>0?` and ${pct(record,'TPM','TPA')} from 3-point range`:''}.`:'';
@@ -479,21 +588,50 @@
           ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,90);
       }
     }
+    const allowedRank=t=>{const r=records.find(x=>x.team.id===t?.id)?.year?.seasonStats;return r?.GP>0?1+records.filter(x=>x.year?.seasonStats?.GP>0&&x.year.seasonStats.OPP/x.year.seasonStats.GP<r.OPP/r.GP).length:null;};
     for(const award of league.awards||[]){
       if(!award.enabled||award.id===0||![0,3].includes(award.phase)||!(award.phase===0?complete:!!winner))continue;
+      const kind=awardKind(award);
+      // All-Star selections come in dozens; they don't each deserve a story.
+      if(kind==='allstar')continue;
       for(const p of players.values()){
         if(!(p.awards||[]).some(a=>a.id===award.id&&a.league===league.leagueType&&a.yearsWon?.includes(year)))continue;
         const s=stats(p,league,year,award.phase===3?'finals':'season')||stats(p,league,year,award.phase===3?'playoffs':'season');
-        const team=lookup.teams.get(p.tid);
-        add(`award-${award.id}-${p.id}`,'Award announcement',`${C.playerDisplay(p)} wins ${award.name}`,
-          [`${C.playerDisplay(p)}${team?` of ${C.teamRef(team).full}`:''} has won the ${year} ${award.name}${/award$/i.test(award.name)?'':' award'} in ${league.shortName||league.leagueName}.`,...(s?[`${C.surname(C.playerDisplay(p))} averaged ${line(s)} over ${C.plural(s.GP,award.phase===3?'postseason appearance':'regular-season appearance')}.`]:[])],team?[team]:[],
-          ['Award','Winner','Year'],[[award.name,C.playerDisplay(p),year]],p,120);
+        const team=lookup.teams.get(p.tid),rec=records.find(x=>x.team.id===team?.id)?.year?.seasonStats;
+        const alsoWon=(league.awards||[]).filter(a=>a.enabled&&a.id!==award.id&&a.id!==0&&!['allstar','asmvp','threes'].includes(awardKind(a))&&(p.awards||[]).some(h=>h.id===a.id&&h.league===league.leagueType&&h.yearsWon?.includes(year))).map(a=>a.name);
+        const prev=stats(p,league,year-1);
+        const extra={award:{kind,id:award.id,name:award.name,alsoWon,teamRecord:rec?.GP>0?[rec.W,rec.L]:null,allowedRank:allowedRank(team),champion:winner?.id===team?.id,
+          previous:prev?.GP>=5?{GP:prev.GP,PTS:prev.PTS,REB:prev.REB,AST:prev.AST}:null,rookie:p.yrs===0||p.yrs===1&&!prev,pronoun:C.pronoun(p),teamName:team?C.teamDisplay(team):null,teamCity:team?.city||null,teamNickname:team?.name||null}};
+        add(`award-${award.id}-${p.id}`,'Award announcement',awardHeadline(kind,C.playerDisplay(p),award.name,team,year),
+          [`${C.playerDisplay(p)} has won the ${year} ${award.name}${/award$/i.test(award.name)?'':' award'}.`],team?[team]:[],
+          ['Award','Winner','Year'],[[award.name,C.playerDisplay(p),year]],p,kind==='mvp'||kind==='finals'?130:kind==='other'||kind==='asmvp'||kind==='threes'?90:115,extra);
       }
     }
     if(complete&&!winner){
       rounds.forEach((round,index)=>{
-        const active=(round.series||[]).filter(s=>!s.winner&&lookup.teams.has(s.topSeed)&&lookup.teams.has(s.lowerSeed)&&s.topSeed!==s.lowerSeed);
+        const real=(round.series||[]).filter(s=>lookup.teams.has(s.topSeed)&&lookup.teams.has(s.lowerSeed)&&s.topSeed!==s.lowerSeed);
+        const active=real.filter(s=>!s.winner);
         if(!active.length)return;
+        const scores=real.map(s=>({s,score:seriesScore(s,index,lookup)})),played=scores.some(x=>x.score.games>0);
+        if(played){
+          // Mid-round, the useful story is where every series stands.
+          const R=id=>C.teamRef(lookup.teams.get(id)),label=roundLabel(bracket,index,league.leagueType===1),cap=C.capitalize;
+          const done=scores.filter(x=>x.s.winner),live=scores.filter(x=>!x.s.winner);
+          const status=x=>{const a=x.score.top,b=x.score.lower,lead=a>=b?x.s.topSeed:x.s.lowerSeed,trail=lead===x.s.topSeed?x.s.lowerSeed:x.s.topSeed,hi=Math.max(a,b),lo=Math.min(a,b);
+            return a===b?`${R(x.s.topSeed).nick} and ${R(x.s.lowerSeed).nick} are tied ${a}-${b}`:`${R(lead).nick} ${C.verb(R(lead),'lead')} ${R(trail).nick} ${hi}-${lo}${hi===x.s.firstTo-1?`, one win from advancing`:''}`;};
+          const paragraphs=[];
+          if(done.length){
+            const sweeps=done.filter(x=>Math.min(x.score.top,x.score.lower)===0&&x.s.firstTo>1);
+            paragraphs.push(`${C.capitalize(C.plural(done.length,'team'))} ${done.length===1?'has':'have'} already advanced from the ${label}: ${C.listJoin(done.map(x=>`${R(x.s.winner).nick}${x.s.firstTo>1?` in ${C.num(x.score.games)}`:''}`))}.${sweeps.length>=2?sweeps.length===done.length?` All ${C.num(sweeps.length)} were sweeps.`:` ${C.capitalize(C.num(sweeps.length))} of those series were sweeps.`:''}`);
+          }
+          paragraphs.push(`Still being decided: ${live.map(status).join('; ')}.`);
+          const tied=live.filter(x=>x.score.top===x.score.lower&&x.score.games>0);
+          if(tied.length)paragraphs.push(`${tied.length===1?'The series to watch is':'The series to watch are'} ${C.listJoin(tied.map(x=>`${R(x.s.topSeed).nickname}-${R(x.s.lowerSeed).nickname}`))}, where nobody has separated.`);
+          const rows=scores.map(x=>[C.teamDisplay(lookup.teams.get(x.s.topSeed)),C.teamDisplay(lookup.teams.get(x.s.lowerSeed)),x.s.firstTo===1?'Single elimination':`Best of ${x.s.firstTo*2-1}`,`${x.score.top}-${x.score.lower}`]);
+          add(`playoff-round-${index+1}-day-${day}`,'Playoff preview',`${league.shortName||'League'} ${label}: where every series stands`,paragraphs,
+            [...new Set(real.flatMap(s=>[s.topSeed,s.lowerSeed]))].map(id=>lookup.teams.get(id)),['Team','Opponent','Format','Series'],rows,null,112);
+          return;
+        }
         const rows=active.map(s=>[C.teamDisplay(lookup.teams.get(s.topSeed)),C.teamDisplay(lookup.teams.get(s.lowerSeed)),s.firstTo===1?'Single elimination':s.firstTo>1?`Best of ${s.firstTo*2-1}`:'—']);
         add(`playoff-round-${index+1}`,'Playoff preview',`${league.shortName||'League'} playoff round ${index+1}: the matchups`,
           playoffPreviewParagraphs(active,records,lookup,league,index),
@@ -503,10 +641,22 @@
     if(winner){
       const opponent=confirmedFinal?lookup.teams.get(final[0].topSeed===winner.id?final[0].lowerSeed:final[0].topSeed):null;
       const row=records.find(r=>r.team.id===winner.id)?.year;
-      add('championship','Championship review',`${C.teamDisplay(winner)} crowned ${year} ${league.shortName||'league'} champions`,
-        [`${C.capitalize(C.teamRef(winner).full)} are the ${year} ${league.shortName||league.leagueName} champions${opponent?`, finishing the job against ${C.teamRef(opponent).full} in the title round`:''}.`,
-          ...(row?[`It caps a ${row.seasonStats.W}-${row.seasonStats.L} regular season. ${teamLine(C.capitalize(C.teamRef(winner).short),row.seasonStats)}`.trim(),...(row.playoffStats?.GP&&teamLine('they',row.playoffStats)?[`In the playoffs, ${teamLine('they',row.playoffStats)}`]:[])]:[])],opponent?[winner,opponent]:[winner],
-        ['Champion','Runner-up','Year'],[[C.teamDisplay(winner),opponent?C.teamDisplay(opponent):'Not available',year]],null,140);
+      const college=league.leagueType===1,W=C.teamRef(winner),run=playoffRun(winner.id,bracket,lookup,college),last=run.at(-1);
+      const finalGame=lookup.completed.filter(x=>x.game.tRound===rounds.length&&x.game.winner===winner.id).at(-1)?.game;
+      const finalScore=finalGame?`${Math.max(finalGame.homeScore,finalGame.awayScore)}-${Math.min(finalGame.homeScore,finalGame.awayScore)}`:'';
+      const lede=`${C.capitalize(W.full)} are the ${year} ${league.shortName||league.leagueName} champions${opponent?last&&last.firstTo>1?`, finishing off ${C.teamRef(opponent).full} ${last.wins}-${last.losses} in the Finals`:`, beating ${C.teamRef(opponent).full}${finalScore?` ${finalScore}`:''} in the title game`:''}.`;
+      const earlier=run.slice(0,-1).filter(r=>r.done&&r.won),sevens=run.filter(r=>r.firstTo>1&&r.games===r.firstTo*2-1).length;
+      const road=earlier.length?`The road there: they ${C.listJoin(earlier.map(runClause))}${last?`, then ${runClause(last).replace(/ in the (?:Finals|title game)$/,'')} for the title`:''}.${sevens>=2?` That's ${C.num(sevens)} series that went the distance.`:''}`:'';
+      const mvp=[...players.values()].find(p=>(league.awards||[]).some(a=>a.enabled&&a.phase===3&&(p.awards||[]).some(h=>h.id===a.id&&h.league===league.leagueType&&h.yearsWon?.includes(year))));
+      const mvpAward=mvp&&(league.awards||[]).find(a=>a.phase===3&&a.enabled);
+      const fs=mvp?stats(mvp,league,year,'finals')||stats(mvp,league,year,'playoffs'):null;
+      const mvpLine=mvp&&fs?`${C.playerDisplay(mvp)} was named ${mvpAward.name}${fs.GP===1?` after ${C.plural(fs.PTS,'point')}, ${C.plural(fs.REB,'rebound')} and ${C.plural(fs.AST,'assist')} in the title game`:`, averaging ${avg(fs,'PTS')} points, ${avg(fs,'REB')} rebounds and ${avg(fs,'AST')} assists in the Finals`}.`:'';
+      add('championship','Championship review',`${W.nickname} ${C.verb(W,'are')} ${year} ${league.shortName||'league'} champions`.replace(` ${C.verb(W,'are')} `,` ${C.verb(W,'win')} the `).replace(/ champions$/,' title'),
+        [lede,road,
+          ...(row?[`It caps a ${row.seasonStats.W}-${row.seasonStats.L} regular season. ${teamLine(C.capitalize(W.short),row.seasonStats)}`.trim(),...(row.playoffStats?.GP&&teamLine('they',row.playoffStats)?[`In the playoffs, ${teamLine('they',row.playoffStats)}`]:[])]:[]),mvpLine],opponent?[winner,opponent]:[winner],
+        ['Champion','Runner-up','Year'],[[C.teamDisplay(winner),opponent?C.teamDisplay(opponent):'Not available',year]],null,140,
+        {run:run.map(r=>({label:r.label,opponent:C.teamDisplay(r.opponent),wins:r.wins,losses:r.losses,firstTo:r.firstTo,games:r.games})),
+          finalsMvp:mvp&&fs?{name:C.playerDisplay(mvp),award:mvpAward.name,GP:fs.GP,PTS:fs.PTS,REB:fs.REB,AST:fs.AST}:null,finalScore:finalScore||null});
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
