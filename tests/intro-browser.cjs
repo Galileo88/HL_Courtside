@@ -17,6 +17,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('.tv-speech').count(),0);assert.equal(await page.locator('#tvBubbles').isVisible(),false);
   await page.locator('#tvStagePlay').click();await page.waitForFunction(()=>window.testTheme?.currentTime>0&&Number.isFinite(window.testTheme.duration));
   const duration=await page.evaluate(()=>testTheme.duration);assert.ok(duration>0);assert.equal(await page.locator('.is-speaking').count(),0);
+  const openingFrames=await page.locator('#tvIntro').evaluate(e=>e.getAnimations({subtree:true}).map(a=>({target:a.effect.target.className,frames:a.effect.getKeyframes()})));
   assert.equal(await page.evaluate(()=>testTheme.muted),true);
   assert.equal(await page.locator('.tv-speech').count(),0);
   await page.waitForFunction(()=>testTheme.currentTime>testTheme.duration*.55,{},{timeout:15000});await page.locator('#tvPlay').click();
@@ -36,13 +37,22 @@ const server=http.createServer((req,res)=>{
   for(let i=0;i<100;i++){if(await page.locator('#tvLineNext').isDisabled())break;await page.locator('#tvLineNext').evaluate(b=>b.click());}
   assert.match(await page.locator('.tv-speech').textContent(),/Thanks for watching HoopWire TV/);
   await page.unroute('**/hoopwire-tv-intro.mp3');
+  await page.emulateMedia({reducedMotion:'no-preference'});
   await page.clock.install();await page.locator('#tvPlay').click();await page.clock.fastForward(10000);await page.clock.resume();
   assert.equal(await page.locator('#tvIntro.is-outro').isVisible(),true);assert.equal(await page.locator('.tv-speech').count(),0);assert.equal(await page.locator('#tvLiveHosts').isVisible(),false);assert.equal(await page.locator('#tvPlay').textContent(),'Replay');assert.equal(await page.locator('#tvStagePlay').isVisible(),false);
   await page.waitForFunction(()=>testTheme.currentTime>0&&!testTheme.paused);assert.equal(await page.evaluate(()=>testTheme.muted),true);
+  const closingFrames=await page.locator('#tvIntro').evaluate(e=>e.getAnimations({subtree:true}).map(a=>({target:a.effect.target.className,frames:a.effect.getKeyframes()})));
+  assert.deepEqual(closingFrames,openingFrames);
   await page.locator('#tvMute').click();assert.equal(await page.evaluate(()=>testTheme.muted),false);await page.locator('#tvMute').click();assert.equal(await page.evaluate(()=>testTheme.muted),true);
   await page.evaluate(()=>{window.closingTheme=testTheme;});
+  await page.waitForFunction(()=>testTheme.currentTime>testTheme.duration*.55);
+  await page.waitForFunction(()=>Math.abs(document.getElementById('tvIntro').getAnimations({subtree:true})[0].currentTime-testTheme.currentTime/testTheme.duration*10000)<100,{},{timeout:3000});
   await page.locator('#tvStage').screenshot({path:path.join(root,'artifacts/tv-episode-ending.png')});
+  await page.waitForFunction(()=>closingTheme.ended&&document.getElementById('tvIntro').getAnimations({subtree:true}).length===0);
+  assert.equal(await page.locator('#tvIntro.is-outro').isVisible(),true);assert.equal(await page.locator('.tv-intro-brand').evaluate(e=>getComputedStyle(e).opacity),'1');assert.equal(await page.locator('.tv-speech').count(),0);
+  await page.locator('#tvLinePrevious').evaluate(b=>b.click());await page.locator('#tvLineNext').evaluate(b=>b.click());await page.locator('#tvPlay').click();await page.clock.fastForward(10000);
+  await page.waitForFunction(()=>testTheme!==closingTheme&&testTheme.currentTime>0&&!testTheme.paused);await page.evaluate(()=>{window.closingTheme=testTheme;});
   await page.locator('#tvPlay').click();assert.equal(await page.evaluate(()=>closingTheme.paused&&testTheme!==closingTheme),true);assert.equal(await page.locator('#tvIntro').evaluate(e=>e.classList.contains('is-outro')),false);assert.equal(await page.locator('.tv-speech').count(),0);assert.deepEqual(errors,[]);
-  console.log(`Intro checks passed: native ${duration.toFixed(2)}s theme, hosts hidden until music ends, pause/resume synchronization, mute, story-change cancellation, silent fallback, reduced motion, desktop/mobile and no page errors.`);
+  console.log(`Intro/outro checks passed: identical animation keyframes, native ${duration.toFixed(2)}s theme synchronization, final logo hold, mute, replay cancellation, intro pause/resume, silent fallback, reduced motion, desktop/mobile and no page errors.`);
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});

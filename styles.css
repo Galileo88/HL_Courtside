@@ -559,10 +559,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-intro-onair i { width:6px; height:6px; background:#ed2638; border-radius:50%; }
 .tv-intro-progress { position:absolute; bottom:0; left:0; width:100%; height:3px; background:#dd1f30; transform-origin:left; }
 .tv-intro-wipe { position:absolute; inset:-30%; background:linear-gradient(90deg,#a60918 0 68%,#e6e8ed 68% 70%,#121820 70%); transform:translateX(-130%) skewX(-18deg); }
-.tv-intro.is-outro .tv-intro-brand { animation:tv-outro-reveal .8s ease-out both; }
-.tv-intro.is-outro .tv-intro-progress { display:none; }
-@keyframes tv-outro-reveal { from { opacity:0; transform:translateY(12px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
-@media(prefers-reduced-motion:reduce) { .tv-intro.is-outro .tv-intro-brand { animation:none; } }
 .tv-stage-play {
   position:absolute;
   inset:0;

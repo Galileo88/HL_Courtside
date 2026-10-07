@@ -8,13 +8,17 @@
   let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,outroAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
   let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[];
   function introVisible(value){el.tvIntro.hidden=!value;el.tvStage.classList.toggle('is-intro',value);}
-  function clearIntro(){
+  function settleLogo(){
     cancelAnimationFrame(introFrame);introFrame=null;
     introAnimations.forEach(a=>a.cancel());introAnimations=[];
+    introElapsed=0;introDuration=introLeadMs;
+  }
+  function clearIntro(){
+    settleLogo();
     el.tvIntro.classList.remove('is-outro');
     el.tvIntro.querySelector('.tv-intro-eyebrow').textContent='THE DAILY DESK';
     el.tvIntro.querySelector('.tv-intro-tagline').textContent='THE GAME. THE STORIES. THE CONVERSATION.';
-    introElapsed=0;introDuration=introLeadMs;introVisible(false);
+    introVisible(false);
   }
   function animateIntro(){
     if(introAnimations.length||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -29,15 +33,15 @@
     animate('.tv-intro-wipe',[{transform:'translateX(-130%) skewX(-18deg)',offset:0},{transform:'translateX(-130%) skewX(-18deg)',offset:.9},{transform:'translateX(0%) skewX(-18deg)',offset:1}]);
     animate('.tv-intro-progress',[{transform:'scaleX(0)'},{transform:'scaleX(1)'}]);
   }
-  function introTick(token,media=null){
+  function introTick(token,media=null,closing=false){
     const started=performance.now(),resumeAt=introElapsed;
     const tick=()=>{
-      if(token!==epoch||!running||!needsIntro)return;
+      if(token!==epoch||(closing?!completed:!running||!needsIntro))return;
       if(media&&Number.isFinite(media.duration)&&media.duration>0)introDuration=media.duration*1000;
       introElapsed=media?media.currentTime*1000:resumeAt+performance.now()-started;
       const progress=Math.min(1,introElapsed/introDuration);
       introAnimations.forEach(a=>{a.currentTime=progress*10000;});
-      if(!media&&progress>=1){beginHosts(token);return;}
+      if(!media&&progress>=1){if(closing)settleLogo();else beginHosts(token);return;}
       introFrame=requestAnimationFrame(tick);
     };
     tick();
@@ -92,6 +96,7 @@
     if(outroAudio){outroAudio.onended=outroAudio.onerror=null;outroAudio.pause();outroAudio.removeAttribute('src');outroAudio=null;}
     if(introAudio){introElapsed=introAudio.currentTime*1000;introAudio.onended=introAudio.onerror=null;introAudio.pause();if(resetIntro){introAudio.removeAttribute('src');introAudio=null;}}
     if(resetIntro)clearIntro();
+    else if(completed)settleLogo();
     talking(false);el.tvPlay.textContent=completed?'Replay':needsIntro?'Play':'Resume';updateStagePlay();
   }
   function beginHosts(token) {
@@ -124,11 +129,17 @@
     }
   }
   async function playOutro() {
-    const media=new Audio(introSrc);
+    const token=epoch,media=new Audio(introSrc);
+    animateIntro();
     outroAudio=media;media.volume=.55;media.muted=!el.tvVoice.checked;
-    const finish=()=>{media.onended=media.onerror=null;media.pause();if(outroAudio===media)outroAudio=null;};
-    media.onended=media.onerror=finish;
-    try {await media.play();}catch {finish();}
+    const release=()=>{media.onended=media.onerror=null;media.pause();outroAudio=null;};
+    media.onended=()=>{if(token!==epoch||outroAudio!==media)return;release();settleLogo();};
+    const fallback=()=>{
+      if(token!==epoch||outroAudio!==media)return;
+      release();cancelAnimationFrame(introFrame);introTick(token,null,true);
+    };
+    media.onerror=fallback;
+    try {await media.play();if(token===epoch&&outroAudio===media)introTick(token,media,true);}catch {fallback();}
   }
   function startPlayback() {
     if(!turns.length)return;
