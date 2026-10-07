@@ -90,7 +90,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   assert.equal(action.customCourt.status,'loaded');assert.equal(action.customCourt.width,1024);
   assert.ok(interview.sceneInputs.coach.isCoach);assert.ok(interview.sceneInputs.teammates.length);
   assert.equal(action.sceneInputs.opponents.length,3);assert.equal(action.sceneInputs.teammates.length,2);
-  assert.ok(interview.paragraphs.some(p=>p.includes(`head coach ${interview.coach.fn} ${interview.coach.ln} said`)));
+  assert.ok(interview.paragraphs.some(p=>p.includes(`coach ${interview.coach.fn} ${interview.coach.ln} said`)));
   assert.ok(interview.sceneInputs.teammates.every(p=>p.id!==interview.playerId));
   const studio=await page.evaluate(async()=>{const a=await new HoopWireArchive().open();const l=(await a.all('leagues'))[0];a.db.close();return Object.values(l.studios)[0];});
   assert.equal(studio.adsStatus,'loaded');assert.equal(studio.adsWidth,1024);assert.equal(studio.inputs.hostSource,'hoopwire');
@@ -109,7 +109,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   assert.match(await page.locator('#status').textContent(),/^Refreshed/);
   const refreshed=(await getStories(page)).find(s=>s.id===original.id);
   assert.deepEqual(refreshed.paragraphs,original.paragraphs);assert.deepEqual(refreshed.playerStats,original.playerStats);assert.equal(refreshed.createdAt,original.createdAt);
-  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,14);
+  assert.ok(refreshed.sceneInputs.coach);assert.equal(refreshed.sceneInputs.version,15);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tv').screenshot({path:path.join(root,'artifacts/tv-with-ads.png')});
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(root,'artifacts/tv-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

@@ -18,6 +18,8 @@ ids = {226: 'press-background', 674: 'press-table', 104: 'shooting',
        320: 'announce-table-graphic', 475: 'staff-idle', 787: 'staff-idle-alt'}
 ids.update({566:'passing',405:'passing-arms',380:'dunking',830:'dunking-arms'})
 ids[924]='ball-seams'
+# The game's default league mark on the press wall.
+ids[813]='hoop-land-logo'
 manifest = []
 numbers = Image.new('RGBA', (320, 352))
 number_sources = []

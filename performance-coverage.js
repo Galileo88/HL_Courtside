@@ -100,8 +100,14 @@
     if(r.starter===false)return `a reserve averaging ${ppg} points`;
     return `a player averaging ${ppg} points`;
   }
-  function article({name,last,he,focus,changes,baseline,playoffs,mine,opp,result,stats,r,coldOnly}){
-    const c=focus,in_=`in ${C.possessive(mine.nick)} ${result.score} ${result.won?'win over':'loss to'} ${opp.full}`;
+  function stage(series,college){
+    if(!series)return '';
+    if(series.title)return college?' in the national championship game':' in the title-clinching game of the Finals';
+    if(series.final)return series.firstTo>1?` in Game ${series.gameNumber} of the Finals`:' in the title game';
+    return series.firstTo>1?` in Game ${series.gameNumber} of the ${series.roundName}`:` in the ${series.roundName}`;
+  }
+  function article({name,last,he,focus,changes,baseline,playoffs,mine,opp,result,stats,r,coldOnly,series,college}){
+    const c=focus,in_=`in ${C.possessive(mine.nick)} ${result.score} ${result.won?'win over':'loss to'} ${opp.full}${stage(series,college)}`;
     const shooting=valid(stats.FGM)&&valid(stats.FGA)&&stats.FGA>0&&stats.FGM<=stats.FGA?` on ${stats.FGM}-of-${stats.FGA} shooting`:'';
     const subject=he?C.capitalize(he):last;
     let lede;
@@ -116,7 +122,7 @@
     const paragraphs=[C.capitalize(lede)];
     // Who this is matters as much as the number: a bench breakout reads differently than a star's quiet night.
     if(c.qualifies&&c.favorable&&c.key!=='TO'){
-      if(r.starter===false)paragraphs.push(`${subject} has come off the bench for most of the season, averaging ${average(baseline.PTS/baseline.GP)} points, which is what makes this one stand out.`);
+      if(r.starter===false)paragraphs.push(`${subject} has come off the bench for most of the season, averaging ${average(c.expected)} ${c.label}, which is what makes this one stand out.`);
       else if(r.scorerRank===1&&c.key==='PTS')paragraphs.push(`${subject} was already the team's leading scorer. This was a step beyond.`);
     }
     const more=changes.filter(x=>x!==c&&x.mention);
@@ -179,8 +185,8 @@
         importance:Math.round(70+Math.min(30,x.score*8)),templateVersion:1,editorialVersion:3,quotesEnabled:false,
         performanceSnapshot:{baseline:structuredClone(baseline),comparisons,scale,source:'season-before-game',role:r,cold:coldOnly,
           fingerprint,season:year,gid:snap.gid,day:snap.day,playerId:snap.pid,team:{id:snap.team.id,city:snap.team.city,name:snap.team.name},
-          opponent:oppTeam?{id:oppTeam.id,city:oppTeam.city,name:oppTeam.name}:null,won,pronoun:he},
-        paragraphs:article({name,last,he,focus,changes,baseline,playoffs,mine,opp,result:{won,score:`${ctx.winnerScore}-${ctx.loserScore}`},stats:snap.stats,r,coldOnly})});
+          opponent:oppTeam?{id:oppTeam.id,city:oppTeam.city,name:oppTeam.name}:null,won,pronoun:he,series:ctx.series?structuredClone(ctx.series):null,college:ctx.college},
+        paragraphs:article({name,last,he,focus,changes,baseline,playoffs,mine,opp,result:{won,score:`${ctx.winnerScore}-${ctx.loserScore}`},stats:snap.stats,r,coldOnly,series:ctx.series,college:ctx.college})});
       result.push({story,context:{...ctx,potg:snap.player,potgStats:snap.stats,potgStatsTrusted:true,potgSnapshot:snap,scenePlayer:snap.player}});
     }
     return result.sort((a,b)=>b.story.importance-a.story.importance||a.story.id.localeCompare(b.story.id));
@@ -196,17 +202,20 @@
     const g=story.gameSummary,w=g.home.score>g.away.score?g.home:g.away,l=w===g.home?g.away:g.home;
     const mine=snapshot.team?C.teamRef(snapshot.team):null,opp=snapshot.opponent?C.teamRef(snapshot.opponent):C.teamRef(snapshot.team?.id===w.id?l:w);
     const W=C.teamRef(w),avg=average(focus.expected),up=focus.favorable,r=snapshot.role||{},s=story.playerStats||{};
-    const coldOnly=!!snapshot.cold;
+    const coldOnly=!!snapshot.cold,S=snapshot.series;
+    const where=S?.title?(snapshot.college?' in the national championship game':' in the title clincher'):S?(S.firstTo>1?` in Game ${S.gameNumber}`:` in the ${S.roundName}`):'';
     const stat=coldOnly?`${s.FGM}-of-${s.FGA} shooting`:focus.key==='TO'&&focus.actual===0?'zero turnovers':`${focus.actual} ${focus.actual===1?unit[focus.key][0]:unit[focus.key][1]}`;
     const who=r.scorerRank===1?`${mine?C.possessive(mine.nick):"the team's"} leading scorer`:r.starter===false?'a reserve':null;
     say(0,coldOnly?pick([`${name}: ${stat} against ${opp.nick}. ${n[1]}, what happened?`,`Rough one for ${name}. ${C.capitalize(stat)} against ${opp.nick}. ${n[1]}?`],'perf:open'):
-      pick([`Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}, and the average coming in was ${avg}. ${n[1]}?`,
-      `${name}: ${stat} against ${opp.nick}. Coming in, the average was ${avg}. ${n[1]}, what do you make of it?`,
-      `${name} with ${stat}${who?`, and that's ${who}`:''}. Normal night is ${avg}. ${n[1]}, go.`],'perf:open'));
+      pick([`Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}${where}, and the average coming in was ${avg}. ${n[1]}?`,
+      `${name}: ${stat} against ${opp.nick}${where}. Coming in, the average was ${avg}. ${n[1]}, what do you make of it?`,
+      `${name} with ${stat}${where}${who?`, and that's ${who}`:''}. Normal night is ${avg}. ${n[1]}, go.`],'perf:open'));
     say(1,coldOnly?pick([`Shots weren't falling. It happens. But when you're the go-to option, you have to find another way.`,`That's a bad night at the office. ${last} will want that one back.`],'perf:cold'):
       focus.key==='TO'?(up?pick([`That's grown-up basketball. Take care of the rock, give your team a chance.`,`I love it. No careless giveaways. That's how you earn trust.`],'perf:to-up'):pick([`${focus.actual} turnovers? Come on. You can't give the ball away like that.`,`That's sloppy. ${focus.actual} giveaways, and somebody's going to be looking at the film.`],'perf:to-down')):
       up?pick(r.starter===false?[`That's a bench player taking over a game. Somebody give ${last} some love.`,`See, this is why you watch every game. Nights like that come out of nowhere.`,`Now that's a reserve making noise. More minutes. I'm just saying.`]:
         [`That's what I've been waiting for! ${last} gave ${mine?mine.nick:'them'} way more than usual, and I want to see it again.`,`Breakout night. I don't want to hear about one game. That's a player figuring something out.`,`I'm a fan. That's exactly what ${mine?mine.nick:'that team'} needed from ${last}.`],'perf:up'):
+        snapshot.won&&S?.title?pick([`And it didn't matter one bit. ${last} has a ring. Nobody's asking about the box score at the parade.`,`Quiet night, sure. Champion, though. I'd take that trade every day.`],'perf:down-title'):
+        snapshot.won?pick([`And they won anyway. That's what good teams do when the top option goes cold.`,`Quiet night, but ${mine?mine.nick:'the team'} still got the W. I'll worry about it if it happens twice.`],'perf:down-won'):
         pick([`That's a dud. ${last} didn't give ${mine?mine.nick:'them'} what they usually get.`,`Where was ${last}? ${mine?C.capitalize(mine.nick):'That team'} needed more than that.`,`When your top option goes quiet, you're in trouble. Simple as that.`],'perf:down'));
     const early=snapshot.baseline.GP<minimumGames;
     say(3,early?`Easy, ${n[1]}. That average is from ${snapshot.baseline.GP} ${snapshot.baseline.GP===1?'game':'games'}. We're still learning what normal looks like.`:
@@ -221,8 +230,41 @@
       say(1,secondary.favorable===focus.favorable?(secondary.favorable?"So it wasn't just one thing. That's a complete night.":"So it's more than one problem. That's what worries me."):
         secondary.favorable?"Okay, fair. Give credit where it's due.":"Fair point. One good thing doesn't wash out the rest.");
     }
-    say(0,pick([`${C.capitalize(W.nick)} won it, ${w.score}-${l.score}. Next topic.`,`Final was ${W.nickname} ${w.score}, ${C.teamRef(l).nickname} ${l.score}. We'll see what ${last} does for an encore.`,`For the record, ${W.nick} won ${w.score}-${l.score}. Moving on.`],'perf:close'));
+
+    say(0,S?.title?`And for the record, ${W.nick} won the ${snapshot.college?'national championship':'title'}, ${w.score}-${l.score}.`:
+      S?`${C.capitalize(W.nick)} won Game ${S.gameNumber}, ${w.score}-${l.score}. Next topic.`.replace(/won Game \d+/,S.firstTo>1?`won Game ${S.gameNumber}`:'won it'):
+      pick([`${C.capitalize(W.nick)} won it, ${w.score}-${l.score}. Next topic.`,`Final was ${W.nickname} ${w.score}, ${C.teamRef(l).nickname} ${l.score}. We'll see what ${last} does for an encore.`,`For the record, ${W.nick} won ${w.score}-${l.score}. Moving on.`],'perf:close'));
     return turns;
   }
-  return {categories,bars,average,compare,judge,leagueScale,comparisonLine,candidates,script};
+  // Stories archived under the old 50% rule are judged again with today's rules,
+  // from the box score and season averages they saved. Passing stories are
+  // rewritten in the current voice; the rest return null and leave the archive.
+  function rejudge(story,known={}){
+    const snap=story.performanceSnapshot;
+    if(!snap||Number(story.editorialVersion||0)>=3)return story;
+    const box=story.playerStats,baseline=snap.baseline,g=story.gameSummary;
+    if(!box||!baseline?.GP||!g?.home||!g?.away)return null;
+    if(baseline.GP<minimumGames)return null;
+    const scale=Math.min(1.2,Math.max(.15,(g.home.score+g.away.score)/2/110));
+    const tid=story.sceneInputs?.team?.id,side=tid===g.home.id?'home':tid===g.away.id?'away':null;
+    // The rotation isn't saved with old stories, so quiet nights need a bigger average to count.
+    const r={scorerRank:baseline.PTS/baseline.GP>=18*scale?1:3,reboundRank:baseline.REB/baseline.GP>=10*scale?1:3,starter:null,minutes:null};
+    const comparisons=compare(box,baseline),{cold}=judge(comparisons,box,r,scale);
+    const best=[...comparisons].sort((a,b)=>b.score-a.score)[0];
+    if(!best?.qualifies&&!cold)return null;
+    if(!side)return null;
+    const coldOnly=!best?.qualifies,focus=coldOnly?comparisons.find(c=>c.key==='PTS')||best:best;
+    const mineSide=g[side],oppSide=g[side==='home'?'away':'home'],won=mineSide.score>oppSide.score;
+    const mine=C.teamRef(story.sceneInputs.team||mineSide),opp=C.teamRef(oppSide),name=story.playerName,he=C.pronoun(story.sceneInputs?.player);
+    const changes=[focus,...comparisons.filter(c=>c!==focus)];
+    const good=changes.some(c=>c.favorable&&c.qualifies),poor=changes.some(c=>!c.favorable&&c.qualifies)||coldOnly;
+    const hi=Math.max(g.home.score,g.away.score),lo=Math.min(g.home.score,g.away.score);
+    return {...story,type:good&&poor?'Mixed performance':good?'Above expectations':'Below expectations',
+      headline:headline(name,focus,opp,story.id,false,coldOnly),editorialVersion:3,importance:Math.round(70+Math.min(30,(coldOnly?1.1:best.score)*8)),
+      performanceSnapshot:{...snap,comparisons,scale,role:r,cold:coldOnly,team:story.sceneInputs.team?{id:mine.id??tid,city:story.sceneInputs.team.city,name:story.sceneInputs.team.name}:null,
+        opponent:{id:oppSide.id,city:opp.city,name:opp.nickname},won,pronoun:he,series:known.title?{title:true}:null,college:!!known.college},
+      paragraphs:article({name,last:C.surname(name),he,focus,changes,baseline,playoffs:known.playoffs??/before the playoffs/.test((story.paragraphs||[]).join(' ')),mine,opp,
+        result:{won,score:`${hi}-${lo}`},stats:box,r,coldOnly,series:known.title?{title:true}:known.playoffs?{roundName:'playoffs',firstTo:1}:null,college:known.college})};
+  }
+  return {categories,bars,average,compare,judge,leagueScale,comparisonLine,candidates,script,rejudge};
 });

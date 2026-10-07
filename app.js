@@ -107,6 +107,21 @@
       const replacements=new Map(repaired.map(s=>[s.id,s]));
       for(let i=0;i<stories.length;i++)stories[i]=replacements.get(stories[i].id)||stories[i];
     }
+    // Performance stories from the old percentage rule are re-judged once.
+    const stale=stories.filter(s=>s.performanceSnapshot&&Number(s.editorialVersion||0)<3);
+    if(stale.length){
+      const kept=[],dropped=[];
+      for(const s of stale){
+        // Old stories saved no series facts; the archived results and title news still know the stakes.
+        const league=leagues.find(l=>l.id===s.fingerprint),context=window.HoopWireBroadcastContext.buildContext(s,{league,stories});
+        const known={playoffs:context.game?.tRound>0,title:context.consequence?.kind==='championship',college:league?.leagueType===1};
+        const next=window.HoopWirePerformance.rejudge(s,known);if(next)kept.push(next);else dropped.push(s.id);
+      }
+      if(kept.length)await archive.write({stories:kept});
+      await archive.remove('stories',dropped);
+      const replacements=new Map(kept.map(s=>[s.id,s])),gone=new Set(dropped);
+      for(let i=stories.length-1;i>=0;i--){if(gone.has(stories[i].id))stories.splice(i,1);else stories[i]=replacements.get(stories[i].id)||stories[i];}
+    }
     const refreshed=await window.HoopWireScenes.refreshFraming(stories,leagues);
     if(refreshed.length){
       await archive.write({stories:refreshed});

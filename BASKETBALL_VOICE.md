@@ -58,4 +58,4 @@ A performance story runs when a sports desk would look twice, not when a percent
 
 ## Continuity
 
-Articles keep their archived prose; TV reads the archived facts. Raising `editorialVersion` lets a reloaded save rewrite the latest day's stories in the current voice, keeping their images. Stories archived under earlier rules still play on TV.
+Articles keep their archived prose; TV reads the archived facts. Raising `editorialVersion` lets a reloaded save rewrite the latest day's stories in the current voice, keeping their images. Performance stories archived under the old percentage rule are judged again when the archive loads: real news is rewritten (with playoff or title stakes recovered from archived results and championship news) and noise is removed. Deploys stamp script and stylesheet URLs with the commit so browsers never run cached code.
