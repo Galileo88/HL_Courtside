@@ -12,15 +12,15 @@ const server=http.createServer((req,res)=>{
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const url=`http://127.0.0.1:${server.address().port}`;await page.goto(url);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   const fixtures=await page.evaluate(()=>Object.fromEntries(['horizontal','vertical'].map(layout=>{
-   const c=document.createElement('canvas');c.width=layout==='horizontal'?1024:256;c.height=128;const ctx=c.getContext('2d');
+   const c=document.createElement('canvas');c.width=layout==='horizontal'?2048:256;c.height=256;const ctx=c.getContext('2d');
    if(layout==='horizontal')c.height=64;
-   for(let i=0;i<4;i++){const x=layout==='horizontal'?i*256:0,y=layout==='vertical'?i*32:0,h=layout==='vertical'?32:64;ctx.fillStyle=['#d71920','#16964e','#126bd2','#8b45c0'][i];ctx.fillRect(x,y,256,h);ctx.fillStyle='#fff';ctx.font=`bold ${h/2}px Arial`;ctx.fillText(`SPONSOR ${i+1}`,x+40,y+h*.7);}
+   for(let i=0;i<8;i++){const x=layout==='horizontal'?i*256:0,y=layout==='vertical'?i*32:0,h=layout==='vertical'?32:64;ctx.fillStyle=['#d71920','#16964e','#126bd2','#8b45c0','#e7a821','#18bac0','#c54b99','#d71920'][i];ctx.fillRect(x,y,256,h);ctx.fillStyle='#fff';ctx.font=`bold ${h/2}px Arial`;ctx.fillText(`SPONSOR ${i+1}`,x+40,y+h*.7);}
    return [layout,c.toDataURL().split(',')[1]];
   })));
   await page.route('https://sponsor-test.invalid/**',r=>r.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:Buffer.from(fixtures[new URL(r.request().url()).pathname.slice(1,-4)],'base64')}));
   for(const layout of ['horizontal','vertical']){
    const result=await page.evaluate(async layout=>{
-    const inputs={...HoopWireTV.inputs({teams:[],leagueName:'Sponsor check'}),adsURL:`https://sponsor-test.invalid/${layout}.png`,adSize:256};
+    const inputs={...HoopWireTV.inputs({teams:[],leagueName:'Sponsor check'}),adsURL:`https://sponsor-test.invalid/${layout}.png`,adSize:256,adSlots:[0,2,4,6]};
     const studio=await HoopWireTV.render(inputs),bitmap=await createImageBitmap(studio.imageBlob),c=document.createElement('canvas');c.width=960;c.height=540;const ctx=c.getContext('2d');ctx.drawImage(bitmap,0,0);bitmap.close();
     const pixels=Array.from({length:4},(_,i)=>[14+i*236,237+i*236].map(x=>Array.from(ctx.getImageData(x,438,1,1).data)));
     const backdrop=await createImageBitmap(studio.backdropBlob);ctx.drawImage(backdrop,0,0);backdrop.close();const behind=Array.from({length:4},(_,i)=>Array.from(ctx.getImageData(14+i*236,438,1,1).data));
@@ -28,12 +28,12 @@ const server=http.createServer((req,res)=>{
      const img=document.createElement('img');img.id='sponsorPreview';img.src=URL.createObjectURL(studio.imageBlob);document.body.appendChild(img);await img.decode();
      const a=await new HoopWireArchive().open();await a.write({leagues:[{id:'sponsor-upgrade',leagueName:'Sponsor check',studios:{1:{...studio,inputs:{...inputs,version:3}}}}]});a.db.close();
     }
-    return {pixels,behind,status:studio.adsStatus,version:studio.inputs.version};
+    return {pixels,behind,status:studio.adsStatus,version:studio.inputs.version,random:HoopWireTV.inputs({teams:[]}).adSlots};
    },layout);
-   assert.equal(result.status,'loaded');assert.equal(result.version,4);for(const pixels of result.pixels)for(const pixel of pixels)assert.deepEqual(pixel,[215,25,32,255]);for(const pixel of result.behind)assert.deepEqual(pixel,[215,25,32,255]);
+   assert.equal(result.status,'loaded');assert.equal(result.version,5);assert.equal(result.random.length,4);assert.ok(result.random.every(n=>Number.isInteger(n)&&n>=0&&n<7));const colors=[[215,25,32,255],[18,107,210,255],[231,168,33,255],[197,75,153,255]];result.pixels.forEach((pixels,i)=>pixels.forEach(pixel=>assert.deepEqual(pixel,colors[i])));result.behind.forEach((pixel,i)=>assert.deepEqual(pixel,colors[i]));
   }
   await page.locator('#sponsorPreview').screenshot({path:path.join(root,'artifacts/tv-desk-ads.png')});
-  await page.reload();await page.waitForFunction(async()=>{const a=await new HoopWireArchive().open();try{return (await a.get('leagues','sponsor-upgrade'))?.studios?.[1]?.inputs?.version===4;}finally{a.db.close();}});
-  assert.deepEqual(errors,[]);console.log('Desk sponsor checks passed: larger ad windows, first/top tile repeated across all four spots for horizontal and vertical atlases, matching backdrop and saved-studio upgrade.');
+  await page.reload();await page.waitForFunction(async()=>{const a=await new HoopWireArchive().open();try{return (await a.get('leagues','sponsor-upgrade'))?.studios?.[1]?.inputs?.version===5;}finally{a.db.close();}});
+  assert.deepEqual(errors,[]);console.log('Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop and saved-studio upgrade.');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});

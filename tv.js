@@ -13,11 +13,15 @@
   function inputs(league) {
     const announcers = Array.from({length:4},(_,i) => defaults(i));
     const adTeam = (league.teams || []).find(t => t.frontOffice?.adsURL);
-    return {version:4,leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
+    return {version:5,adSlots:randomAds(),leagueName:league.leagueName || "HoopWire",season:window.HoopWireCore.seasonYear(league),
       announcers,adsURL:adTeam?.frontOffice?.adsURL || null,adSize:adTeam?.frontOffice?.adSize || 256,
       hostSource:"hoopwire"};
   }
+  function randomAds() {
+    return Array.from({length:4},()=>Math.floor(Math.random()*7));
+  }
   function render(input) {
+    input={...input,version:5,adSlots:input.adSlots || randomAds()};
     const key = JSON.stringify(input);
     if (!cache.has(key)) cache.set(key,compose(input).catch(error => {cache.delete(key);throw error;}));
     return cache.get(key);
@@ -54,15 +58,19 @@
     ctx.drawImage(table,0,247,960,240);ctx.drawImage(graphic,0,247,960,240);
     ctx.fillStyle="#172f65";ctx.fillRect(8,365,944,121);
     ctx.textAlign="center";ctx.fillStyle="#ffffff";ctx.font="italic 900 32px Arial";ctx.fillText("HOOPWIRE TV",480,398);
-    // Repeat the first/top advertisement in larger, fitted desk windows.
+    // Pick from the first seven atlas tiles; the eighth repeats the first.
     if(ads) {
       const tileWidth=Math.min(Math.max(1,Number(input.adSize)||256),ads.width);
       const tileHeight=ads.height <= tileWidth/4 ? ads.height : Math.min(32,ads.height);
+      const columns=Math.max(1,Math.floor(ads.width/tileWidth));
+      const count=Math.min(7,columns*Math.max(1,Math.floor(ads.height/tileHeight)));
       for(let i=0;i<4;i++) {
+        const ad=Math.max(0,Math.floor(Number(input.adSlots[i])||0))%count;
+        const sx=(ad%columns)*tileWidth,sy=Math.floor(ad/columns)*tileHeight;
         const x=14+i*236,w=224,h=Math.min(68,Math.round(w*tileHeight/tileWidth)),y=438-h/2;
         ctx.fillStyle="#0a1120";ctx.fillRect(x,y,w,h);
         const scale=Math.min(w/tileWidth,h/tileHeight),dw=tileWidth*scale,dh=tileHeight*scale;
-        ctx.drawImage(ads,0,0,tileWidth,tileHeight,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+        ctx.drawImage(ads,sx,sy,tileWidth,tileHeight,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
       }
     }
     ctx.fillStyle="#0b1425";ctx.fillRect(0,496,960,44);

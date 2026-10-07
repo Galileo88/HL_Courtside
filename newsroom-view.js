@@ -32,20 +32,24 @@
     const update=element('a','text-action','Update coverage');update.href='#welcome';header.append(update);target.append(header);
     if(!edition.lead){target.append(element('div','panel muted',busy?'Preparing the latest coverage…':'No saved stories for this league yet. Load a save to create coverage.'));return;}
     const opening=element('div','wire-opening'),main=element('section','wire-main');main.setAttribute('aria-label','Featured coverage');main.append(card(edition.lead,true));
-    if(edition.supporting.length){const supporting=element('div','wire-supporting');for(const story of edition.supporting)supporting.append(card(story));main.append(supporting);}
     opening.append(main);
     if(edition.headlines.length){
       const aside=element('aside','wire-headlines');aside.append(element('h2','','Top Headlines'));const list=element('ul','');
       for(const story of edition.headlines){const li=element('li',''),a=element('a','');a.href=storyHref(story.id);a.dataset.storyId=story.id;a.dataset.leagueId=story.fingerprint;a.append(element('span','wire-meta',label(story)),element('strong','',story.headline));li.append(a);list.append(li);}
       aside.append(list);opening.append(aside);
     }
+    if(edition.supporting.length){const supporting=element('section','wire-supporting');supporting.setAttribute('aria-label','More featured stories');for(const story of edition.supporting)supporting.append(card(story));opening.append(supporting);}
     target.append(opening);
     for(const section of edition.sections){const node=element('section','wire-section');node.append(element('h2','',section.label));const grid=element('div','wire-story-grid');for(const story of section.items)grid.append(card(story));node.append(grid);target.append(node);}
     if(edition.tvStory){
       const story=edition.tvStory,studio=leagueFor(story).studios[story.season],feature=element('section','wire-tv');
       const poster=element('img','wire-tv-poster');poster.src=imageURL(studio.imageBlob);poster.alt='HoopWire TV studio';poster.width=960;poster.height=540;
-      const details=element('div','');details.append(element('span','wire-meta',label(story)),element('h2','','HoopWire TV'),element('p','','The Daily Desk: '+story.headline));
-      const watch=element('button','primary','Watch coverage');watch.addEventListener('click',()=>onWatch(story));details.append(watch);feature.append(poster,details);target.append(feature);
+      const details=element('div','wire-tv-details');
+      const logo=element('img','wire-tv-logo');logo.src='assets/hoopwire_logo.png';logo.alt='HoopWire TV';logo.width=1336;logo.height=366;
+      details.append(element('h2','','The Daily Desk'),logo);
+      const air=element('div','wire-tv-air-row'),time=element('div','wire-tv-time');
+      time.append(element('p','wire-tv-airtime','Nightly · 10 PM'),element('span','wire-tv-timezone','League time · Available on demand'));
+      const watch=element('button','primary','Watch Now!');watch.addEventListener('click',()=>onWatch(story));air.append(time,watch);details.append(air);feature.append(poster,details);target.append(feature);
     }
   }
   window.HoopWireNewsroomView={render};

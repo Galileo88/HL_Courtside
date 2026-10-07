@@ -13,7 +13,9 @@
 .wire-heading p { margin:0; font-size:12px; line-height:1.7; }
 .wire-heading > a { position:absolute; right:0; top:12px; }
 .wire-opening { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:24px; align-items:start; }
-.wire-main { min-width:0; }
+.wire-main { min-width:0; grid-column:1; grid-row:1; }
+.wire-opening > .wire-headlines { grid-column:2; grid-row:1 / span 2; }
+.wire-opening > .wire-supporting { grid-column:1; grid-row:2; margin-top:0; }
 .wire-card { display:block; min-width:0; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:4px; overflow:hidden; text-decoration:none; }
 .wire-card:hover h2,.wire-card:hover h3,.wire-headlines a:hover strong { color:#79fff4; }
 .wire-image { display:block; width:100%; aspect-ratio:16/9; height:auto; object-fit:contain; image-rendering:pixelated; background:#162b49; }
@@ -39,6 +41,72 @@
 .wire-tv h2 { font-size:28px; margin:10px 0; }
 .wire-tv p { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.5; }
 .front-page :is(a,button):focus-visible,.wire-scores:focus-visible,.article-back:focus-visible { outline:3px solid #79fff4; outline-offset:3px; }
-@media(max-width:1099px) { .wire-opening { grid-template-columns:1fr; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; } }
+@media(max-width:1099px) { .wire-opening { grid-template-columns:1fr; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; }.wire-opening > :is(.wire-main,.wire-headlines,.wire-supporting) { grid-column:auto; grid-row:auto; } }
 @media(max-width:699px) { .wire-supporting,.wire-story-grid,.wire-tv { grid-template-columns:1fr; }.wire-heading { padding-right:0; }.wire-heading > a { position:static; display:inline-block; margin-top:10px; }.wire-heading h1 { font-size:28px; }.wire-card h2 { font-size:26px; }.wire-card-body { padding:16px; }.wire-tv { padding:16px; } }
 
+
+/* Phone editions: a full-width feature followed by headlines and compact stories. */
+@media(max-width:699px) {
+  body:not(.entry-screen) .topbar { min-height:60px; padding:0 16px; }
+  body:not(.entry-screen) .brand { font-size:27px; }
+  .nav { padding:0 16px; gap:22px; min-height:50px; align-items:stretch; scrollbar-width:none; }
+  .nav::-webkit-scrollbar { display:none; }
+  .nav a { flex-shrink:0; display:flex; align-items:center; min-height:50px; font-size:13px; border-bottom:3px solid transparent; }
+  .nav a[aria-current="page"] { padding-bottom:0; border-bottom:3px solid #79fff4; }
+  .nav a:focus-visible { outline:2px solid #79fff4; outline-offset:-3px; }
+  .shell:has(.front-page:not(.hidden)) { width:100%; padding-top:12px; }
+  .front-page { gap:24px; }
+  .wire-scores { border-left:0; border-right:0; padding:9px 0; }
+  .wire-score { flex-basis:190px; padding:0 12px; }
+  .wire-score-team { font-size:11px; }
+  .wire-heading { margin:0 16px; }
+  .wire-heading .landing-kicker { font-size:10px; letter-spacing:1px; }
+  .wire-heading h1 { font-size:25px; margin:5px 0; }
+  .wire-heading p { font-size:11px; }
+  .wire-heading > a { font-size:12px; min-height:32px; display:inline-flex; align-items:center; margin-top:4px; }
+  .wire-opening { gap:24px; }
+  .wire-lead { border-left:0; border-right:0; border-radius:0; }
+  .wire-lead .wire-card-body { padding:18px 16px 20px; }
+  .wire-lead h2 { font-size:29px; line-height:1.14; margin:10px 0 12px; letter-spacing:-.5px; }
+  .wire-summary { font-size:17px; line-height:1.5; }
+  .wire-read { display:none; }
+  .wire-headlines { margin:0 16px; padding:18px 16px; border:1px solid var(--line); border-top:3px solid #238bce; border-radius:4px; }
+  .wire-headlines h2 { font-size:20px; text-transform:uppercase; letter-spacing:.4px; }
+  .wire-headlines a { display:flex; flex-direction:column; gap:7px; min-height:44px; }
+  .wire-headlines strong { order:-1; margin:0; font-size:16px; line-height:1.45; }
+  .wire-headlines li + li { margin-top:14px; padding-top:14px; }
+  .wire-supporting,.wire-section { margin:0 16px; }
+  .wire-supporting,.wire-story-grid { gap:0; }
+  :is(.wire-supporting,.wire-story-grid) .wire-card { display:grid; grid-template-columns:minmax(0,1fr) 112px; gap:14px; align-items:center; padding:16px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; }
+  :is(.wire-supporting,.wire-story-grid) .wire-image { grid-column:2; grid-row:1; border-radius:3px; }
+  :is(.wire-supporting,.wire-story-grid) .wire-card-body { grid-column:1; grid-row:1; padding:0; }
+  :is(.wire-supporting,.wire-story-grid) h3 { font-size:18px; line-height:1.35; margin-top:6px; }
+  :is(.wire-supporting,.wire-story-grid) .wire-placeholder { font-size:16px; }
+  .wire-section > h2 { font-size:21px; margin-bottom:0; }
+  .wire-tv { margin:0 16px 24px; gap:16px; }
+  .wire-tv h2 { font-size:25px; }
+  .wire-tv p { font-size:17px; }
+  .wire-tv button { min-height:44px; width:100%; }
+}
+
+/* Logo-led broadcast promo. */
+.wire-tv { position:relative; gap:32px; padding:28px; background:linear-gradient(115deg,#102d49 0 49%,#091521 49% 94%,#791323 94%); border-top:3px solid #238bce; overflow:hidden; }
+.wire-tv-details { min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center; }
+.wire-tv h2 { font-size:12px; font-style:normal; text-transform:uppercase; letter-spacing:2.5px; color:#bdcfe4; margin:0 0 16px; }
+.wire-tv-logo { display:block; width:100%; max-width:450px; height:auto; }
+.wire-tv .wire-tv-airtime { font-family:Arial,Helvetica,sans-serif; font-size:28px; font-weight:900; text-transform:uppercase; margin:20px 0 4px; line-height:1.2; }
+.wire-tv-timezone { color:var(--muted); font-size:11px; }
+.wire-tv-air-row { display:flex; align-items:center; justify-content:center; gap:16px; margin-top:24px; }
+.wire-tv-time { min-width:0; }
+.wire-tv .wire-tv-air-row .wire-tv-airtime { margin:0 0 6px; }
+.wire-tv-air-row button { flex-shrink:0; }
+.wire-tv button { min-height:46px; padding:12px 30px; text-transform:uppercase; font-size:15px; letter-spacing:.7px; }
+@media(max-width:699px) {
+  .wire-tv { gap:22px; padding:20px 16px; background:linear-gradient(155deg,#102d49,#091521 75%); }
+  .wire-tv h2 { font-size:11px; margin-bottom:12px; }
+  .wire-tv .wire-tv-airtime { font-size:25px; margin-top:18px; }
+  .wire-tv-air-row { gap:12px; margin-top:20px; }
+  .wire-tv .wire-tv-airtime { font-size:19px; }
+  .wire-tv-air-row button { width:auto; padding:12px 14px; font-size:12px; }
+  .wire-tv-timezone { display:block; font-size:10px; }
+}
