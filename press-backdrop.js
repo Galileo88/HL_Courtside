@@ -84,17 +84,18 @@
     ctx.imageSmoothingQuality='high';
     function marks(mark,slots,fraction){
       const image=mark?.image;if(!image)return;
-      // Pixel-art marks stay crisp at whole-pixel scales; large photographs
-      // and vector logos are smoothed once, straight to their final size.
+      // Large photographs and vector logos are smoothed once, straight to
+      // their final size.
       for(const slot of slots){
         const fit=Math.min((slot.width-2)*resolution*fraction/image.width,(slot.height-2)*resolution*fraction/image.height);
-        // Pixel art is never shrunk (that blurs it or drops lines): it keeps
-        // at least its own size while it fits the slot and grows without
-        // smoothing, like the wall and the players.
+        // Pixel art grows without smoothing, like the wall and the players,
+        // in whole-pixel steps from 2x so lettering stays even. Smoothing
+        // would blur it when it shrinks, so it shrinks only to three quarters,
+        // which drops every fourth line and still reads cleanly. A slot too
+        // small even for that gets the smoothed fit.
         const room=Math.min((slot.width-2)*resolution/image.width,(slot.height-2)*resolution/image.height);
-        // From 2x up, whole-pixel steps keep lettering even.
-        const scale=mark.pixel?(fit>=2?Math.floor(fit):Math.max(fit,Math.min(1,room))):fit,w=image.width*scale,h=image.height*scale;
-        ctx.imageSmoothingEnabled=!mark.pixel||scale<1;
+        const scale=mark.pixel?(fit>=2?Math.floor(fit):fit>=1?fit:room>=.75?.75:fit):fit,w=image.width*scale,h=image.height*scale;
+        ctx.imageSmoothingEnabled=!mark.pixel||scale<.75;
         ctx.drawImage(image,Math.round(slot.x*resolution+(slot.width*resolution-w)/2),Math.round(slot.y*resolution+(slot.height*resolution-h)/2),Math.round(w),Math.round(h));
       }
     }
