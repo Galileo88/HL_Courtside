@@ -116,7 +116,7 @@ async function getStories(page){return page.evaluate(async()=>{const a=await new
   // A failed URL is an explicit fallback and does not taint the saved PNG.
   await page.route('https://missing-court.invalid/**',route=>route.abort());
   const fallback=await page.evaluate(async scene=>{scene.home.court.overlayURL='https://missing-court.invalid/image.png';const result=await HoopWireScenes.render(scene);return {court:result.customCourt,caption:result.imageCaption,bytes:result.imageBlob.size};},action.sceneInputs);
-  assert.equal(fallback.court.status,'unavailable');assert.match(fallback.caption,/unavailable/);assert.ok(fallback.bytes>0);
+  assert.equal(fallback.court.status,'unavailable');assert.doesNotMatch(fallback.caption,/assets|unavailable|Composed/);assert.ok(fallback.bytes>0);
   assert.deepEqual(errors,[]);await context.close();
   console.log('Scene checks passed: custom overlay and ads, exclusive hosts, group interview and coach quotes, image refresh without text changes, URL fallback, TV navigation, and mobile layout.');
   if(process.argv[2]){

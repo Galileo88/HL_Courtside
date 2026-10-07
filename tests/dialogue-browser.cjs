@@ -12,7 +12,9 @@ const server=http.createServer((req,res)=>{
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[],blobFailures=[];page.on('pageerror',e=>errors.push(e.message));page.on('requestfailed',r=>{if(r.url().startsWith('blob:')&&r.failure()?.errorText.includes('ERR_FILE_NOT_FOUND'))blobFailures.push(r.url());});
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.locator('#saveFile').setInputFiles({name:'league.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(save))});
-  await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);await page.locator('.nav a[href="#tv"]').click();
+  await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
+  const captions=await page.locator('.article-image figcaption').allTextContents();assert.ok(captions.length>0);assert.ok(captions.every(c=>!/(?:Composed|Hoop Land assets|Illustrative scene)/.test(c)));assert.ok(captions.some(c=>/\| Day \d+, \d+/.test(c)));
+  await page.locator('.nav a[href="#tv"]').click();
   const stories=await page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{return await a.all('stories');}finally{a.db.close();}});
   const labels=await page.locator('#tvStorySelect option').allTextContents(),game=stories.find(s=>s.playerStats&&s.playerName&&labels.includes(s.headline));assert.ok(game,'A verified named game is available in TV');
   await page.locator('#tvStorySelect').selectOption({label:game.headline},{force:true});

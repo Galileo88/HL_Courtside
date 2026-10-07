@@ -171,8 +171,9 @@ branch.append(summary);
       const figure = node.querySelector(".article-image");
       if (story.imageBlob) {
         const url = imageURL(story.imageBlob);
-        const image = figure.querySelector("img"); image.src = url; image.alt = story.imageAlt || "Composed Hoop Land story illustration";
-        figure.querySelector("figcaption").textContent = story.imageCaption || "Composed scene using Hoop Land assets";
+        const caption=window.HoopWireScenes.caption(story.sceneInputs,story)||story.imageCaption||story.headline;
+        const image = figure.querySelector("img"); image.src = url; image.alt = caption;
+        figure.querySelector("figcaption").textContent = caption;
       } else figure.remove();
       for (const text of story.paragraphs) {
         const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);

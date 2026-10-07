@@ -70,7 +70,35 @@
       uniformIndex:team?.id === ctx.game.homeTeam ? 0 : 1,
       opponentUniformIndex:opponent?.id === ctx.game.homeTeam ? 0 : 1,
       teammates,coach:C.coachForTeam(liveTeam),
-      home:teamSnapshot(ctx.home)};
+      home:teamSnapshot(ctx.home),
+      gameContext:ctx.game?.winner!=null?{result:team?.id===ctx.game.winner?'win':'loss',day:ctx.dayNumber,season:ctx.seasonYear}:null};
+  }
+  function caption(scene,story={}){
+    if(!scene)return null;
+    const C=window.HoopWireCore,name=scene.player?C.playerDisplay(scene.player):C.teamDisplay(scene.team);
+    const game=story.gameSummary,teams=game?[game.home,game.away].filter(Boolean):[];
+    const own=teams.find(t=>t.id!=null&&t.id===scene.team?.id||t.name===C.teamDisplay(scene.team));
+    const other=own?teams.find(t=>t!==own):null,opponent=other?.name||C.teamDisplay(scene.opponent);
+    let result=scene.gameContext?.result;
+    if(own&&other&&Number.isFinite(own.score)&&Number.isFinite(other.score))result=own.score===other.score?'tie':own.score>other.score?'win':'loss';
+    let description;
+    if(scene.kind==='interview'){
+      const participants=[name];
+      if(scene.teammates?.[0])participants.push(C.playerDisplay(scene.teammates[0]));
+      if(scene.coach)participants.push(`Coach ${C.playerDisplay(scene.coach)}`);
+      else if(scene.teammates?.[1])participants.push(C.playerDisplay(scene.teammates[1]));
+      const group=participants.length>1?participants.slice(0,-1).join(', ')+' and '+participants.at(-1):name;
+      const plural=participants.length>1;
+      description=story.kind==='season'?`${group} ${plural?'discuss':'discusses'} ${story.type==='Award announcement'?'the award announcement':'the season'}.`:
+        `${group} ${plural?'answer':'answers'} postgame questions${result==='win'?' after a win':result==='loss'?' after a loss':result==='tie'?' after a tied game':''}.`;
+    }else{
+      const actions={drive:'drives to the basket','close-up':'handles the ball',dunk:'goes up for a dunk','three-point':'takes a three-point shot',pass:'passes to a teammate','pass-close-up':'passes to a teammate'};
+      description=`${name} ${actions[scene.action?.variant]||'in action'} against ${opponent}.`;
+    }
+    const matchup=teams.length===2?`${teams[0].name} vs ${teams[1].name}`:scene.team&&scene.opponent?`${C.teamDisplay(scene.team)} vs ${C.teamDisplay(scene.opponent)}`:null;
+    const day=story.day??scene.gameContext?.day,year=story.season??scene.gameContext?.season;
+    const date=[Number.isFinite(day)?`Day ${day}`:null,Number.isFinite(year)?String(year):null].filter(Boolean).join(', ');
+    return [description,story.kind==='season'?null:matchup,date||null].filter(Boolean).join(' | ');
   }
   function player(ctx,data,team,uniform,x,y,size,pose='idle',frame=0,facing='left',ball={}) {
     if (!data) return;
@@ -132,15 +160,8 @@
       const [x,y,w,h]=action.camera;ctx.drawImage(world,x*2,y*2,w*2,h*2,0,0,768,432);
     }
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not compose the article image.')),'image/png'));
-    const C=window.HoopWireCore, subject=scene.player?C.playerDisplay(scene.player):C.teamDisplay(scene.team);
-    const groupNote = scene.coach ? ` • Coach ${C.playerDisplay(scene.coach)}` : '';
-    const courtNote=customCourt?.status === 'loaded' ? ` • ${C.teamDisplay(scene.home)} custom court` :
-      customCourt?.status === 'unavailable' ? ' • Custom court image unavailable; saved court layout used' : '';
     return {imageBlob:blob,sceneInputs:scene,customCourt,
-      imageAlt:scene.kind === 'interview' ? `${subject} behind a hip-height table in a composed postgame interview${scene.teammates?.length ? ` with teammate ${C.playerDisplay(scene.teammates[0])}` : ''}${scene.coach ? ` and head coach ${C.playerDisplay(scene.coach)}` : ''}, wearing ${C.teamDisplay(scene.team)} colors.` :
-        `Composed ${scene.action?.label || 'basketball action'} illustration featuring ${C.teamDisplay(scene.team)} and ${C.teamDisplay(scene.opponent)} on ${C.teamDisplay(scene.home)}'s court; this does not document a specific play.`,
-      imageCaption:scene.kind === 'interview' ? `Composed postgame interview scene • ${subject}${groupNote} • Hoop Land assets` :
-        `Composed action illustration • ${scene.action?.label || 'Basketball action'} • Hoop Land assets${courtNote} • Illustrative scene`};
+      imageAlt:caption(scene),imageCaption:caption(scene)};
   }
-  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants};
+  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants,caption};
 })();
