@@ -128,15 +128,15 @@
       let text;
       if(!i){
         const tied=teams.filter(x=>x.s.W===s.W&&x.s.L===s.L);
-        text=tied.length>1?`${tied.map(x=>x.name).join(' and ')} finished level at ${s.W}-${s.L}. There is no separating those seasons by record alone.`:
-          `${t.name} set the pace in wins, finishing ${s.W}-${s.L}. ${winning>=.75?'That is an outstanding regular season. Winning that often earns a team the right to be taken seriously.':winning>.5?'They gave themselves plenty to be proud of. The wins are the strongest argument for the season they put together.':'Even at the top of this group, the record leaves room to improve.'}`;
+        text=tied.length>1?`${tied.map(x=>x.name).join(' and ')} finished level at ${s.W}-${s.L}, leaving the regular-season race without a clear winner.`:
+          `${t.name} finished with the league's best record at ${s.W}-${s.L}. ${winning>=.75?'That is the kind of regular season that changes the expectations around a team.':winning>.5?'The record gives them a solid foundation for the postseason.':'The record puts them first, but it does not leave much room for complacency.'}`;
       }else{
         const gap=first.s.W-s.W;
-        text=`${t.name} finished ${s.W}-${s.L}. ${gap===0?'They matched the leading win total, so they belong in the same conversation.':gap<=3?`Only ${gap} ${gap===1?'win separates':'wins separate'} them from ${first.name}. That is a small enough gap to keep the comparison interesting.`:`They finished ${gap} wins short of ${first.name}. ${winning>.5?'A good season in its own right, but there was another level above them.':'That is a reminder of how much ground they still have to make up.'}`}`;
+          text=`${t.name} finished ${s.W}-${s.L}. ${gap===0?'They matched the league leader and belong in the same conversation.':gap<=3?`Only ${gap} ${gap===1?'win separates':'wins separate'} them from ${first.name}, so the gap is small enough to matter without settling the argument.`:`They finished ${gap} wins behind ${first.name}. ${winning>.5?'That is a good season, though another team set the higher standard.':'The record shows how much ground they still have to make up.'}`}`;
       }
       if(s.GP>0&&Number.isFinite(s.PTS)&&s.PTS>=0&&Number.isFinite(s.OPP)&&s.OPP>=0){
         const margin=(s.PTS-s.OPP)/s.GP;
-        text+=` They averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')}. ${margin>0?(winning>.5?'The scoring backs up the winning record:':'There is something to build on despite the record:')+` on average, they beat teams by ${margin.toFixed(1)} points a game.`:margin<0?(winning>.5?'The concern is the scoring gap. Despite the wins,':'The problem shows up on the scoreboard:')+` on average, they lost by ${Math.abs(margin).toFixed(1)} points a game.`:'Scoring and points allowed finished even. There was little cushion in those numbers.'}`;
+        text+=` They averaged ${avg(s,'PTS')} points and allowed ${avg(s,'OPP')}. ${margin>0?`On average, they beat teams by ${margin.toFixed(1)} points a game.`:margin<0?`On average, they lost by ${Math.abs(margin).toFixed(1)} points a game.`:'Their scoring margin was even.'}`;
       }
       paragraphs.push(text);
     }
@@ -144,18 +144,19 @@
       const s=p.s,secondary=['AST','REB'].filter(k=>Number.isFinite(s[k])&&s[k]>0).sort((a,b)=>s[b]-s[a])[0];
       const awardName=story.seasonSnapshot?.mvpAward?.name|| (story.seasonSnapshot?.leagueType===1?'Player of the Year':'Most Valuable Player');
       const won=(p.mvpWins||[]).includes(story.seasonSnapshot?.year);
-      const standing=won?`${p.name} won the ${awardName}`:i===0?`The award calculation puts ${p.name} first for the ${awardName}`:`${p.name} ranks among the three strongest candidates for the ${awardName}`;
-      let text=`${standing}, averaging ${avg(s,'PTS')} points${secondary?` and ${avg(s,secondary)} ${secondary==='AST'?'assists':'rebounds'}`:''}.`;
+      const statLine=`${avg(s,'PTS')} points${secondary?` and ${avg(s,secondary)} ${secondary==='AST'?'assists':'rebounds'}`:''}`;
+      const standing=won?`${p.name} won the ${awardName}`:i===0?`With ${statLine}, ${p.name} has the clearest case for ${awardName}`:`With ${statLine}, ${p.name} stays in the ${awardName} mix`;
+      let text=won?`${standing}, finishing with ${statLine}.`:standing+'.';
       if(s.FGA>0&&s.FGM>=0&&s.FGM<=s.FGA){
-        text+=` ${pct(s,'FGM','FGA')} shooting from the field ${s.FGM/s.FGA>=.5?'strengthens that case.':s.FGM/s.FGA<.4?'is the weakness in that season. The scoring was there; the efficiency was not.':'leaves room for a better shooting season.'}`;
+        text+=` The ${pct(s,'FGM','FGA')} shooting tells the rest of the story: ${s.FGM/s.FGA>=.5?'the scoring came with strong efficiency.':s.FGM/s.FGA<.4?'the production came with too many misses.':'there is still room to get more from the same opportunities.'}`;
       }
       if(secondary==='AST'&&Number.isFinite(s.TO)&&s.TO>=0){
-        text+=` The passing came with ${avg(s,'TO')} turnovers a game.${s.AST>s.TO*2?' That is a strong balance.':s.TO>s.AST?' More turnovers than assists is a serious flaw in the season.':''}`;
+        text+=` He did it with ${avg(s,'TO')} turnovers a game.${s.AST>s.TO*2?' That is a clean balance for a high-volume passer.':s.TO>s.AST?' The turnovers are the clear concern in an otherwise productive season.':''}`;
       }
       const previous=p.previousStats;
       if(previous?.GP>=5&&Number.isFinite(previous.PTS)&&s.GP>=5&&Math.abs(s.PTS/s.GP-previous.PTS/previous.GP)>=2){
         const up=s.PTS/s.GP>previous.PTS/previous.GP;
-        text+=` ${up?'Up from':'Down from'} ${avg(previous,'PTS')} points a game last year, ${p.name} ${up?'made a clear jump as a scorer.':'did not match last season’s scoring.'}`;
+        text+=` ${up?'That is up from':'That is down from'} ${avg(previous,'PTS')} points a game last year, a ${up?'clear step forward':'noticeable step back'} for ${p.name}.`;
       }
       paragraphs.push(text);
     }
@@ -208,10 +209,10 @@
     if(g.PTS){
       let text=`${subject(g.PTS)} ${g.PTS.tied?'shared the scoring title':'won the scoring title'} ${season} with ${g.PTS.rate} points per game.`;
       const scorer=!g.PTS.tied?profile(g.PTS.names[0]):null,fg=pct(scorer?.s,'FGM','FGA');
-      if(/^\d+(?:\.\d+)?%$/.test(fg))text+=` The scoring came on ${fg} shooting from the field.`;
+      if(/^\d+(?:\.\d+)?%$/.test(fg))text+=` ${fg} shooting from the field put a little shape around the scoring title.`;
       if(scorer?.s?.FGA>0&&Number.isFinite(scorer.s.FGM))text+=scorer.s.FGM/scorer.s.FGA>=.5?
-        ' Strong shooting to go with the league’s highest scoring average.':scorer.s.FGM/scorer.s.FGA<.4?
-        ' The scoring title is impressive. The missed shots are the obvious room for improvement.':
+        ' That is a scoring title backed by efficient shooting.':scorer.s.FGM/scorer.s.FGA<.4?
+        ' The scoring title is impressive, but the missed shots are the obvious room for improvement.':
         '';
 
       text+=' '+history('PTS').join(' ');paragraphs.push(text.trim());
@@ -219,7 +220,7 @@
     const interior=[];
     if(double){
       interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared both':'won both'} the rebounding and shot-blocking titles, averaging ${g.REB.rate} rebounds and ${g.BLK.rate} blocks a night.`);
-      interior.push('Winning both titles gives that season a distinction a single category lead cannot.');
+      interior.push('Leading both categories is the kind of two-way season that changes how the player is remembered.');
       const p=!g.REB.tied?profile(g.REB.names[0]):null;if(p?.s?.GP>0&&p.s.PTS/p.s.GP>=10&&Number(g.REB.rate)>=10)interior.push(`With ${(p.s.PTS/p.s.GP).toFixed(1)} points a game as well, ${g.REB.name} averaged a double-double for the season.`);
     }else{
       if(g.REB)interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`);
@@ -233,7 +234,7 @@
       perimeter.push(`${subject(g.AST)} ${g.AST.tied?'shared the lead':'finished as the leading playmaker'} with ${g.AST.rate} assists per game.`);
       const passer=!g.AST.tied?profile(g.AST.names[0]):null,s=passer?.s;
       if(s?.GP>0&&Number.isFinite(s.TO)&&s.TO>=0){
-        perimeter.push(`That came with ${avg(s,'TO')} turnovers a game. ${s.AST>s.TO*2?'The assists comfortably outnumber the mistakes.':s.TO>s.AST?'That is the difficult part of this season: more turnovers than assists. The passing title comes with a real concern about giving the ball away.':'The assists deserve credit, but bringing down the turnovers would make the passing more valuable.'}`);
+        perimeter.push(`${avg(s,'TO')} turnovers a game came with that passing. ${s.AST>s.TO*2?'The assists comfortably outnumber the mistakes.':s.TO>s.AST?'The turnover total is the concern beside the passing title.':'The passing was productive, though the mistakes kept it from being spotless.'}`);
       }
     }
     if(g.STL)perimeter.push(`${subject(g.STL,true)} ${g.STL.tied?'shared the steals title':'led the league in steals'} at ${g.STL.rate} steals per game.`);

@@ -18,7 +18,7 @@ test('year reviews develop the leading teams and qualified players in prose with
  l.teams[0].roster=[player(1,160),player(2,120),player(3,100),player(4,90,1)];l.teams[1].roster=[];
  const story=S.candidates(l).find(c=>c.story.eventKey==='regular-wrap').story,text=story.paragraphs.join(' ');
  assert.equal(story.paragraphs.length,6);assert.equal(story.editorialVersion,10);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
- assert.match(text,/set the pace in wins|finished level/);assert.match(text,/scoring backs up|scoring gap/);
+ assert.match(text,/best record|finished level/);assert.match(text,/beat teams by|scoring gap/);
  assert.ok(story.paragraphs.some(p=>p.split(/\s+/).length>30));assert.doesNotMatch(text,/PPG|RPG|APG| · /);
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
  assert.deepEqual(groups[1].headers,['Team','Record','PPG','Opp PPG','FG%']);
@@ -40,7 +40,7 @@ test('season review names the configured pro or college award and gives each can
   {name:'Alex',mvpWins:[],s:{GP:80,PTS:2000,REB:500,AST:400,FGM:700,FGA:1400}},
   {name:'Sam',mvpWins:[],s:{GP:80,PTS:1900,REB:900,AST:200,FGM:650,FGA:1300}},
   {name:'Pat',mvpWins:[],s:{GP:80,PTS:1800,REB:400,AST:800,FGM:600,FGA:1200}}],mvpAward:{enabled:true,phase:0,calculation:0,minGames:0,PTS:1},scheduledGames:80},relatedTeams:[{id:1,name:'Stars'}]};
- const text=S.seasonReviewArticle(base).join(' ');assert.match(text,/award calculation puts Alex first for the Most Valuable Player/);assert.match(text,/ranks among the three strongest candidates for the Most Valuable Player/);
+ const text=S.seasonReviewArticle(base).join(' ');assert.match(text,/With 25\.0 points and 6\.3 rebounds, Alex has the clearest case for Most Valuable Player/);assert.match(text,/With 23\.8 points and 11\.3 rebounds, Sam stays in the Most Valuable Player mix/);
  base.seasonSnapshot.leagueType=1;delete base.seasonSnapshot.mvpAward.name;assert.match(S.seasonReviewArticle(base).join(' '),/Player of the Year/);assert.doesNotMatch(S.seasonReviewArticle(base).join(' '),/MVP race|MVP data unavailable/);
 });
 test('season reviews avoid inventing shooting and comparisons when records are incomplete',()=>{
