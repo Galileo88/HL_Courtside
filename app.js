@@ -176,7 +176,14 @@ branch.append(summary);
         figure.querySelector("figcaption").textContent = caption;
       } else figure.remove();
       const paragraphs=window.HoopWireSeason.articleParagraphs(story);
-      for (const text of paragraphs) {
+      const reviewLists=story.type==='Regular-season review'?window.HoopWireSeason.seasonReviewLists(story):[];
+      for(const group of reviewLists){
+        const heading=document.createElement('h3');heading.textContent=group.label;
+        const list=document.createElement('ul');
+        for(const text of group.items){const item=document.createElement('li');item.textContent=text;list.appendChild(item);}
+        node.querySelector('.article-body').append(heading,list);
+      }
+      for (const text of reviewLists.length?[]:paragraphs) {
         const p = document.createElement("p"); p.textContent = text; node.querySelector(".article-body").appendChild(p);
       }
       el.feed.appendChild(node);
