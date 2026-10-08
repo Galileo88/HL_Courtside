@@ -426,8 +426,27 @@ select { color:#f0f7ff; background:#09284f; border-color:#238bce; }
 .menu-grid { align-items:stretch; }
 @media(max-width:800px) { .menu-card { min-height:0; } }
 
-.archive-league-switch { display:flex; justify-content:flex-end; gap:8px; margin:-12px 0 16px; }
-.archive-league-switch button { padding:6px 14px; font-size:20px; }
+/* League tabs sit under the archive title, like the section tabs above. */
+.archive-league-switch { display:flex; flex-wrap:wrap; gap:4px 22px; margin:-8px 0 20px; border-bottom:1px solid #315579; }
+.archive-league-switch[hidden] { display:none; }
+.archive-league-switch button { background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; padding:8px 0 10px; color:#abc8e6; font-size:14px; font-weight:800; }
+.archive-league-switch button:hover { background:none; color:#fff; }
+.archive-league-switch button[aria-pressed="true"] { color:#fff; border-bottom-color:#79fff4; }
+.archive-league-switch .tab-short { display:none; }
+@media(max-width:600px) { .archive-league-switch .tab-full { display:none; } .archive-league-switch .tab-short { display:inline; } }
+.archive-panel .actions :is(button,.file-button) { font-size:13px; padding:10px 15px; line-height:1.2; }
+.archive-panel .actions button.danger { margin-left:auto; background:none; color:#ff9aa8; border-color:#a8404f; }
+.archive-panel .actions button.danger:hover:not(:disabled) { background:#4a1520; }
+
+/* Site menu: the topbar's one way back to loading a save. */
+.site-menu { position:relative; margin-left:auto; }
+.site-menu-button { display:grid; place-content:center; gap:5px; width:44px; height:44px; padding:0; background:none; border:1px solid transparent; border-radius:4px; }
+.site-menu-button:hover, .site-menu-button[aria-expanded="true"] { background:#ffffff1a; border-color:#ffffff33; }
+.site-menu-button span { display:block; width:22px; height:2px; background:#fff; border-radius:1px; }
+.site-menu-panel { position:absolute; right:0; top:calc(100% + 8px); z-index:50; min-width:200px; padding:6px; background:#0d2744; border:1px solid #238bce; border-radius:4px; box-shadow:4px 4px #03101c; }
+.site-menu-panel[hidden] { display:none; }
+.site-menu-panel button { display:block; width:100%; text-align:left; background:none; border:0; padding:11px 12px; font-size:14px; }
+.site-menu-panel button:hover:not(:disabled), .site-menu-panel button:focus-visible { background:#1455a5; }
 .archive-heading h1 { overflow-wrap:anywhere; }
 
 a[aria-disabled="true"] { opacity:.4; cursor:not-allowed; pointer-events:none; }

@@ -41,6 +41,18 @@
         tx.objectStore('meta').put({id:'legacy-migrated',date:new Date().toISOString()});
       });
     }
+    // Clears every league, pro and college alike.
+    async resetAll() {
+      await new Promise((resolve,reject)=>{
+        const tx=this.db.transaction(STORES,'readwrite');
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error || new Error('Archive reset failed.'));
+        tx.onabort=()=>reject(tx.error || new Error('Archive reset was aborted.'));
+        for(const name of ['stories','snapshots','leagues'])tx.objectStore(name).clear();
+        // Keep the original recovery copy without re-importing reset coverage.
+        tx.objectStore('meta').put({id:'legacy-migrated',date:new Date().toISOString()});
+      });
+    }
     async write(records) {
       const names = Object.keys(records).filter(name => records[name].length);
       if (!names.length) return;

@@ -29,7 +29,7 @@
     }
     const header=element('header','wire-heading');header.append(element('span','landing-kicker','HOOPWIRE NEWS'),element('h1','',edition.title));
     const dates=edition.editions.map(e=>`${e.league.shortName||e.league.name} · ${e.season} · Day ${e.day}`);header.append(element('p','muted',dates.join('  /  ')));
-    const update=element('a','text-action','Update coverage');update.href='#welcome';header.append(update);target.append(header);
+    target.append(header);
     if(!edition.lead){target.append(element('div','panel muted',busy?'Preparing the latest coverage…':'No saved stories for this league yet. Load a save to create coverage.'));return;}
     const opening=element('div','wire-opening'),main=element('div','wire-main'),lead=card(edition.lead,true);
     let sidebar=null;

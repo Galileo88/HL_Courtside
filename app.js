@@ -4,7 +4,7 @@
   const archive = new window.HoopWireArchive();
   const el = Object.fromEntries(["saveFile","fileName","archiveLeague","archiveSeason","archiveDay","exportButton",
     "importFile","feed","status","articleTemplate","refreshImagesButton","tvStudio","tvStudioCaption",
-    "archiveTitle","archiveLeagueSwitch","previousArchiveLeague","nextArchiveLeague","archiveTree","resetArchive","resetDialog","resetTitle","resetDescription","cancelReset","confirmReset","historicalTitle","leagueButtons","newsroomLeague","newsroomLeagueLabel","archiveTeam","newsroomDay","tvHosts","tvStorySelect","tvPrevious","tvNext","tvSegment","tvTicker","tvDeskForeground","tv"].map(id => [id, document.getElementById(id)]));
+    "archiveTitle","archiveLeagueSwitch","archiveTree","siteMenuButton","siteMenu","menuUploadSave","resetArchive","resetDialog","resetTitle","resetDescription","cancelReset","confirmReset","historicalTitle","leagueButtons","newsroomLeague","newsroomLeagueLabel","archiveTeam","newsroomDay","tvHosts","tvStorySelect","tvPrevious","tvNext","tvSegment","tvTicker","tvDeskForeground","tv"].map(id => [id, document.getElementById(id)]));
   const state = {scope:null,raw: null, leagueIndex: 0, stories: new Map(), snapshots: new Map(), leagues: [], ready: false, busy: false};
   const imageURLs=new Map();
   const frontScroll=new Map(),storyOrigins=new Map();
@@ -63,7 +63,8 @@
       if(disabled){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');}
       else{link.removeAttribute('aria-disabled');link.removeAttribute('tabindex');}
     }
-    el.previousArchiveLeague.disabled=el.nextArchiveLeague.disabled=state.busy || !state.ready;
+    for(const tab of el.archiveLeagueSwitch.querySelectorAll('button'))tab.disabled=state.busy || !state.ready;
+    el.menuUploadSave.disabled=state.busy || !state.ready;
     options(el.newsroomLeague,(state.raw?.seasonLeagues || []).map((l,i)=>[i,l.leagueName || `League ${i+1}`]),state.leagueIndex);
     el.newsroomLeague.disabled=state.busy || !state.ready || !state.raw;
     const navLeagues=accessibleLeagues().map(l=>window.HoopWireNewsroom.leagueInfo(l,accessibleStories()));
@@ -78,7 +79,7 @@
       });
     }
     el.saveFile.disabled = state.busy || !state.ready;
-    el.resetArchive.disabled = state.busy || !state.ready || ![...state.stories.values()].some(s=>s.fingerprint===el.archiveLeague.value);
+    el.resetArchive.disabled = state.busy || !state.ready || !state.stories.size;
     for(const button of el.archiveTree.querySelectorAll("button"))button.disabled=state.busy;
     el.exportButton.disabled = state.busy || !state.ready;
     el.importFile.disabled = state.busy || !state.ready;
@@ -169,8 +170,16 @@
     el.archiveTree.replaceChildren();
     const league=state.leagues.find(l=>l.id===el.archiveLeague.value);
     el.archiveTitle.textContent=`${league?.name || 'League'} Archive`;
-    el.archiveLeagueSwitch.hidden=accessibleLeagues().length<2;
-    el.previousArchiveLeague.disabled=el.nextArchiveLeague.disabled=state.busy;
+    const leagues=accessibleLeagues();
+    el.archiveLeagueSwitch.hidden=leagues.length<2;
+    el.archiveLeagueSwitch.replaceChildren(...leagues.map(l=>{
+      const tab=document.createElement('button');tab.type='button';tab.dataset.league=l.id;tab.setAttribute('aria-label',l.name);
+      const short=window.HoopWireNewsroom.leagueInfo(l,accessibleStories()).shortName||l.name;
+      for(const [cls,text] of [['tab-full',l.name],['tab-short',short]]){const span=document.createElement('span');span.className=cls;span.textContent=text;tab.append(span);}
+      tab.setAttribute('aria-pressed',String(l.id===el.archiveLeague.value));tab.disabled=state.busy;
+      tab.addEventListener('click',()=>{if(l.id!==el.archiveLeague.value)archiveNavigation(l.id,'','');});
+      return tab;
+    }));
     const teams=new Map();
     for(const story of state.stories.values())if(story.fingerprint===el.archiveLeague.value)for(const team of storyTeams(story)){
       const key=`${story.fingerprint}:${team.id}`;
@@ -614,29 +623,28 @@ branch.append(summary);
     pruneImageURLs();
     controls();
   }
-  for(const [button,step] of [[el.previousArchiveLeague,-1],[el.nextArchiveLeague,1]])button.addEventListener('click',()=>{
-    const leagues=accessibleLeagues();
-    const index=leagues.findIndex(l=>l.id===el.archiveLeague.value);
-    const next=leagues[(index+step+leagues.length)%leagues.length];
-    if(next)archiveNavigation(next.id,'','');
-  });
   el.resetArchive.addEventListener('click',()=>{
-    state.resetFingerprint=el.archiveLeague.value;
-    const league=state.leagues.find(l=>l.id===state.resetFingerprint);
-    el.resetTitle.textContent=`Reset ${league?.name || 'league'} Archive?`;
-    el.resetDescription.textContent='This removes this league’s saved stories, images, box scores, and TV episodes from this browser. Other leagues are kept. Export a backup first if you want to keep a copy.';
+    el.resetTitle.textContent='Reset the archive?';
+    el.resetDescription.textContent='This removes every league’s saved stories, images, box scores, and TV episodes from this browser, pro and college alike. Export a backup first if you want to keep a copy.';
     el.resetDialog.showModal();
   });
   el.cancelReset.addEventListener('click',()=>el.resetDialog.close());
   el.confirmReset.addEventListener('click',()=>{
     el.resetDialog.close();
-    run(async()=>{await archive.reset(state.resetFingerprint);await readArchive();archiveNavigation();view();status('League archive reset. Other leagues were preserved.');});
+    run(async()=>{await archive.resetAll();await readArchive();archiveNavigation();view();status('Archive reset. Every league was cleared.');});
   });
   el.newsroomLeague.addEventListener('change',()=>{
     state.leagueIndex=Number(el.newsroomLeague.value);
     el.archiveTeam.value='';
     view();
   });
+  // The site menu holds what used to interrupt the page, like loading a new save.
+  function siteMenu(open){el.siteMenu.hidden=!open;el.siteMenuButton.setAttribute('aria-expanded',String(open));}
+  el.siteMenuButton.addEventListener('click',event=>{event.stopPropagation();siteMenu(el.siteMenu.hidden);if(!el.siteMenu.hidden)el.siteMenu.querySelector('button:not(:disabled)')?.focus();});
+  el.menuUploadSave.addEventListener('click',()=>{siteMenu(false);el.saveFile.click();});
+  document.addEventListener('click',event=>{if(!el.siteMenu.hidden&&!event.target.closest('.site-menu'))siteMenu(false);});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!el.siteMenu.hidden){siteMenu(false);el.siteMenuButton.focus();}});
+  window.addEventListener('hashchange',()=>siteMenu(false));
   el.saveFile.addEventListener("change", () => { const file = el.saveFile.files[0]; if(file) run(() => loadSave(file)); el.saveFile.value = ""; });
   el.archiveLeague.addEventListener("change", () => archiveNavigation(el.archiveLeague.value,"",""));
   el.archiveSeason.addEventListener("change", () => archiveNavigation(el.archiveLeague.value,el.archiveSeason.value,""));
