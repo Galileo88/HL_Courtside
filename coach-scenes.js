@@ -133,14 +133,18 @@
     return swap(art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`], 3 + Math.floor(rand() * 3), map);
   }
   // Rows of people seen from behind, facing a stage or podium, drawn a little
-  // darker as the foreground.
-  function audience(ctx, rand, team, rows, { cheer = .35 } = {}) {
+  // darker as the foreground. Seated rows put each person in one of the
+  // game's chairs, seen from behind: its back covers the shoulders, so only
+  // the head shows above it, and some seats are left empty.
+  function audience(ctx, rand, team, rows, { cheer = .35, chairs = false, spacing = 16 } = {}) {
     const layer = document.createElement('canvas'); layer.width = ctx.canvas.width; layer.height = ctx.canvas.height;
     const c = layer.getContext('2d'); c.imageSmoothingEnabled = false; c.setTransform(ctx.getTransform());
-    for (const [y, offset] of rows) for (let x = -8 + offset; x < 392; x += 16 + Math.floor(rand() * 3)) {
-      if (rand() >= .92) continue;
-      const up = rand() < cheer, dy = Math.floor(rand() * 2);
-      c.drawImage(fanBack(rand, team, up), x - 16, y - 16 + dy);
+    for (const [y, offset] of rows) for (let x = -8 + offset; x < 392; x += spacing + (chairs ? 0 : Math.floor(rand() * 3))) {
+      const empty = rand() >= (chairs ? .8 : .92);
+      if (empty && !chairs) continue;
+      const up = rand() < cheer, dy = chairs ? 0 : Math.floor(rand() * 2);
+      if (!empty) c.drawImage(fanBack(rand, team, up), x - 16, y - 16 + dy);
+      if (chairs) cell(c, art.chair, 0, x - 16, y - 5);
     }
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(4,6,16,.35)'; c.fillRect(0, 0, layer.width, layer.height);
     const transform = ctx.getTransform(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.setTransform(transform);
@@ -204,13 +208,16 @@
       const wall = await window.HoopWirePressBackdrop.render(sceneArt['press-background'], scene.team, scene.pressLogoData, { scale: 1, league: scene.league, leagueData: scene.pressLeagueLogoData });
       window.HoopWirePressBackdrop.paint(ctx, wall, [0, 0, 768, 432]);
       world();
-      ctx.fillStyle = '#1b2130'; ctx.fillRect(0, 176, 384, 40); ctx.fillStyle = '#2b3346'; ctx.fillRect(0, 176, 384, 1);
+      // The stage sits high in the frame so the wall only frames the speakers,
+      // and the press fills the room in front of it, row after row.
+      const floor = 100, edge = floor + 18;
+      ctx.fillStyle = '#1b2130'; ctx.fillRect(0, floor, 384, edge - floor); ctx.fillStyle = '#2b3346'; ctx.fillRect(0, floor, 384, 1);
+      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = teamColor(scene.team, 0, '#1d428a'); ctx.fillRect(0, edge, 384, 2);
       // The podium's top is 25 pixels into its sprite; the coach stands behind it, shoulders above.
-      const podium = [168, 134];
-      depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 140, foot: 184, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: podium[1] + 36, facing: 'left' }]);
+      const podium = [168, floor - 42];
+      depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 140, foot: floor + 8, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: podium[1] + 36, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], podium[0], podium[1], 64, 64);
-      // The press in the front row.
-      audience(ctx, rand, null, [[204, 4], [216, 12]], { cheer: 0 });
+      audience(ctx, rand, null, [[146, 4], [168, 14], [190, 4], [212, 14]], { cheer: 0, chairs: true, spacing: 20 });
       return { canvas, extra: { pressLogoData: wall.logoData, pressLeagueLogoData: wall.leagueLogoData } };
     },
     // After the firing: the empty locker room, the coach alone on a chair.
@@ -382,7 +389,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 12, seed: id, kind: `coach-${context.coachScene}`,
+      version: 13, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
