@@ -4,7 +4,7 @@
   const art = {};
   let ready;
   function load() {
-    ready ||= Promise.all([window.HoopWirePlayer.ready(), ...['press-background','press-table'].map(async name => {
+    ready ||= Promise.all([window.HoopWirePlayer.ready(), ...['press-background','press-table','press-table_2p'].map(async name => {
       const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name] = image;
     })]);
     return ready;
@@ -26,7 +26,7 @@
   const interviewVariants=['group','player-close-up','player-profile','player-coach'];
   function interviewDesign(seed,variant){
     variant=interviewVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,interviewVariants,'interview-framing');
-    const cameras={group:[0,0,768,432],'player-close-up':[224,126,320,180],'player-profile':[260,126,320,180],'player-coach':[128,104,576,324]};
+    const cameras={group:[0,0,768,432],'player-close-up':[224,126,320,180],'player-profile':[260,126,320,180],'player-coach':[100,104,576,324]};
     return {variant,camera:[...cameras[variant]]};
   }
   function actionDesign(seed, variant, side) {
@@ -160,15 +160,18 @@
         player(press,scene.player,scene.team,scene.uniformIndex,288,104,192);
         player(press,right,scene.team,scene.uniformIndex,520,104,192);
       }else if(variant==='player-coach'&&(scene.coach||left)){
-        player(press,scene.player,scene.team,scene.uniformIndex,152,104,192);
+        // The two seats of the two-microphone desk, each between a mic and a water bottle.
+        player(press,scene.player,scene.team,scene.uniformIndex,160,104,192);
         player(press,scene.coach||left,scene.team,scene.uniformIndex,424,104,192);
       }else{
         player(press,scene.player,scene.team,scene.uniformIndex,288,104,192,'idle',variant==='player-profile'?1:0,variant==='player-profile'?'right':'left');
       }
       // Build every participant and prop at the same scale, then move the camera.
       // This keeps the desk, microphones and backdrop in proportion to the player.
-      press.drawImage(art['press-table'],0,218,768,192);
-      press.drawImage(art['press-table'],0,31,128,1,0,410,768,22);
+      // Two at the table use the two-microphone desk; everyone else the three-seat one.
+      const desk=variant==='player-coach'&&(scene.coach||left)?art['press-table_2p']:art['press-table'];
+      press.drawImage(desk,0,218,768,192);
+      press.drawImage(desk,0,31,128,1,0,410,768,22);
       ctx.drawImage(stage,...design.camera,0,0,768,432);
     } else {
       const floor=await window.HoopWireCourt.render(scene.home || scene.team,{includeHoops:false});
