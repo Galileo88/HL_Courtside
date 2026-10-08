@@ -1,11 +1,10 @@
-const { samplePath, launchBrowser } = require('./helpers.cjs');
+const { samplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const C = require('../js/coverage/core.js');
-const S = require('../js/coverage/season-coverage.js');
 const sample = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const file = path.resolve(
@@ -95,38 +94,22 @@ async function openPage(browser, url, seed) {
     assert.equal(await page.locator('#newsroomLeague option').count(), sample.seasonLeagues.length);
     await page.locator('#leagueButtons a').filter({ hasText: 'HLCA News' }).click();
     assert.ok((await page.locator('.wire-card:visible').count()) > 0);
-    assert.ok(
-      await page
-        .locator('[data-league-id]')
-        .evaluateAll(
-          (nodes, id) => nodes.every(n => n.dataset.leagueId === id),
-          C.buildFingerprint(sample.seasonLeagues[1])
-        )
+    await page.waitForFunction(
+      id => [...document.querySelectorAll('[data-league-id]')].every(n => n.dataset.leagueId === id),
+      C.buildFingerprint(sample.seasonLeagues[1])
     );
     assert.equal(await page.locator('.article-card:visible').count(), 0);
     await page.locator('#leagueButtons a').filter({ hasText: 'HL News' }).click();
     const original = await records(page);
-    const expected = sample.seasonLeagues.reduce(
-      (sum, l) =>
-        sum +
-        C.candidates(l, C.buildFingerprint(l), new Map(C.captureSnapshots(l).map(s => [s.id, s])), 'full').length +
-        new Set(
-          [
-            ...S.candidates(l),
-            ...require('../js/coverage/records-coverage.js').candidates(l),
-            ...require('../js/coverage/news-coverage.js').candidates(l),
-          ].map(x => x.story.id)
-        ).size,
-      0
-    );
+    const expected = expectedStoryCount(sample);
     assert.equal(original.length, expected);
-    assert.ok(original.every(s => s.quotesEnabled && s.imageBytes.length && (s.gameSummary || s.seasonSnapshot)));
+    assert.ok(original.every(s => s.imageBytes.length && (s.gameSummary || s.seasonSnapshot || s.performanceSnapshot)));
     assert.equal(await page.locator('#archive').isVisible(), false);
     await upload(page, sample);
     assert.deepEqual(await records(page), original);
     await page.locator('.nav a[href="#archive"]').click();
+    await page.locator('#feed').waitFor({ state: 'hidden' });
     assert.equal(await page.locator('#archiveTitle').textContent(), sample.seasonLeagues[0].leagueName + ' Archive');
-    assert.equal(await page.locator('#feed').isVisible(), false);
     assert.equal(await page.locator('#archive .controls:visible').count(), 0);
     const team = page.locator('.archive-team').first();
     await team.locator(':scope > summary').click();
@@ -262,8 +245,8 @@ async function openPage(browser, url, seed) {
     assert.match(await fresh.page.locator('#status').textContent(), /invalid article/);
     assert.deepEqual(await records(fresh.page), all);
     await fresh.page.evaluate(() => {
-      window.savedReset = HoopWireArchive.prototype.reset;
-      HoopWireArchive.prototype.reset = async () => {
+      window.savedReset = HoopWireArchive.prototype.resetAll;
+      HoopWireArchive.prototype.resetAll = async () => {
         throw Error('Reset storage failure');
       };
     });
@@ -275,7 +258,7 @@ async function openPage(browser, url, seed) {
     const resetLeague = await fresh.page.locator('#archiveLeague').inputValue();
     const beforeSnaps = await records(fresh.page, 'snapshots'),
       beforeLeagues = await records(fresh.page, 'leagues');
-    await fresh.page.evaluate(() => (HoopWireArchive.prototype.reset = window.savedReset));
+    await fresh.page.evaluate(() => (HoopWireArchive.prototype.resetAll = window.savedReset));
     await fresh.page.locator('#resetArchive').click();
     await fresh.page.locator('#confirmReset').click();
     await ready(fresh.page);

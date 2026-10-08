@@ -1,11 +1,9 @@
-const { samplePath, launchBrowser } = require('./helpers.cjs');
+const { samplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   http = require('node:http'),
   path = require('node:path');
-const root = path.resolve(__dirname, '..'),
-  C = require('../js/coverage/core.js'),
-  S = require('../js/coverage/season-coverage.js');
+const root = path.resolve(__dirname, '..');
 const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
 if (process.env.HOOPWIRE_TEST_NEWS) {
   const l = save.seasonLeagues[0],
@@ -61,19 +59,7 @@ const server = http.createServer((req, res) => {
       assert.match(await page.locator('#status').textContent(), /^Save loaded/);
     }
     await upload();
-    const expected = save.seasonLeagues.reduce(
-      (n, l) =>
-        n +
-        new Set(
-          [
-            ...S.candidates(l),
-            ...require('../js/coverage/records-coverage.js').candidates(l),
-            ...require('../js/coverage/news-coverage.js').candidates(l),
-          ].map(x => x.story.id)
-        ).size +
-        C.candidates(l, C.buildFingerprint(l), new Map(C.captureSnapshots(l).map(s => [s.id, s])), 'full').length,
-      0
-    );
+    const expected = expectedStoryCount(save);
     const backup = () =>
       page.evaluate(async () => {
         const a = await new HoopWireArchive().open();
