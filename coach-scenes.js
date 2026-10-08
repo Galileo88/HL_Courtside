@@ -585,15 +585,10 @@
       ctx.fillStyle = light; ctx.fillRect(...camera);
       return { canvas, extra: { customCourt, adsData } };
     },
-    // A strong season without a postseason win: the same sideline, but the home
-    // crowd full and on its feet and the bench celebrating behind the coach.
-    async strong(scene, rand) {
-      const camera = [1060, 166, 384, 216], seats = seatsOf(BENCH.home), players = scene.players || [];
-      const bench = [3, 6, 8, 11, 14].map((s, i) => ({ seat: seats[s], data: players[i], frame: i % 4 })).filter(b => b.data);
-      const { canvas, ctx, customCourt, adsData } = await arena(scene, 'crowd-100', camera, rand, { fill: .9, cheer: true, bench, benchPose: 'bench-celebrate' });
-      depth(ctx, [{ data: scene.coach, team: scene.team, pose: 'idle', frame: 0, x: 1250, foot: 356, facing: 'left' }]);
-      return { canvas, extra: { customCourt, adsData } };
-    },
+    // A strong season without a postseason win: the same court-level shot as a
+    // celebration, the players celebrating on the floor in front of a cheering
+    // home crowd, but without confetti or a trophy.
+    strong(scene, rand) { return scenes.good(scene, rand); },
     // A good season: the coach and the stars just above the center circle, the
     // scorer's table and the far stands behind them, under the confetti.
     async good(scene, rand) {
@@ -611,7 +606,8 @@
       ]);
       // The championship trophy in the league's award colors, at its native size, its base in the coach's raised hands.
       if (scene.champion && scene.coach) ctx.drawImage(trophy(scene.trophy), cx - 16, coach.foot - 32 - 29, 32, 32);
-      // The game's confetti, in the team's colors, over the whole frame.
+      // The game's confetti, in the team's colors, over the whole frame; a strong regular season has none.
+      if (scene.kind === 'coach-strong') return { canvas, extra: { customCourt, adsData } };
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
       for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 40 + (i % 5) * 95 + rand() * 30, camera[1] - 50 + Math.floor(i / 5) * 115 + rand() * 30, 160, 160);
       return { canvas, extra: { customCourt, adsData } };
@@ -726,7 +722,7 @@
       'coach-hire': `${name} is introduced as head coach of the ${team}.`,
       'coach-fire': `${name} sits alone in the ${team} locker room.`,
       'coach-poor': `${name} on the sideline during a ${record}season for the ${team}.`,
-      'coach-strong': `${name} on the sideline during a ${record}season for the ${team}.`,
+      'coach-strong': `${name} and the ${team} on the floor during a ${record}season.`,
       'coach-good': scene.champion ? `${name} and the ${team} celebrate the ${scene.season} championship${scene.venue?.city ? ` in ${scene.venue.city}` : ''}.` : scene.advanced ? `${name} and the ${team} celebrate a ${String(scene.advanced).toLowerCase()} win.` : `${name} and the ${team} celebrate a ${record}season.`
     })[scene.kind] || `${name} of the ${team}.`;
   }
@@ -749,7 +745,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 30, seed: id, kind: `coach-${context.coachScene}`,
+      version: 31, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,

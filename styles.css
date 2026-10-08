@@ -739,6 +739,10 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-callout-label { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
 .tv-callout-value { color:#fff; font-size:clamp(44px,9vw,68px); font-weight:900; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .tv-callout-context { color:#abc8e6; font-size:14px; font-weight:700; }
+.tv-title-card-team { color:#fff; font-size:clamp(30px,6vw,46px); font-weight:900; line-height:1.05; letter-spacing:-.02em; }
+.tv-title-card-run { display:grid; gap:4px; margin:6px 0 2px; padding:0; list-style:none; }
+.tv-title-card-run li { display:grid; grid-template-columns:minmax(96px,auto) 1fr; gap:12px; color:#e3eefa; font-size:14px; font-weight:700; }
+.tv-title-card-round { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; padding-top:2px; }
 @media(max-width:600px) {
   .tv-board-head { padding:11px 12px 10px; }
   .tv-season-graphic { padding-left:10px; padding-right:10px; }
