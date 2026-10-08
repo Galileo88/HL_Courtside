@@ -237,8 +237,8 @@
     async hire(scene, rand) {
       // Laid out like the draft: the curtains and stage, the coach behind the
       // game's podium where the pick stands, the executive beside it where the
-      // commissioner stands, and the press seated in front.
-      const { canvas, ctx } = stage([0, 0, 384, 216]), team = scene.team;
+      // commissioner stands, and the press seated in front, framed closer at 3x.
+      const { canvas, ctx } = stage([54, 60, 256, 144]), team = scene.team;
       curtains(ctx, 128);
       const base = stageFloor(ctx, teamColor(team, 0, '#1d428a'));
       depth(ctx, [{ data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
@@ -406,7 +406,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 17, seed: id, kind: `coach-${context.coachScene}`,
+      version: 18, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
