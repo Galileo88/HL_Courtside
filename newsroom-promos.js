@@ -55,6 +55,26 @@
       return canvas.toDataURL('image/png');
     }));return artCache.get('drink');
   }
+  // Every campaign gets its turn: they share one slot (sized to the tallest,
+  // or to the rail on desktop) and the next one fades in every 15 seconds.
+  // Hovering or focusing an ad holds it, and a hidden tab doesn't rotate.
+  const rotateMs=15000;
+  function rotation(products,seed,creativeFor){
+    const slot=node('div','wire-ad-rotator'),start=seed%products.length;
+    const ads=products.map((_,i)=>creativeFor(products[(start+i)%products.length]));
+    let current=0,held=false,shown=false;
+    const activate=index=>ads.forEach((ad,i)=>{const on=i===index;ad.classList.toggle('is-active',on);ad.inert=!on;on?ad.removeAttribute('aria-hidden'):ad.setAttribute('aria-hidden','true');});
+    activate(0);slot.append(...ads);
+    slot.addEventListener('pointerenter',()=>{held=true;});slot.addEventListener('pointerleave',()=>{held=false;});
+    slot.addEventListener('focusin',()=>{held=true;});slot.addEventListener('focusout',()=>{held=false;});
+    const timer=setInterval(()=>{
+      if(!slot.isConnected){if(shown)clearInterval(timer);return;}
+      shown=true;
+      if(held||document.hidden)return;
+      current=(current+1)%ads.length;activate(current);
+    },rotateMs);
+    return slot;
+  }
   function render({studio,story,onWatch,product}){
     const promos=node('section','wire-promos');promos.setAttribute('aria-label','In-world advertisements');
     const seed=Array.from(story?.id||'hoopwire').reduce((sum,c)=>sum+c.charCodeAt(0),0);
@@ -71,19 +91,26 @@
       automotive:{title:'Kiyota',logo:'brand8.png',colors:['#dce5ee','#a6b6c5'],subtitle:'BUILT FOR WHAT COMES NEXT',tagline:'Take the long way home.',alt:'Kiyota pickup truck on a night road under arena lights',cls:'wire-auto-ad'},
       beer:{title:'American Heritage',logo:'brand9.png',subtitle:'A CLASSIC FINISH',tagline:'Here’s to the final buzzer.',alt:'Amber bottles composed from the supplied bottle sprite on a warm copper background',cls:'wire-beer-ad'}
     };
-    const selected=Object.hasOwn(catalog,product)?product:Object.keys(catalog)[seed%Object.keys(catalog).length],creative=catalog[selected];
-    const ad=node('section',creative.cls);ad.dataset.ad=selected;ad.setAttribute('aria-label',creative.title+' advertisement');
-    const brand=node('h2','wire-ad-brand');
-    if(creative.logo){const logo=node('img','wire-ad-logo');logo.alt=creative.title;if(creative.colors)brandArt(creative.logo,creative.colors).then(src=>{logo.src=src;}).catch(()=>{logo.src='scene-assets/'+creative.logo;});else logo.src='scene-assets/'+creative.logo;logo.addEventListener('error',()=>{brand.textContent=creative.title;},{once:true});brand.append(logo);}else brand.textContent=creative.title;
-    ad.append(node('span','wire-ad-label','Advertisement'),brand,node('span','wire-suit-collection',creative.subtitle));
-    const art=node('img','wire-product-art');art.width=300;art.height=selected==='drink'?156:selected==='automotive'?285:180;art.alt=creative.alt;
     const hosts=studio?.inputs?.announcers||window.HoopWireTV.inputs({teams:[]}).announcers;
-    const artwork=selected==='drink'?drinkArt():selected==='suit'?suitArt(hosts):HoopWireAdArt.render(selected,hosts);
-    artwork.then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
-    ad.append(art,node('p','wire-suit-tagline',creative.tagline));
-    if(selected==='beer')ad.append(node('span','wire-ad-responsibility','Drink responsibly.'));
-    if(selected.startsWith('movie-'))ad.append(node('span','wire-movie-release','NOW SHOWING'));
-    promos.append(ad);
+    function creativeFor(selected){
+      const creative=catalog[selected];
+      const ad=node('section',creative.cls);ad.dataset.ad=selected;ad.setAttribute('aria-label',creative.title+' advertisement');
+      const brand=node('h2','wire-ad-brand');
+      if(creative.logo){const logo=node('img','wire-ad-logo');logo.alt=creative.title;if(creative.colors)brandArt(creative.logo,creative.colors).then(src=>{logo.src=src;}).catch(()=>{logo.src='scene-assets/'+creative.logo;});else logo.src='scene-assets/'+creative.logo;logo.addEventListener('error',()=>{brand.textContent=creative.title;},{once:true});brand.append(logo);}else brand.textContent=creative.title;
+      // The body takes whatever height the slot gives every campaign alike.
+      const body=node('div','wire-ad-body');
+      body.append(brand,node('span','wire-suit-collection',creative.subtitle));
+      const art=node('img','wire-product-art');art.width=300;art.height=selected==='drink'?156:selected==='automotive'?285:180;art.alt=creative.alt;
+      const artwork=selected==='drink'?drinkArt():selected==='suit'?suitArt(hosts):HoopWireAdArt.render(selected,hosts);
+      artwork.then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
+      body.append(art,node('p','wire-suit-tagline',creative.tagline));
+      if(selected==='beer')body.append(node('span','wire-ad-responsibility','Drink responsibly.'));
+      if(selected.startsWith('movie-'))body.append(node('span','wire-movie-release','NOW SHOWING'));
+      ad.append(node('span','wire-ad-label','Advertisement'),body);
+      return ad;
+    }
+    if(Object.hasOwn(catalog,product))promos.append(creativeFor(product));
+    else promos.append(rotation(Object.keys(catalog),seed,creativeFor));
     if(story){
       const tv=node('section','wire-tv-ad');tv.setAttribute('aria-label','HoopWire TV advertisement');
       const logo=node('img','');logo.src='assets/hoopwire_logo.png';logo.alt='HoopWire TV';logo.width=1336;logo.height=366;

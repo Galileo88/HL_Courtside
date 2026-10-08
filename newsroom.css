@@ -238,3 +238,31 @@
 .wire-auto-ad .wire-ad-logo { height:56px; }
 .wire-auto-ad .wire-suit-collection { color:#92b5c7; font-size:9px; }
 .wire-auto-ad .wire-suit-tagline { font:italic 20px Georgia,'Times New Roman',serif; margin-top:14px; }
+
+/* One rotating slot for every campaign. The ads share a single grid cell, so
+   the slot keeps the tallest one's height, and each ad centers its creative
+   in that height. On desktop the slot instead fills the rail beside the
+   featured stories, so the rail never sets the row's height. */
+.wire-ad-rotator { display:grid; grid-template:minmax(0,1fr) / minmax(0,1fr); }
+.wire-ad-rotator > section { grid-area:1 / 1; min-height:0; opacity:0; visibility:hidden; transition:opacity .6s ease, visibility 0s linear .6s; }
+.wire-ad-rotator > section.is-active { opacity:1; visibility:visible; transition:opacity .6s ease; }
+.wire-ad-body { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; }
+.wire-ad-body > .wire-product-art { flex:0 1 auto; min-height:0; object-fit:contain; }
+@media(prefers-reduced-motion: reduce) { .wire-ad-rotator > section { transition:none !important; } }
+@media(max-width:1279px) {
+  .wire-promos { align-items:stretch; }
+  .wire-promos > .wire-tv-ad { justify-content:center; }
+}
+@media(min-width:1280px) {
+  .wire-opening > .wire-sidebar { contain:size; }
+  .wire-sidebar .wire-promos { flex:1; min-height:0; display:flex; flex-direction:column; margin-top:0; }
+  .wire-sidebar .wire-ad-rotator { flex:1; min-height:0; }
+  .wire-sidebar .wire-ad-rotator > section { overflow:hidden; }
+  .wire-sidebar .wire-tv-ad { flex:none; }
+  /* Tighter type around the art so the creative stays the hero in the rail. */
+  .wire-sidebar .wire-ad-rotator .wire-ad-logo { height:52px; }
+  .wire-sidebar .wire-ad-rotator .wire-ad-brand { margin-top:8px; margin-bottom:6px; }
+  .wire-sidebar .wire-ad-rotator .wire-product-art { margin-top:8px; }
+  .wire-sidebar .wire-ad-rotator .wire-suit-tagline { margin-top:8px; margin-bottom:10px; line-height:1.1; }
+  .wire-sidebar .wire-ad-rotator :is(.wire-suit-collection,.wire-movie-release,.wire-ad-responsibility) { padding-bottom:0; margin-bottom:10px; }
+}
