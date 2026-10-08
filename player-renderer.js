@@ -187,6 +187,14 @@
  window.HoopWirePlayer={
   ready:()=>Promise.all(Object.values(images).map(image=>image.decode())),
   draw,ballPalette,portrait:drawPortrait,
+  // A jersey number in the game's own digits: a 16 x 16 tile (the digits'
+  // native 64 pixels per unit) filled with the given color.
+  numberTile(value,fill){
+   value=Number(value);const tile=document.createElement('canvas');tile.width=tile.height=16;
+   if(!Number.isInteger(value)||value<0||value>100||!images['jersey-numbers']?.complete)return tile;
+   const layer=tile.getContext('2d');layer.drawImage(images['jersey-numbers'],value%10*32,Math.floor(value/10)*32,16,16,0,0,16,16);
+   layer.globalCompositeOperation='source-in';layer.fillStyle=fill;layer.fillRect(0,0,16,16);return tile;
+  },
   drawBall(canvas,ball={}) {
    const c=canvas.getContext('2d'),tile=document.createElement('canvas');tile.width=tile.height=8;
    const t=tile.getContext('2d');t.drawImage(flightBall,0,0);

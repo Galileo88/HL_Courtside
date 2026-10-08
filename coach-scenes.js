@@ -258,16 +258,27 @@
   }
   // A team's color token from its uniform (PRI, SEC, TER or a hex value).
   const token = (team, value, fallback) => ({ PRI: teamColor(team, 0, fallback), SEC: teamColor(team, 1, fallback), TER: teamColor(team, 2, fallback) })[String(value || '').toUpperCase()] || hex(value) || fallback;
-  // The game's hanger jersey in the team's home uniform, off its hanger: its
-  // body takes the jersey color, its trim the stripe color, and the hanger's
-  // steel pixels (the hook and the bar ends at the shoulders) are cleared.
-  function jersey(team) {
-    const u = team?.uniforms?.[0] || {}, body = token(team, u.jersey, teamColor(team, 0, '#147dff')), trimColor = token(team, u.jerseyStripe, body);
-    const map = { '20,125,255': shade(body, 1), '10,175,255': shade(body, 1.12), '5,200,255': shade(body, 1.22), '30,50,255': shade(trimColor, 1) };
-    const image = swap(art['jersey-hanger'], 0, map), g = image.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 32);
+  // The game's hanger jersey in the team's home uniform, off its hanger, colored
+  // the way the player renderer colors a uniform from the same blue masks: the
+  // body (20,125,255) the jersey color, shaded as on the players; the side
+  // stripes and straps (10,175,255) the stripe color; the collar (5,200,255)
+  // the collar color; the hem (30,50,255) a shadow of the jersey color. The
+  // hanger's steel pixels are cleared, the number goes on in the game's own
+  // digits where the game places it (half the jersey's width, a little above
+  // its middle), and a dark outline runs round it like every other sprite.
+  function jersey(team, num) {
+    const u = team?.uniforms?.[0] || {}, body = token(team, u.jersey, teamColor(team, 0, '#147dff'));
+    const stripe = token(team, u.jerseyStripe, body), collar = token(team, u.jerseyCollar, stripe);
+    const map = { '20,125,255': shade(body, 125 / 150), '10,175,255': rgb(stripe), '5,200,255': rgb(collar), '30,50,255': shade(body, .55) };
+    const shirt = swap(art['jersey-hanger'], 0, map), g = shirt.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 32);
     for (let i = 0; i < d.data.length; i += 4) if (d.data[i] === 163 && d.data[i + 1] === 172 && d.data[i + 2] === 190) d.data[i + 3] = 0;
     g.putImageData(d, 0, 0);
-    return { image, number: token(team, u.jerseyNumber, teamColor(team, 1, '#ffffff')) };
+    if (num != null) g.drawImage(window.HoopWirePlayer.numberTile(num, token(team, u.jerseyNumber, stripe)), 9, 5);
+    const out = document.createElement('canvas'); out.width = out.height = 34;
+    const o = out.getContext('2d'), dark = recolor(shirt, '#14101e');
+    for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) o.drawImage(dark, dx, dy);
+    o.drawImage(shirt, 1, 1);
+    return out;
   }
   // Blue stage curtains in pixel art: a fold every 16 pixels, lit across each
   // fold, darkening toward the floor, under a scalloped valance.
@@ -345,10 +356,8 @@
         depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 172, foot: base - 4, facing: 'right' }, { data: scene.signee, team, pose: 'suit-standing', frame: 0, x: 196, foot: base - 4, facing: 'left' }]);
         // The jersey held up between them at chest height, at two-thirds size
         // (two screen pixels per sprite pixel at 3x).
-        const shirt = jersey(team), u = 2 / 3, cut = 6, [jx, jy] = [184 - 16 * u, base - 4 - 21];
-        ctx.drawImage(shirt.image, 0, cut, 32, 32 - cut, jx, jy, 32 * u, (32 - cut) * u);
-        if (scene.signee?.num != null) { screen(); const k = canvas.width / camera[2]; ctx.fillStyle = shirt.number; ctx.textAlign = 'center'; ctx.font = '900 18px Arial';
-          ctx.fillText(String(scene.signee.num), (184 - camera[0]) * k, (jy + 11 - camera[1]) * k); world(); }
+        const shirt = jersey(team, scene.signee?.num), u = 2 / 3, cut = 6, [jx, jy] = [184 - 17 * u, base - 4 - 21];
+        ctx.drawImage(shirt, 0, cut, 34, 34 - cut, jx, jy, 34 * u, (34 - cut) * u);
       } else {
         depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : farewell ? { data: scene.retiree, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
         ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
@@ -723,7 +732,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 26, seed: id, kind: `coach-${context.coachScene}`,
+      version: 27, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
