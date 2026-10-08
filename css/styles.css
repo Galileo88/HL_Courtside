@@ -1851,7 +1851,7 @@ a[aria-disabled='true']:hover {
   font-weight: 900;
   text-align: left;
 }
-.tv-board-table tbody tr:first-child th.is-name {
+.tv-board-table tbody tr:first-child > :first-child {
   box-shadow: inset 3px 0 #ee3546;
 }
 .tv-name-short {
