@@ -56,7 +56,7 @@ test('a poor shooting night gets criticism and a strong shooting night gets spec
  // A volume night earns a defence from Jordan, not just a verdict.
  assert.match(text(poor),/somebody had to take those shots/);
  const strong={...game,playerStats:{PTS:20,REB:2,AST:7,FGM:8,FGA:10}};
- assert.match(text(strong),/8 for 10.*efficient scoring/);assert.match(text(strong),/7 assists/);
+ assert.match(text(strong),/8 for 10.*efficient scoring/);assert.match(text(strong),/seven assists/);
  const legacy={...game,playerName:null,paragraphs:['Alex Star was named player of the game after finishing with 28 points.']};
  assert.match(text(legacy),/Alex Star/);
 });

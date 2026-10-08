@@ -131,7 +131,7 @@
           if(scope==='season'&&(team.season||[]).find(s=>s.yr===year)?.seasonStats?.GP>=league.season?.totalGames)continue;
           const name=C.playerDisplay(player),holder=C.playerDisplay(record.p),title=scope==='season'?'single-season mark':'career lead';
           add(`watch-${scope}-${player.id}-${k.toLowerCase()}-${record.p.id}-${record.s[k]}`,'Record watch',`${name} closes in on ${holder}'s ${title}`,
-            [`${name} is ${gap} ${label} shy of ${C.possessive(holder)} ${record.s[k]}, the ${scope==='season'?'single-season':'career'} record in ${league.shortName||league.leagueName}. ${C.surname(name)} has ${total[k]} ${scope==='season'?'this season':'in a league career'}${scope==='season'?', with the chase still on':''}.`],team,player,
+            [`${name} is ${C.plural(gap,label.replace(/s$/,''))} shy of ${C.possessive(holder)} ${Number(record.s[k]).toLocaleString('en-US')}, the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record. ${C.surname(name)} is at ${Number(total[k]).toLocaleString('en-US')}${scope==='season'?' this season, with the chase still on':''}.`],team,player,
             [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,recordYear:record.yr??null,source:'player.stats'}]);
         }
       }

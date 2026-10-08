@@ -236,9 +236,13 @@ branch.append(summary);
       if(route.kind==='story'){for(const [label,href] of [['Home','#newsroom'],['Archive','#archive']]){const a=document.createElement('a');a.href=href;a.textContent=label;a.className='text-action';empty.append(document.createTextNode(' '),a);}}
       el.feed.appendChild(empty);pruneImageURLs();return;
     }
+    const storiesForLabels=[...state.stories.values()];
     for (const story of stories) {
       const node = el.articleTemplate.content.cloneNode(true);
-      node.querySelector(".article-meta").textContent = `${story.type} · Season ${story.season} · Day ${story.day}`;
+      // Same kicker as the TV desk; same league label as the newsroom cards.
+      node.querySelector(".article-meta").textContent = tvStoryKicker(story);
+      const league=state.leagues.find(l=>l.id===story.fingerprint),info=league?window.HoopWireNewsroom.leagueInfo(league,storiesForLabels):null;
+      node.querySelector(".article-byline").textContent = `HoopWire Staff · ${info?.leagueType===0?'Pro · ':info?.leagueType===1?'College · ':''}${info?.shortName||info?.name||story.leagueName||''} · ${story.season} · Day ${story.day}`;
       node.querySelector(".article-headline").textContent = story.headline;
       const figure = node.querySelector(".article-image");
       if (story.imageBlob) {
@@ -476,6 +480,8 @@ branch.append(summary);
     if(story.eventKey?.startsWith('playoff-round-')||story.type==='Playoff preview')return 'PLAYOFF DESK';
     if(story.eventKey==='championship'||story.type==='Championship review')return 'CHAMPIONSHIP DESK';
     if(story.type==='Regular-season review'||story.type==='Team season review'||story.type==='Season leaders')return 'SEASON WRAP';
+    if(story.performanceSnapshot)return 'PLAYER WATCH';
+    if(/record|milestone/i.test(story.type||''))return 'RECORD BOOK';
     if(story.gameSummary)return 'POSTGAME';
     return 'HOOPWIRE DESK';
   }
