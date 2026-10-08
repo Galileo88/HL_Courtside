@@ -14,7 +14,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#saveFile').setInputFiles({name:'league.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(save))});
   await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);
   await page.locator('.wire-lead').click();
-  const captions=await page.locator('.article-image figcaption').allTextContents();assert.ok(captions.length>0);assert.ok(captions.every(c=>!/(?:Composed|Hoop Land assets|Illustrative scene)/.test(c)));assert.ok(captions.some(c=>/\| Day \d+, \d+/.test(c)));
+  await page.locator('.article-image figcaption').first().waitFor();const captions=await page.locator('.article-image figcaption').allTextContents();assert.ok(captions.length>0);assert.ok(captions.every(c=>!/(?:Composed|Hoop Land assets|Illustrative scene)/.test(c)));assert.ok(captions.some(c=>/\| Day \d+, \d+/.test(c)));
   await page.locator('.nav a[href="#tv"]').click();
   const stories=await page.evaluate(async()=>{const a=await new HoopWireArchive().open();try{return await a.all('stories');}finally{a.db.close();}});
   const labels=await page.locator('#tvStorySelect option').allTextContents(),game=stories.find(s=>s.playerStats&&s.playerName&&labels.includes(s.headline));assert.ok(game,'A verified named game is available in TV');

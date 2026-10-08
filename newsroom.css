@@ -266,3 +266,28 @@
   .wire-sidebar .wire-ad-rotator .wire-suit-tagline { margin-top:8px; margin-bottom:10px; line-height:1.1; }
   .wire-sidebar .wire-ad-rotator :is(.wire-suit-collection,.wire-movie-release,.wire-ad-responsibility) { padding-bottom:0; margin-bottom:10px; }
 }
+
+/* In-feed sponsor tiles. Each grid ends with one, hidden unless the last row
+   has an empty cell, which it then fills (spanning the gap on desktop). */
+.wire-feed-ad { display:none; min-width:0; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+.wire-feed-art { position:relative; aspect-ratio:16/9; overflow:hidden; }
+.wire-feed-art img { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+.wire-feed-body { padding:16px; }
+.wire-feed-label { display:block; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#e3b45c; }
+.wire-feed-ad h3 { font-family:Georgia,'Times New Roman',serif; font-size:19px; line-height:1.35; margin:8px 0 6px; }
+.wire-feed-sub { display:block; font-size:10px; font-weight:700; letter-spacing:1.6px; color:var(--muted); }
+@media(min-width:700px) and (max-width:1279px) {
+  :is(.wire-story-grid,.wire-supporting):has(> :nth-last-child(2):nth-child(odd)) > .wire-feed-ad { display:block; }
+}
+@media(min-width:1280px) {
+  .wire-story-grid:has(> :nth-last-child(2):nth-child(4n+3)) > .wire-feed-ad,
+  .wire-supporting:has(> :nth-last-child(2):nth-child(3n+2)) > .wire-feed-ad { display:block; }
+  .wire-story-grid:has(> :nth-last-child(2):nth-child(4n+2)) > .wire-feed-ad,
+  .wire-supporting:has(> :nth-last-child(2):nth-child(3n+1)) > .wire-feed-ad { display:grid; grid-column:span 2; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center; }
+  .wire-story-grid:has(> :nth-last-child(2):nth-child(4n+1)) > .wire-feed-ad { display:grid; grid-column:span 3; grid-template-columns:minmax(0,3fr) minmax(0,2fr); align-items:center; }
+  /* Wide tiles take the row's height from the stories beside them. */
+  .wire-story-grid:has(> :nth-last-child(2):nth-child(4n+2)) > .wire-feed-ad .wire-feed-art,
+  .wire-supporting:has(> :nth-last-child(2):nth-child(3n+1)) > .wire-feed-ad .wire-feed-art,
+  .wire-story-grid:has(> :nth-last-child(2):nth-child(4n+1)) > .wire-feed-ad .wire-feed-art { position:relative; align-self:stretch; aspect-ratio:auto; min-height:160px; }
+  .wire-feed-ad .wire-feed-body { padding:20px 24px; }
+}
