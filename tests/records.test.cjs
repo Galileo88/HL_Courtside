@@ -13,3 +13,12 @@ test('watch is bounded, regular-season only and has stable identity across repea
 test('team season low requires complete schedule; highs do not imply personal lows',()=>{const l=fixture(),g=l.season.schedule[0].results[0];l.season.schedule=[50,55,60,45,40,20].map((score,i)=>({results:[{...g,gId:i+1,homeScore:score}]}));l.teams[0].season[0].seasonStats.GP=6;assert.ok(R.candidates(l).some(x=>x.story.eventKey==='team-scoring-low-1-6'));l.teams[0].season[0].seasonStats.GP=7;assert.ok(!R.candidates(l).some(x=>x.story.type==='Team record'));assert.ok(!R.candidates(l).some(x=>/career low/.test(x.story.paragraphs.join(' '))));});
 test('placeholder and wrong-league record entries cannot create record stories',()=>{const l=fixture();l.records.season.PTS[0].gameResults={...l.records.season.PTS[0].gameResults,league:1};l.teams[0].roster[0].gameStats.PTS=19;assert.ok(!R.candidates(l).some(x=>x.story.type==='Single-game record'));l.records.season.PTS[0].gameResults={league:0,gId:10,homeTeam:1,awayTeam:2,homeScore:0,awayScore:0,winner:0};assert.ok(!R.candidates(l).some(x=>x.story.type==='Single-game record'));});
 test('empty years do not erase retired players career totals',()=>{const l=fixture(),p=l.teams[0].roster[0];p.stats.push({league:0,yr:0,season:[{GP:0,PTS:0,REB:0,AST:0}]});assert.equal(R.history(p,l).PTS,2000);});
+test('a career record held by a retiree says when they retired; active holders still hold it',()=>{
+  const l=fixture();
+  l.retirees=[{id:99,tid:0,fn:'Old',ln:'Timer',stats:[{league:0,yr:1,season:[{tid:1,GP:20,PTS:2050,REB:0,AST:0,STL:0,BLK:0,TPM:0}]}]}];
+  const watch=R.candidates(l).filter(x=>x.story.type==='Record watch').map(x=>x.story.paragraphs[0]).find(p=>/career record/.test(p));
+  assert.match(watch,/^Alex Star is now only 50 points shy of the FL career record, 2,050, set by Old Timer, who retired in 1\.$/);
+  l.retirees=[];l.teams[1].roster[0].stats.push({league:0,yr:2,season:[{tid:2,GP:1,PTS:1050,REB:0,AST:0,STL:0,BLK:0,TPM:0}]});
+  const held=R.candidates(l).filter(x=>x.story.type==='Record watch').map(x=>x.story.paragraphs[0]).find(p=>/career record/.test(p));
+  if(held)assert.match(held,/held by Sam Moon\.$/);
+});
