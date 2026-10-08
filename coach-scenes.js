@@ -285,15 +285,31 @@
       ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = '900 30px Arial';
       ctx.fillText(String(scene.season || ''), 384, 182);
       world();
-      // Side screens: the pick's portrait in the team's colors, the round and pick beneath.
+      // Side screens: the pick's portrait over the drafting team's logo in the
+      // team's colors, then the team and the round and pick beneath.
+      const mark = await window.HoopWirePressBackdrop.teamLogo(team, scene.pressLogoData);
+      // A near-black primary would swallow the logo, so the screen takes the secondary instead.
+      const light = c => { const [r, g, b] = rgb(c); return (.299 * r + .587 * g + .114 * b) / 255; };
+      const field = light(primary) < .15 && light(secondary) > light(primary) ? secondary : primary, trimColor = field === primary ? secondary : primary;
       for (const x of [22, 278]) {
-        panel(x, 18, 84, 78);
-        ctx.fillStyle = primary; ctx.fillRect(x + 6, 24, 72, 54);
-        ctx.fillStyle = secondary; ctx.fillRect(x + 6, 76, 72, 2);
-        if (player) { const p = document.createElement('canvas'); p.width = 128; p.height = 112; window.HoopWirePlayer.portrait(p, player, team, 0); ctx.drawImage(p, x + 10, 22, 64, 56); }
-        screen(); ctx.fillStyle = '#ffffff'; ctx.font = '900 16px Arial'; ctx.textAlign = 'center';
-        ctx.font = '900 14px Arial';
-        ctx.fillText(scene.pick?.pk ? `${scene.pick.rd ? `ROUND ${scene.pick.rd} · ` : ''}PICK ${scene.pick.pk}` : 'DRAFT PICK', 2 * (x + 42), 2 * 92); world();
+        panel(x, 12, 84, 96);
+        ctx.fillStyle = field; ctx.fillRect(x + 6, 18, 72, 56);
+        ctx.fillStyle = trimColor; ctx.fillRect(x + 6, 72, 72, 2);
+        if (mark?.image) {
+          screen();
+          const image = trim(mark.image), box = [2 * (x + 8), 2 * 20, 136, 100], fit = Math.min(box[2] / image.width, box[3] / image.height);
+          const k = mark.pixel && fit >= 1 ? Math.floor(fit) : fit, w = Math.round(image.width * k), h = Math.round(image.height * k);
+          ctx.globalAlpha = .8; ctx.imageSmoothingEnabled = !mark.pixel || k < 1; ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(image, Math.round(box[0] + (box[2] - w) / 2), Math.round(box[1] + (box[3] - h) / 2), w, h);
+          ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false; world();
+        }
+        if (player) { const p = document.createElement('canvas'); p.width = 128; p.height = 112; window.HoopWirePlayer.portrait(p, player, team, 0); ctx.drawImage(p, x + 10, 16, 64, 56); }
+        screen(); ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+        const name = window.HoopWireCore.teamDisplay(team).toUpperCase();
+        let size = 13; do { ctx.font = `900 ${size}px Arial`; } while (ctx.measureText(name).width > 156 && --size > 8);
+        ctx.fillText(name, 2 * (x + 42), 2 * 86);
+        ctx.font = '900 13px Arial'; ctx.fillStyle = '#c9d6f2';
+        ctx.fillText(scene.pick?.pk ? `${scene.pick.rd ? `ROUND ${scene.pick.rd} · ` : ''}PICK ${scene.pick.pk}` : 'DRAFT PICK', 2 * (x + 42), 2 * 100); world();
       }
       // Spotlight on the podium.
       ctx.globalCompositeOperation = 'lighter';
@@ -310,7 +326,7 @@
       shadow(ctx, 140, base - 13, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 14, 'right');
       // Fans on the floor in front of the stage, backs to the camera; the flashes are their cameras.
       audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]], { flashes: 3 });
-      return { canvas, extra: { pressLogoData: scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
+      return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
     }
   };
 

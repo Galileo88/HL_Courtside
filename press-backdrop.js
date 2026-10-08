@@ -124,5 +124,10 @@
     const loaded=await logoFor(league,savedData).catch(()=>null);
     return loaded?{...loaded,status:'loaded'}:{...(await hoopLand().catch(()=>null)||{}),data:null,status:league?.logoURL?'unavailable':'default'};
   }
-  window.HoopWirePressBackdrop={render,paint,leagueLogo};
+  // A team's logo, or the varsity letter the game falls back to.
+  async function teamLogo(team,savedData){
+    const loaded=await logoFor(team,savedData).catch(()=>null);
+    return loaded?{...loaded,status:'loaded'}:{...(await varsityLetter(team).catch(()=>null)||{}),data:null,status:team?.logoURL?'unavailable':'letter'};
+  }
+  window.HoopWirePressBackdrop={render,paint,leagueLogo,teamLogo};
 })();
