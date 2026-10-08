@@ -508,7 +508,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?6:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?7:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -557,6 +557,16 @@
       }
       if(leaderRows.length)add('leaders','Season leaders',`${year} ${league.shortName||'league'} statistical leaders`,
         leadersArticle({season:year,leagueName:league.shortName||league.leagueName,seasonSnapshot:{rows:leaderRows}}),teams,['Category','Player','Total','GP'],leaderRows);
+      // Hoop Land ranks pro standings by wins, then fewer games played, then
+      // head-to-head wins, then whole points of differential per game.
+      let ordered=null;
+      const standingsOrder=()=>ordered||=(()=>{
+        const regular=lookup.completed.filter(x=>x.game.tRound===0&&x.game.gameType===0).map(x=>x.game);
+        const beat=(a,b)=>regular.filter(g=>g.winner===a&&[g.homeTeam,g.awayTeam].includes(b)).length;
+        const diff=t=>t.GP>0&&Number.isFinite(t.PTS)&&Number.isFinite(t.OPP)?Math.trunc((t.PTS-t.OPP)/t.GP):0;
+        return [...records].sort((x,y)=>{const a=x.year.seasonStats,b=y.year.seasonStats;
+          return (b.W-a.W)||((a.W+a.L)-(b.W+b.L))||(beat(y.team.id,x.team.id)-beat(x.team.id,y.team.id))||(diff(b)-diff(a));});
+      })();
       for(const r of records){
         const leaders=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',r.team.id)})).filter(x=>x.s).sort((a,b)=>b.s.PTS/b.s.GP-a.s.PTS/a.s.GP);
         const p=leaders[0],record=r.year.seasonStats;
@@ -572,11 +582,9 @@
         const prior=(r.team.season||[]).find(x=>x.yr===year-1)?.seasonStats,change=prior&&Number.isInteger(prior.W)&&prior.W+prior.L>0?record.W-prior.W:null;
         // The record is in every headline, so the rest of it has to say what
         // the record can't: how it ended, how it moved, or where it ranked.
-        // College leagues keep a real poll in the save (1 is the top team).
-        // Pro leagues don't keep a final one, so HoopWire ranks them the way
-        // power rankings do: point differential first, then winning percentage.
-        const netOf=x=>{const t=x.year.seasonStats;return t.GP>0&&Number.isFinite(t.PTS)&&Number.isFinite(t.OPP)?(t.PTS-t.OPP)/t.GP:-Infinity;},pctOf=x=>{const t=x.year.seasonStats;return t.W/Math.max(1,t.W+t.L);};
-        const powerRank=1+records.filter(x=>netOf(x)>netOf(r)||(netOf(x)===netOf(r)&&pctOf(x)>winPct)).length;
+        // College leagues keep the game's poll in the save (1 is the top team).
+        // Pro rankings follow Hoop Land's own standings order (see standingsOrder).
+        const powerRank=1+standingsOrder().indexOf(r);
         const poll=league.leagueType===1&&Number.isInteger(r.year.poll)&&r.year.poll>0?r.year.poll:null;
         const ranking=league.leagueType===1?(poll&&poll<=25?`No. ${poll} in the poll`:poll?'unranked':null):`No. ${powerRank} in the power rankings`;
         const swing=change!==null&&Math.abs(change)>=8?`${[8,11,18].includes(Math.abs(change))||String(Math.abs(change)).startsWith('8')?'an':'a'} ${C.num(Math.abs(change))}-win ${change>0?'jump':'drop'} from last season`:null;
