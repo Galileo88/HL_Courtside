@@ -354,9 +354,9 @@
       if (signing) {
         // Close enough that the jersey's edges cover a hand of each.
         depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 172, foot: base - 4, facing: 'right' }, { data: scene.signee, team, pose: 'suit-standing', frame: 0, x: 196, foot: base - 4, facing: 'left' }]);
-        // The jersey held up between them at chest height, at two-thirds size
-        // (two screen pixels per sprite pixel at 3x).
-        const shirt = jersey(team, scene.signee?.num), u = 2 / 3, cut = 6, [jx, jy] = [184 - 17 * u, base - 4 - 21];
+        // The jersey held up between them at chest height, at half the player's
+        // pixel scale, as the game hangs jerseys beside players in its locker room.
+        const shirt = jersey(team, scene.signee?.num), u = 1 / 2, cut = 6, [jx, jy] = [184 - 17 * u, base - 4 - 17];
         ctx.drawImage(shirt, 0, cut, 34, 34 - cut, jx, jy, 34 * u, (34 - cut) * u);
       } else {
         depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : farewell ? { data: scene.retiree, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
@@ -732,7 +732,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 27, seed: id, kind: `coach-${context.coachScene}`,
+      version: 28, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
