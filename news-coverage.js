@@ -84,7 +84,7 @@
       lead=rows[0];storyType='Recruiting';
       const counts=new Map();for(const x of rows)counts.set(x.t.id,(counts.get(x.t.id)||0)+1);
       const busiest=[...counts].sort((a,b)=>b[1]-a[1])[0];
-      headline=`${name(lead.p)} headlines a ${rows.length}-commitment recruiting haul`;
+      headline=`${name(lead.p)} headlines the recruiting class`;
       paragraphs.push(`${name(lead.p)}${lead.p.age?`, ${lead.p.age},`:''} committed to ${T(lead.t).full}, the headliner on a day when ${C.plural(rows.length,'recruit')} made their college choices.`);
       if(rows.length>1)paragraphs.push(`Other top names: ${C.listJoin(rows.slice(1,5).map(x=>`${name(x.p)} to ${T(x.t).nick}`))}.`);
       if(busiest&&busiest[1]>=3)paragraphs.push(`${cap(T(lookup.teams.get(busiest[0])).full)} had the busiest day, landing ${C.plural(busiest[1],'commitment')}.`);
@@ -119,7 +119,7 @@
       rows.sort((a,b)=>Number(own(a.n))-Number(own(b.n))||R.stature(b.p,league)-R.stature(a.p,league)||a.p.id-b.p.id);
       lead=rows[0];storyType=type===17?'Retirement':'Retirement announcement';
       const c=career(lead),careerLine=x=>{const h=career(x);return h?.GP>0?`${(h.PTS/h.GP).toFixed(1)} points over ${h.GP} games`:'';};
-      headline=type===17?`${name(lead.p)} leads ${C.plural(rows.length,'veteran')} into retirement`:`${name(lead.p)} among ${C.plural(rows.length,'veteran')} set to retire`;
+      headline=type===17?`${name(lead.p)} leads this year's retirement class`:`${name(lead.p)} among the veterans set to retire`;
       paragraphs.push(`${rows.length<10?C.capitalize(C.plural(rows.length,'player')):`In all, ${C.plural(rows.length,'player')}`} ${type===17?'retired':'announced plans to retire'}, a group led by ${name(lead.p)} of ${T(lead.t).full}${c?.GP>0?`, who averaged ${careerLine(lead)}`:''}.`);
       if(rows.length>1)paragraphs.push(`${type===17?'Also retiring':'Also on the way out'}: ${C.listJoin(rows.slice(1,5).map(x=>`${name(x.p)} (${T(x.t).nick})`))}${rows.length>5?`, among ${C.plural(rows.length-5,'other')}`:''}.`);
       paragraphs.push(`Most were role players who stuck around. Few careers in this league go longer.`.replace(/Few careers.*$/,(()=>{const longest=[...rows].sort((a,b)=>(career(b)?.GP||0)-(career(a)?.GP||0))[0],h=career(longest);return h?.GP>0?`The longest run belonged to ${name(longest.p)}: ${h.GP} games.`:'';})()));
@@ -143,7 +143,7 @@
     if(result.some(x=>x.story.eventKey===key))return;
     const related=[...new Map(rows.map(x=>[x.t.id,x.t])).values()];
     const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type:storyType,headline,paragraphs,
-      importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:3,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+      importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:4,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
     result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
@@ -320,7 +320,7 @@
     const push=(key,day,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
       const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type,headline,paragraphs,
-        importance:worth[kind]||90,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:worth[kind]||90,templateVersion:5,editorialVersion:3,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
         seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
       result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
@@ -367,9 +367,9 @@
       const ranked=[...leaving].sort((a,b)=>grade(b)-grade(a)||a.p.id-b.p.id),top=ranked[0],early=leaving.filter(x=>x.cls!=='Sr.').length,fresh=leaving.filter(x=>x.cls==='Fr.').length;
       const counts=new Map();for(const x of leaving)counts.set(x.t.id,(counts.get(x.t.id)||0)+1);
       const [hitId,hit]=[...counts].sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0],hardest=lookup.teams.get(hitId);
-      push('offseason-draft-class',day,{type:'Draft class',kind:'draft-class',headline:`${name(top.p)} leads ${C.plural(leaving.length,'college player')} into the ${year} draft`,items:ranked,lead:top,
-        paragraphs:[`The ${year} draft class is set, and ${C.plural(leaving.length,'player')} from ${short} ${leaving.length===1?'is':'are'} in it. ${name(top.p)} of ${T(top.t).full} leads the way after averaging ${line(top)} as a ${classWord[top.cls]}.`,
-          early===leaving.length?`Every one of them is leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`:early===0?`All of them are seniors.`:leaving.length-early<10?`All but ${C.num(leaving.length-early)} are leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`:`Of those, ${early} are leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`,
+      push('offseason-draft-class',day,{type:'Draft class',kind:'draft-class',headline:`${name(top.p)} leads the ${year} draft class`,items:ranked,lead:top,
+        paragraphs:[`The ${year} draft class is set, and ${name(top.p)} of ${T(top.t).full} leads the way after averaging ${line(top)} as a ${classWord[top.cls]}.`,
+          early===leaving.length?`Every player in the class is leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`:early===0?`Every player in the class is a senior.`:leaving.length-early<10?`All but ${C.num(leaving.length-early)} players in the class are leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`:`In the class, ${early} players are leaving with eligibility left${fresh?`, and ${C.num(fresh)} played just one college season`:''}.`,
           `Also headed to the draft: ${C.listJoin(ranked.slice(1,4).map(x=>`${name(x.p)} (${T(x.t).short}, ${x.cls})`))}.`,
           hit>=3?`No program was hit harder than ${T(hardest).full}, with ${C.plural(hit,'player')} headed to the draft.`:''].filter(Boolean),
         board:{kicker:'Draft class',title:'Top college prospects',headers:['Player','Class','PPG','RPG','APG'],rows:ranked.slice(0,10).map(statRow),subs:subs(ranked.slice(0,10)),ranked:true},extra:{early,fresh}});

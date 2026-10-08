@@ -690,7 +690,7 @@
       }else body.push(turn(1,"Rookie contracts don't win championships. Wake me up when a real free agent moves."),turn(3,`Mostly rookie deals, Jordan. ${top.name} with ${T(top)} is the headliner.`));
       close=pick(story,["The market's open. We'll keep tracking it.","More moves to come. Stay tuned.","Free agency isn't over. Not even close.","That's the latest from the market."],'fa:close');
     }else if(r.type===16||r.type===17){
-      open=pick(story,[`${C.capitalize(C.plural(r.count,'veteran'))} ${r.type===17?'called it a career':'say this season is their last'}, led by ${top.name}. ${J}?`,`A long list of retirements, and ${top.name} tops it. ${J}?`],'ret:open');
+      open=pick(story,[`${r.type===17?'A wave of veterans called it a career':'A group of veterans say this season is their last'}, led by ${top.name}. ${J}?`,`A long list of retirements, and ${top.name} tops it. ${J}?`],'ret:open');
       body.push(turn(1,pick(story,[`Those are the guys who hold a locker room together. You don't see it in the box score.`,`Role players, most of them. But you need those guys to win anything.`],'ret:take')));
       if(items.length>1)body.push(turn(3,`Also on the list: ${join(items.slice(1,4).map(x=>x.name))}.`));
       close=pick(story,["Tip of the cap to all of them.","Enjoy retirement. They earned it.","That's a lot of years of basketball walking out the door."],'ret:close');
@@ -719,7 +719,7 @@
       body.push(turn(2,`Some of them get drafted. Some of them don't. Either way, that chapter's closed.`));
       close=pick(story,["Tip of the cap to the seniors.","That's a class that gave us a lot.","Draft night decides the rest."],'sen:close');
     }else if(r.type==='draft-class'){
-      open=pick(story,[`The draft class is set. ${C.capitalize(C.plural(r.count,'college player'))} are in it, led by ${top.name}. ${J}?`,`${top.name} is officially headed to the draft. ${J}, the class as a whole?`],'class:open');
+      open=pick(story,[`The draft class is set, and ${top.name} leads it. ${J}?`,`${top.name} is officially headed to the draft. ${J}, the class as a whole?`],'class:open');
       body.push(turn(1,top.season?.PTS?`${top.season.PTS} a night as a ${({'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'})[top.year]||'player'}. He's ready. I'm not worried about that one.`.replace(/He's ready/,top.pronoun==='she'?"She's ready":top.pronoun==='he'?"He's ready":`${C.surname(top.name)}'s ready`):`I like the top of this class.`));
       if(r.fresh)body.push(turn(2,`${C.capitalize(C.num(r.fresh))} of them played one college season. One. That's a lot of projection.`),turn(1,`That's the game now, ${A}. Talent goes when it's ready.`));
       if(items.length>1)body.push(turn(3,`Also in the class: ${join(items.slice(1,4).map(x=>`${x.name} out of ${x.teamCity||x.team}`))}.`));
@@ -748,7 +748,7 @@
       if(teams.length>1)body.push(turn(3,`Rounding out the top five: ${join(teams.slice(1,5).map(x=>ref(x).short))}.`));
       close=pick(story,["It's never too early.","Ask us again when the season opens.","Plenty of time for this list to look silly."],'early:close');
     }else if(r.type===14){
-      open=pick(story,[`Recruiting news. ${top.name} commits to ${T(top)}. ${J}?`,`${C.capitalize(C.plural(r.count,'commitment'))} in one day, and ${top.name} headlines it. ${J}?`,`${top.name} picks ${T(top)}. ${J}, how big is that?`,`Signing day energy. ${top.name} to ${T(top)}. ${J}?`],'rec:open');
+      open=pick(story,[`Recruiting news. ${top.name} commits to ${T(top)}. ${J}?`,`Big day on the recruiting trail, and ${top.name} headlines it. ${J}?`,`${top.name} picks ${T(top)}. ${J}, how big is that?`,`Signing day energy. ${top.name} to ${T(top)}. ${J}?`],'rec:open');
       body.push(turn(1,pick(story,[`That's a get. ${cap(T(top))} just won the day.`,`Huge. That's the kind of name that changes a program.`,`I love it. You recruit, you win. Simple.`],'rec:take')));
       if(items.length>1)body.push(turn(2,`Don't overlook the rest: ${join(items.slice(1,4).map(x=>`${x.name} to ${T(x)}`))}.`));
       body.push(turn(3,`${C.capitalize(C.plural(r.count,'recruit'))} made their choices. Plenty of rosters just changed.`));
