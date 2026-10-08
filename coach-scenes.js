@@ -186,17 +186,19 @@
       ctx.fillStyle = light; ctx.fillRect(...camera);
       return { canvas, extra: { customCourt } };
     },
-    // A good season: the coach and the stars at center court, under the confetti.
+    // A good season: the coach and the stars just above the center circle, the
+    // scorer's table and the far stands behind them, under the confetti.
     async good(scene, rand) {
       // On the road the winners wear their road uniforms, and the home crowd has nothing to cheer.
-      const [cx, cy] = px(0, 0), camera = [cx - 192, cy - 108, 384, 216], players = scene.players || [], away = !!scene.venue, uniform = away ? 1 : 0;
-      const { canvas, ctx, customCourt } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: !away, announcers: away ? [] : scene.broadcasters || [] });
-      const coach = { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: cx, foot: cy + 36, facing: 'left', uniform };
+      // The camera's top is the far stands' back fan rows; the group stands about three units above center court.
+      const [cx] = px(0, 0), [, top] = px(0, 9.75), gy = px(0, 4.4)[1], camera = [cx - 192, top, 384, 216], players = scene.players || [], away = !!scene.venue, uniform = away ? 1 : 0;
+      const { canvas, ctx, customCourt } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: !away, announcers: scene.broadcasters || [] });
+      const coach = { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: cx, foot: gy + 30, facing: 'left', uniform };
       depth(ctx, [
-        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: cx - 72, foot: cy + 6, facing: 'right', uniform },
-        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: cx + 72, foot: cy + 8, facing: 'left', uniform },
-        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: cx - 38, foot: cy + 24, facing: 'right', uniform },
-        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: cx + 38, foot: cy + 26, facing: 'left', uniform },
+        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: cx - 72, foot: gy, facing: 'right', uniform },
+        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: cx + 72, foot: gy + 2, facing: 'left', uniform },
+        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: cx - 38, foot: gy + 18, facing: 'right', uniform },
+        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: cx + 38, foot: gy + 20, facing: 'left', uniform },
         coach
       ]);
       // The championship trophy in the league's award colors, at its native size, its base in the coach's raised hands.
@@ -237,13 +239,14 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 8, seed: id, kind: `coach-${context.coachScene}`,
+      version: 9, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
       trophy: trophyColors(league),
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
-      broadcasters: (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).slice(0, 4).map(p => ({ ...snap(p), isCoach: true })),
+      // The broadcast crew at the table works for the arena's home team.
+      broadcasters: ((context.venue || team)?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).slice(0, 4).map(p => ({ ...snap(p), isCoach: true })),
       players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, season
     };
   }
