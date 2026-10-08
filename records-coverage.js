@@ -102,6 +102,13 @@
           [{label:`Single-game ${label}`,value:record.value,detail:period,record:structuredClone(record)}],played.game);
       }
     }
+    // Where a record came from: a season mark has its year; a career mark is
+    // still growing while its holder plays, so it's "held by" until they stop.
+    const recordOrigin=(record,scope,holder,league,year)=>{
+      if(scope==='season')return Number.isInteger(record.yr)?`set by ${holder} in ${record.yr}`:`set by ${holder}`;
+      const years=(record.p.stats||[]).filter(s=>s.league===league.leagueType&&Number.isInteger(s.yr)).map(s=>s.yr),last=years.length?Math.max(...years):null;
+      return last!==null&&last<year?`set by ${holder}, whose career ended in ${last}`:`held by ${holder}`;
+    };
     // Compare current totals with prior seasons and the league's career leaderboard from player histories.
     const careerLeaders=[...players.values()].map(p=>({p,s:history(p,league)})).filter(x=>x.s);
     const prior=[];
@@ -131,7 +138,7 @@
           if(scope==='season'&&(team.season||[]).find(s=>s.yr===year)?.seasonStats?.GP>=league.season?.totalGames)continue;
           const name=C.playerDisplay(player),holder=C.playerDisplay(record.p),title=scope==='season'?'single-season mark':'career lead';
           add(`watch-${scope}-${player.id}-${k.toLowerCase()}-${record.p.id}-${record.s[k]}`,'Record watch',`${name} closes in on ${holder}'s ${title}`,
-            [`${name} is ${C.plural(gap,label.replace(/s$/,''))} shy of ${C.possessive(holder)} ${Number(record.s[k]).toLocaleString('en-US')}, the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record. ${C.surname(name)} is at ${Number(total[k]).toLocaleString('en-US')}${scope==='season'?' this season, with the chase still on':''}.`],team,player,
+            [`${name} is now only ${C.plural(gap,label.replace(/s$/,''))} shy of the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record, ${Number(record.s[k]).toLocaleString('en-US')}, ${recordOrigin(record,scope,holder,league,year)}.`],team,player,
             [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,recordYear:record.yr??null,source:'player.stats'}]);
         }
       }
