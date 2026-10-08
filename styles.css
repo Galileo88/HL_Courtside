@@ -804,24 +804,28 @@ a[aria-disabled="true"]:hover { background:inherit; }
   line-height:1.25;
 }
 .tv-fact-values {
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px 18px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(64px,1fr));
+  gap:14px 16px;
 }
 .tv-fact-values span {
   display:grid;
-  gap:2px;
+  align-content:start;
+  gap:4px;
+  min-width:0;
 }
 .tv-fact-values small {
   color:#8fb4d3;
-  font-size:9px;
+  font-size:10px;
   font-weight:900;
   letter-spacing:.07em;
   text-transform:uppercase;
 }
 .tv-fact-values b {
   color:#f0f7ff;
-  font-size:15px;
+  font-size:18px;
+  line-height:1.2;
+  overflow-wrap:anywhere;
   font-variant-numeric:tabular-nums;
 }
 .tv-story-details .box-result {

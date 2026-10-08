@@ -11,7 +11,7 @@
     return {name,label,years,count:years.length,current:years.includes(year),streak};
   }
   function ordinal(n){return ['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'][n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;}
-  const article=word=>/^(?:[aeiou]|8|11th|18th)/i.test(word)?'an':'a';
+  const article=word=>/^(?:[aeiou]|8|1[18](?!\d))/i.test(word)?'an':'a';
   function honorLine(h){
     if(!h||h.count<1)return '';
     const team=h.label==='the championship',who=team?C.teamRef({name:h.name}).full:h.name;
@@ -508,7 +508,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?5:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?7:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -557,6 +557,19 @@
       }
       if(leaderRows.length)add('leaders','Season leaders',`${year} ${league.shortName||'league'} statistical leaders`,
         leadersArticle({season:year,leagueName:league.shortName||league.leagueName,seasonSnapshot:{rows:leaderRows}}),teams,['Category','Player','Total','GP'],leaderRows);
+      // Hoop Land ranks pro standings by wins, then fewer games played, then
+      // this season's head-to-head wins, then point differential per game in
+      // whole points (truncated). Teams still level stay in league order; the
+      // game's own sort leaves them unordered. The save's team "rnk" is that
+      // rank taken just before each team's latest game, so it can lag.
+      let ordered=null;
+      const standingsOrder=()=>ordered||=(()=>{
+        const regular=lookup.completed.filter(x=>x.game.tRound===0&&x.game.gameType===0).map(x=>x.game);
+        const beat=(a,b)=>regular.filter(g=>g.winner===a&&[g.homeTeam,g.awayTeam].includes(b)).length;
+        const diff=t=>t.GP>0&&Number.isFinite(t.PTS)&&Number.isFinite(t.OPP)?Math.trunc((t.PTS-t.OPP)/t.GP):0;
+        return [...records].sort((x,y)=>{const a=x.year.seasonStats,b=y.year.seasonStats;
+          return (b.W-a.W)||((a.W+a.L)-(b.W+b.L))||(beat(y.team.id,x.team.id)-beat(x.team.id,y.team.id))||(diff(b)-diff(a));});
+      })();
       for(const r of records){
         const leaders=[...players.values()].map(p=>({p,s:stats(p,league,year,'season',r.team.id)})).filter(x=>x.s).sort((a,b)=>b.s.PTS/b.s.GP-a.s.PTS/a.s.GP);
         const p=leaders[0],record=r.year.seasonStats;
@@ -572,7 +585,11 @@
         const prior=(r.team.season||[]).find(x=>x.yr===year-1)?.seasonStats,change=prior&&Number.isInteger(prior.W)&&prior.W+prior.L>0?record.W-prior.W:null;
         // The record is in every headline, so the rest of it has to say what
         // the record can't: how it ended, how it moved, or where it ranked.
-        const standing=1+records.filter(x=>x.year.seasonStats.W>record.W).length,shared=records.filter(x=>x.year.seasonStats.W===record.W).length>1;
+        // College leagues keep the game's poll in the save (1 is the top team).
+        // Pro rankings follow Hoop Land's own standings order (see standingsOrder).
+        const powerRank=1+standingsOrder().indexOf(r);
+        const poll=league.leagueType===1&&Number.isInteger(r.year.poll)&&r.year.poll>0?r.year.poll:null;
+        const ranking=league.leagueType===1?(poll&&poll<=25?`No. ${poll} in the poll`:poll?'unranked':null):`No. ${powerRank} in the power rankings`;
         const swing=change!==null&&Math.abs(change)>=8?`${[8,11,18].includes(Math.abs(change))||String(Math.abs(change)).startsWith('8')?'an':'a'} ${C.num(Math.abs(change))}-win ${change>0?'jump':'drop'} from last season`:null;
         const review=text=>`${T.nickname} review: ${text}`,finalRound=exit&&['Finals','title game'].includes(exit.label);
         const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
@@ -581,7 +598,7 @@
           record.W>record.L?review(finalRound?`${mark} and a run to the ${exit.label}`:exit?`${mark}, then out in the ${exit.label}`:alive?`${mark} and still playing`:
             bracketSet&&!playoff?`${mark} and left out of the ${field}`:swing?`${mark}, ${swing}`:playoff?`${mark} and a ticket to the ${league.leagueType===1?'tournament':'postseason'}`:
             identity==='defense'?`${mark}, built on defense`:identity==='offense'?`${mark}, powered by the offense`:
-            winPct>=.6?`${a} ${mark} season worth building on`:`${mark}, ${shared?'tied for ':''}${ordinal(standing)} in the league`):
+            winPct>=.6||!ranking?`${a} ${mark} season worth building on`:ranking==='unranked'?`${mark} and unranked`:`${mark}, ${ranking}`):
           deep?review(`${mark}, then a run to the ${exit.label}`):
           record.W===record.L?review(playoff?`a .500 season and a ${league.leagueType===1?'tournament bid':'playoff spot'}`:'a .500 season, and the questions that come with it'):
           playoff?review(`${mark}, and in the ${field} anyway`):
