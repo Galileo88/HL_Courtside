@@ -35,10 +35,14 @@ test('the college offseason reports the real draft class, who is back and the of
  // Five players leave for the draft: off the rosters and into the pro draft class.
  const gone=college.teams.slice(0,5).map(t=>t.roster.shift());pro.draftClass=gone;
  college.teams.forEach((t,i)=>{t.season=[...(t.season||[]),{yr:next,poll:i+1,seed:0,seasonStats:{GP:0,W:0,L:0}}];});
+ // The top team's case is its incoming class.
+ const t0=college.teams[0];for(let i=0;i<4;i++)t0.roster.push({id:900000+i,tid:t0.id,fn:'Fresh',ln:`Man${i}`,yrs:0,pot:10,stats:[]});
+ for(const t of college.teams.slice(1,6))t.roster.push({id:910000+t.id,tid:t.id,fn:'Other',ln:`Kid${t.id}`,yrs:0,pot:6,stats:[]});
  const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story),key=k=>rows.find(s=>s.eventKey===k);
  assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-class','offseason-returning','offseason-preseason-poll']);
  assert.match(key('offseason-draft-class').headline,new RegExp(`five college players into the ${next} draft`));
  const leaving=new Set(gone.map(p=>`${p.fn} ${p.ln}`));assert.ok(key('offseason-returning').seasonSnapshot.roundup.items.every(x=>!leaving.has(x.name)));
  const poll=key('offseason-preseason-poll');assert.match(poll.paragraphs[0],new RegExp(`${next} .* preseason poll is out`));assert.equal(poll.seasonSnapshot.board.rows[0][0],college.teams[0].city+' '+college.teams[0].name);
+ assert.match(poll.paragraphs.join(' '),/The case for No\. 1 is the freshman class\. .* signed four recruits, more than any other program/);
  assert.ok(rows.every(s=>s.day===1));
 });

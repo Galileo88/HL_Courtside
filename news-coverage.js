@@ -270,7 +270,8 @@
     const pro=leagues.find(l=>l!==league&&l.leagueType===0);
     // Draft-class entries keep the college class they played last season in.
     const leaving=(pro?.draftClass||[]).map(p=>({p,t:teamOf(p),s:S.stats(p,league,prev),cls:classOf(p)})).filter(x=>x.t&&x.s?.GP>0);
-    const champion=[...lookup.teams.values()].find(t=>t.championships?.yearsWon?.includes(prev)&&t.championships.league===league.leagueType);
+    // Championships carry league 0 even for college teams; the team list already scopes it.
+    const champion=[...lookup.teams.values()].find(t=>t.championships?.yearsWon?.includes(prev));
     // 1. Who's going: the draft class, as the save lists it.
     if(leaving.length>=5){
       const ranked=[...leaving].sort((a,b)=>grade(b)-grade(a)||a.p.id-b.p.id),top=ranked[0],early=leaving.filter(x=>x.cls!=='Sr.').length,fresh=leaving.filter(x=>x.cls==='Fr.').length;
@@ -304,25 +305,46 @@
         x.starters=games?Math.min(5,players.filter(r=>r.s.GS*2>=games).length):null;
         x.star=[...players].sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0]||null;
         x.lost=leaving.filter(l=>l.t.id===x.t.id).sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0]||null;
+        x.lostCount=leaving.filter(l=>l.t.id===x.t.id).length;
       }
+      // The incoming freshmen often explain a ranking better than who's back:
+      // the poll rates talent, and potential is how the game rates recruits.
+      const freshmen=[...lookup.players.values()].filter(p=>p.yrs===0&&lookup.teams.has(p.tid)&&!S.stats(p,league,prev)?.GP);
+      const pots=freshmen.map(p=>p.pot||0).sort((a,b)=>b-a),bar=pots.length>=10?pots[Math.floor(pots.length*.2)]:Infinity,elite=pots.filter(v=>v>=bar).length;
+      const classes=new Map();for(const p of freshmen)classes.set(p.tid,[...(classes.get(p.tid)||[]),p]);
+      const most=Math.max(0,...[...classes.values()].map(c=>c.length)),deepest=[...classes].sort((a,b)=>b[1].reduce((n,p)=>n+(p.pot||0),0)-a[1].reduce((n,p)=>n+(p.pot||0),0)||a[0]-b[0])[0];
+      for(const x of polled){x.fresh=(classes.get(x.t.id)||[]).sort((a,b)=>(b.pot||0)-(a.pot||0)||a.id-b.id);x.elite=x.fresh.filter(p=>(p.pot||0)>=bar);
+        x.onlyMost=x.fresh.length===most&&[...classes.values()].filter(c=>c.length===most).length===1;x.recruiting=x.fresh.length>=3&&(x.elite.length>=2||deepest?.[0]===x.t.id);}
       const rec=x=>x.then?.seasonStats?`${x.then.seasonStats.W}-${x.then.seasonStats.L}`:'—';
       const startersText=x=>x.starters==null?null:x.starters===5?'all five starters':x.starters===0?'no starters':x.starters===1?'one starter':`${C.num(x.starters)} starters`;
       const top=polled[0],ten=polled.slice(0,10);
-      const lineFor=x=>{const st=startersText(x),lost=leaving.filter(l=>l.t.id===x.t.id).length,parts=[];
-        if(st)parts.push(`${cap(T(x.t).nick)} ${C.verb(T(x.t),'return')} ${st}${lost?` after losing ${C.plural(lost,'player')} to the draft`:''}.`);
-        if(x.star)parts.push(`${name(x.star.p)}, at ${perGame(x.star.s,'PTS')} points a game last season, is the top returner.`);
-        if(x.lost&&(!x.star||pg(x.lost,'PTS')>pg(x.star,'PTS')))parts.push(`${name(x.lost.p)} (${perGame(x.lost.s,'PTS')} points) is among those who left.`);
+      const eliteText=x=>{const e=x.elite,names=e.slice(0,3).map(name);if(!e.length)return '';
+        if(e.length===1)return `, and ${names[0]} is one of the ${elite} highest-rated recruits in the country`;
+        return `, and ${C.num(e.length)} of them${e.length<=3?`, ${C.listJoin(names)},`:`, led by ${C.listJoin(names.slice(0,2))},`} are among the ${elite} highest-rated recruits in the country`;};
+      // Why a team sits where it does: the freshman class when that's the story, otherwise the core that's back.
+      const lineFor=x=>{const N=cap(T(x.t).nick),st=startersText(x),parts=[];
+        const lostLine=x.lostCount?`${C.plural(x.lostCount,'player')} left for the draft${x.lost?`, ${name(x.lost.p)} (${perGame(x.lost.s,'PTS')} points) among them`:''}`:'';
+        if(x.recruiting){
+          parts.push(`The case for No. ${x.now.poll} is the freshman class. ${N} signed ${C.plural(x.fresh.length,'recruit')}${x.onlyMost?', more than any other program':''}${eliteText(x)}.`);
+          if(x.starters===0)parts.push(`${N} will need them. ${lostLine?`${cap(lostLine)}, and no`:'No'} starters return.`);
+          else if(st)parts.push(`${N} also ${C.verb(T(x.t),'return')} ${st}${x.star?`, led by ${name(x.star.p)} (${perGame(x.star.s,'PTS')} points a game last season)`:''}.`);
+        }else{
+          if(st)parts.push(`${N} ${C.verb(T(x.t),'return')} ${st}${x.star?`, led by ${name(x.star.p)} (${perGame(x.star.s,'PTS')} points a game last season)`:''}.`);
+          if(x.elite.length)parts.push(`${name(x.elite[0])} headlines a freshman class of ${C.num(x.fresh.length)}, one of the ${elite} highest-rated recruits in the country.`);
+          if(lostLine&&x.starters!=null&&x.starters<=2)parts.push(`${cap(lostLine)}.`);
+        }
         return parts.join(' ');};
       const moves=polled.filter(x=>x.then?.poll>0).map(x=>({x,d:x.then.poll-x.now.poll})),riser=moves.sort((a,b)=>b.d-a.d)[0];
       const champ=champion&&polled.find(x=>x.t.id===champion.id);
       const lead={p:top.star?.p||top.t.roster?.[0],t:top.t};
       push('offseason-preseason-poll',day,{type:'Preseason poll',kind:'preseason-poll',headline:`Preseason poll: ${T(top.t).nickname} ${C.verb(T(top.t),'open')} ${year} at No. 1`,items:ten.filter(x=>x.star).map(x=>({...x.star})),lead,
-        paragraphs:[`The ${year} ${short} preseason poll is out, and ${T(top.t).full} ${C.verb(T(top.t),'open')} the season at No. 1 after going ${rec(top)} last year. ${lineFor(top)}`,
+        paragraphs:[`The ${year} ${short} preseason poll is out, and ${T(top.t).full} ${C.verb(T(top.t),'open')} the season at No. 1 after going ${rec(top)} last year.`,lineFor(top),
           `Rounding out the top five: ${C.listJoin(polled.slice(1,5).map(x=>`${T(x.t).short} (${rec(x)})`))}.`,
           champ?(champ.now.poll<=25?`The defending champions, ${T(champion).full}, start at No. ${champ.now.poll}.`:`The defending champions, ${T(champion).full}, start the season unranked.`):'',
-          riser&&riser.d>=8?`No team climbed further than ${T(riser.x.t).full}, from No. ${riser.x.then.poll} at the end of last season to No. ${riser.x.now.poll}.`:''].filter(Boolean),
-        board:{kicker:'Preseason poll',title:`${year} top 10`,headers:['School','Last season','Starters back','Top returner'],rows:ten.map(x=>[C.teamDisplay(x.t),rec(x),x.starters??'—',x.star?name(x.star.p):'—']),ranked:true},
-        extra:{champion:champion?C.teamDisplay(champion):null,championRank:champ?.now.poll||null,teams:ten.map(x=>({team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,record:rec(x),poll:x.now.poll,starters:x.starters,star:x.star?name(x.star.p):null,starPTS:x.star?perGame(x.star.s,'PTS'):null}))}});
+          deepest&&deepest[0]!==top.t.id&&polled.find(x=>x.t.id===deepest[0])?(d=>`The deepest freshman class belongs to ${T(d.t).full}: ${C.plural(d.fresh.length,'recruit')}${d.elite.length?`, ${C.num(d.elite.length)} of them among the country's highest rated`:''}. ${C.capitalize(T(d.t).nick)} ${C.verb(T(d.t),'start')} at No. ${d.now.poll}.`)(polled.find(x=>x.t.id===deepest[0])):'',
+          riser&&riser.d>=8?`No team climbed further than ${T(riser.x.t).full}, from No. ${riser.x.then.poll} at the end of last season to No. ${riser.x.now.poll}${riser.x.fresh.length>=3?`, with ${C.plural(riser.x.fresh.length,'freshman','freshmen')} arriving${riser.x.elite.length?`, ${C.num(riser.x.elite.length)} of them among the country's highest-rated recruits`:''}`:''}.`:''].filter(Boolean),
+        board:{kicker:'Preseason poll',title:`${year} top 10`,headers:['School','Last season','Starters back','Freshmen','Top returner'],rows:ten.map(x=>[C.teamDisplay(x.t),rec(x),x.starters??'—',x.fresh.length,x.star?name(x.star.p):'—']),ranked:true},
+        extra:{champion:champion?C.teamDisplay(champion):null,championRank:champ?.now.poll||null,teams:ten.map(x=>({team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,record:rec(x),poll:x.now.poll,starters:x.starters,freshmen:x.fresh.length,eliteFreshmen:x.elite.length,recruiting:x.recruiting,star:x.star?name(x.star.p):null,starPTS:x.star?perGame(x.star.s,'PTS'):null}))}});
     }
     return result;
   }
