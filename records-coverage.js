@@ -21,8 +21,10 @@
   function data(league){
     const lookup=C.buildLookups(league),year=C.seasonYear(league),players=new Map(lookup.players);
     for(const p of [...(league.retirees||[]),...(league.hallOfFame||[])])if(!players.has(p.id))players.set(p.id,p);
+    // Only players the save lists as retired are called retired in copy.
+    const retired=new Set([...(league.retirees||[]),...(league.hallOfFame||[])].map(p=>p?.id).filter(id=>id!=null&&!lookup.players.has(id)));
     const snapshots=C.captureSnapshots(league).filter(s=>s.day===lookup.latestDay+1);
-    return {league,lookup,year,players,snapshots};
+    return {league,lookup,year,players,snapshots,retired};
   }
   function periodFor(game){return game.tRound>0?'playoffs':game.gameType===0?'season':null;}
   function contextFor(d,snap){
@@ -50,7 +52,7 @@
     story.statContextVersion=1;return story;
   }
   function candidates(league){
-    const d=data(league),{lookup,year,players}=d,fp=C.buildFingerprint(league),day=lookup.latestDay+1,result=[];
+    const d=data(league),{lookup,year,players,retired}=d,fp=C.buildFingerprint(league),day=lookup.latestDay+1,result=[];
     if(day<1)return result;
     function add(key,type,headline,paragraphs,team,player,evidence,game){
       if(!team||!paragraphs.length)return;
@@ -102,6 +104,17 @@
           [{label:`Single-game ${label}`,value:record.value,detail:period,record:structuredClone(record)}],played.game);
       }
     }
+    // Where a record came from: a season mark has its year; a career mark is
+    // still growing while its holder plays, so it's "held by" until they stop.
+    // Only the save's retirees are called retired (graduated, in college); anyone else just last played.
+    const recordOrigin=(record,scope,holder,league,year)=>{
+      if(scope==='season')return Number.isInteger(record.yr)?`set by ${holder} in ${record.yr}`:`set by ${holder}`;
+      const years=(record.p.stats||[]).filter(s=>s.league===league.leagueType&&Number.isInteger(s.yr)).map(s=>s.yr),last=years.length?Math.max(...years):null;
+      // College players who leave the game graduate; pros retire.
+      const left=league.leagueType===1?'graduated':'retired';
+      if(retired.has(record.p.id))return last!==null?`set by ${holder}, who ${left} in ${last}`:`set by ${holder}, who has since ${left}`;
+      return last!==null&&last<year?`set by ${holder}, who last played in ${last}`:`held by ${holder}`;
+    };
     // Compare current totals with prior seasons and the league's career leaderboard from player histories.
     const careerLeaders=[...players.values()].map(p=>({p,s:history(p,league)})).filter(x=>x.s);
     const prior=[];
@@ -131,7 +144,7 @@
           if(scope==='season'&&(team.season||[]).find(s=>s.yr===year)?.seasonStats?.GP>=league.season?.totalGames)continue;
           const name=C.playerDisplay(player),holder=C.playerDisplay(record.p),title=scope==='season'?'single-season mark':'career lead';
           add(`watch-${scope}-${player.id}-${k.toLowerCase()}-${record.p.id}-${record.s[k]}`,'Record watch',`${name} closes in on ${holder}'s ${title}`,
-            [`${name} is ${C.plural(gap,label.replace(/s$/,''))} shy of ${C.possessive(holder)} ${Number(record.s[k]).toLocaleString('en-US')}, the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record. ${C.surname(name)} is at ${Number(total[k]).toLocaleString('en-US')}${scope==='season'?' this season, with the chase still on':''}.`],team,player,
+            [`${name} is now only ${C.plural(gap,label.replace(/s$/,''))} shy of the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record, ${Number(record.s[k]).toLocaleString('en-US')}, ${recordOrigin(record,scope,holder,league,year)}.`],team,player,
             [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,recordYear:record.yr??null,source:'player.stats'}]);
         }
       }
