@@ -27,11 +27,11 @@ const server=http.createServer((req,res)=>{
   const poor=stories.find(s=>s.playerId===away.roster[0].id);assert.match(poor.headline,/Quiet night for|limited to/);
   await page.locator('.nav a[href="#tv"]').click();await page.locator('#tvStorySelect').selectOption({label:poor.headline},{force:true});
   const transcript=await page.locator('#tvTranscript').textContent();assert.match(transcript,/10 points.*20\.0/);assert.doesNotMatch(transcript,/%|percent/i);
-  const table=page.locator('#tvSegment table');assert.equal(await table.locator('tbody tr').count(),5);assert.match(await table.textContent(),/This game.*Season average/);
-  assert.match(await page.locator('#tvSegment').textContent(),/Featured player/);assert.doesNotMatch(await page.locator('#tvSegment').textContent(),/Player of the game/);
+  const table=page.locator('#tvSegment .tv-board').first();assert.equal(await table.locator('tbody tr').count(),5);assert.match(await table.textContent(),/This game.*Season avg/);
+  assert.match(await page.locator('#tvSegment').textContent(),/Featured/);assert.doesNotMatch(await page.locator('#tvSegment').textContent(),/Player of the game/);
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  assert.ok(await table.getByRole('columnheader',{name:'Season average'}).isVisible());
-  assert.ok((await table.locator('caption').boundingBox()).height<100,'Caption stays readable on phones');
+  assert.ok(await table.getByRole('columnheader',{name:'Season avg'}).isVisible());
+  assert.ok((await table.locator('figcaption').boundingBox()).height<100,'Caption stays readable on phones');
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});await page.locator('#tvSegment').screenshot({path:path.join(root,'artifacts/performance-tv-mobile.png')});
   await upload();assert.equal((await archived()).length,1,'Reimport does not duplicate performance stories');
   await page.reload();await page.waitForFunction(()=>!document.getElementById('saveFile').disabled);

@@ -318,12 +318,6 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .score-team b { font-size: 36px; }
 .score-team:has(img) { grid-template-columns: 64px 1fr auto; }
 .score-team:not(:has(img)) { grid-template-columns: 1fr auto; }
-.box-table-scroll { overflow-x: auto; }
-.box-score table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; }
-.box-score th, .box-score td { padding: 10px 8px; text-align: right; border-bottom: 1px solid #e4e7ec; }
-.box-score th:first-child, .box-score td:first-child { text-align: left; }
-.box-score thead { background: #eef1f6; }
-.box-score h3 { margin-top: 26px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 #tvMute[aria-pressed="true"] { background: #278ec0; color: white; border-color: #278ec0; }
 .hidden, [hidden] { display: none !important; }
@@ -346,7 +340,6 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .results-window:hover .results-track, .results-window:focus .results-track { animation-play-state: paused; }
 @keyframes results-scroll { to { transform: translateX(-50%); } }
 @media(prefers-reduced-motion:reduce) { .results-track { animation: none; } .results-window { overflow-x: auto; } .results-track span + span { display: none; } }
-
 
 /* Studio-inspired entry: dark grid, blue panels and cyan action frames. */
 .brand { color: inherit; text-decoration: none; }
@@ -417,8 +410,6 @@ button:hover, .file-button:hover { background:#1969c3; }
 select { color:#f0f7ff; background:#09284f; border-color:#238bce; }
 .article-headline { color:#f0f7ff; }
 .tv-segment { background:#0d2744; color:#f0f7ff; }
-.box-score thead { background:#123961; }
-.box-score th, .box-score td { border-color:#315579; }
 .status { background:#12344f; color:#f0f7ff; border-color:#238bce; }
 .text-action { color:#79fff4; }
 .archive-heading h1, .newsroom-heading h1 { text-shadow:2px 2px #03101c; }
@@ -478,11 +469,9 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .league-buttons button[aria-pressed="true"] { border-color:#79fff4; background:#1455a5; color:white; }
 
 .league-navigation { display:contents; }
-
-.article-body .box-table-scroll { margin: 24px 0; max-width: 100%; }
 .article-body table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; }
 .article-body th, .article-body td { padding: 9px 12px; border-bottom: 1px solid #345069; text-align: left; }
-.article-body caption, .box-score caption { text-align: left; font-weight: 700; padding: 16px 0 10px; }
+.article-body caption{ text-align: left; font-weight: 700; padding: 16px 0 10px; }
 
 /* Story cards shrink with the viewport; text and facts wrap instead of scrolling sideways. */
 .feed { grid-template-columns:minmax(0,1fr); min-width:0; }
@@ -491,40 +480,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .article-image, .article-image img { max-width:100%; }
 .score-team { min-width:0; }
 .score-team strong { overflow-wrap:anywhere; }
-.box-table-scroll { overflow:visible; min-width:0; max-width:100%; }
-.box-score table { table-layout:fixed; white-space:normal; }
-.box-score th, .box-score td { overflow-wrap:anywhere; }
-@media(max-width:600px) {
-  .box-score table, .box-score tbody { display:block; width:100%; }
-  .box-score thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-  .box-score tbody tr { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:12px 0; border-bottom:1px solid var(--line); }
-  .box-score tbody td { display:block; text-align:left; padding:4px; border:0; }
-  .box-score tbody td::before { content:attr(data-label); display:block; font-size:10px; color:var(--muted); margin-bottom:4px; }
-  .box-score tbody td[data-label="Player"] { grid-column:1 / -1; font-weight:700; }
-}
-
-
-/* Season facts stay readable on phones instead of collapsing into a dense stat wall. */
-.season-facts-meta {
-  display:flex;
-  align-items:baseline;
-  gap:10px;
-  margin:0 0 18px;
-  padding-bottom:12px;
-  border-bottom:1px solid #345069;
-}
-.season-facts-meta strong {
-  font-size:13px;
-  line-height:1.3;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-}
-.season-facts-meta span {
-  color:var(--muted);
-  font-size:13px;
-  font-weight:700;
-}
-.season-facts-table td:first-child { font-weight:700; }
 
 @media(max-width:600px) {
   .tv-segment { padding:20px 16px 22px; }
@@ -533,50 +488,7 @@ a[aria-disabled="true"]:hover { background:inherit; }
     line-height:1.08;
     margin:4px 0 20px;
   }
-  .tv-segment .season-facts-meta {
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:6px 12px;
-    align-items:center;
-    margin-bottom:16px;
-    padding-bottom:14px;
-  }
-  .tv-segment .season-facts-meta strong {
-    font-size:12px;
-    line-height:1.35;
-  }
-  .tv-segment .season-facts-meta span {
-    font-size:12px;
-  }
-  .season-facts-scroll {
-    margin:0;
-  }
-  .box-score .season-facts-table tbody tr {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:14px 18px;
-    padding:4px 0 2px;
-    border-bottom:0;
-  }
-  .box-score .season-facts-table tbody td {
-    padding:8px 0;
-    min-width:0;
-    font-size:15px;
-    line-height:1.25;
-  }
-  .box-score .season-facts-table tbody td::before {
-    font-size:10px;
-    line-height:1.2;
-    letter-spacing:.05em;
-    text-transform:uppercase;
-    margin-bottom:5px;
-  }
-  .box-score .season-facts-table tbody td[data-label="Player"] {
-    grid-column:1 / -1;
-    padding-bottom:10px;
-    font-size:17px;
-  }
 }
-
 
 /* HoopWire TV behaves like a paused video until the user starts the episode. */
 .tv-stage { overflow:hidden; cursor:pointer; }
@@ -658,7 +570,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
   .tv-stage-play-label { font-size:12px; }
 }
 
-
 /* Broadcast lower-third / story graphics. The TV view should read like a show, not an admin report. */
 .tv-segment {
   margin-top:18px;
@@ -712,40 +623,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-story-details .box-score {
   padding:20px 24px 24px;
 }
-.tv-feature-name {
-  margin-bottom:14px;
-  color:#b9d9f4;
-  font-size:14px;
-  font-weight:800;
-}
-.tv-stat-grid {
-  display:grid;
-  grid-template-columns:repeat(6,minmax(0,1fr));
-  gap:10px;
-}
-.tv-stat-card {
-  min-width:0;
-  padding:15px 12px 13px;
-  border:1px solid #315579;
-  background:#091b30;
-  text-align:center;
-}
-.tv-stat-card strong {
-  display:block;
-  color:#fff;
-  font-size:clamp(22px,3vw,32px);
-  line-height:1;
-  font-variant-numeric:tabular-nums;
-}
-.tv-stat-card span {
-  display:block;
-  margin-top:7px;
-  color:#8fb4d3;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-}
 .tv-matchup-grid {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -785,49 +662,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
   letter-spacing:.06em;
   text-transform:uppercase;
 }
-.tv-fact-grid {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
-}
-.tv-fact-card {
-  min-width:0;
-  padding:16px;
-  border:1px solid #315579;
-  background:#091b30;
-}
-.tv-fact-card > strong {
-  display:block;
-  margin-bottom:12px;
-  color:#fff;
-  font-size:16px;
-  line-height:1.25;
-}
-.tv-fact-values {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(64px,1fr));
-  gap:14px 16px;
-}
-.tv-fact-values span {
-  display:grid;
-  align-content:start;
-  gap:4px;
-  min-width:0;
-}
-.tv-fact-values small {
-  color:#8fb4d3;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.07em;
-  text-transform:uppercase;
-}
-.tv-fact-values b {
-  color:#f0f7ff;
-  font-size:18px;
-  line-height:1.2;
-  overflow-wrap:anywhere;
-  font-variant-numeric:tabular-nums;
-}
 .tv-story-details .box-result {
   margin-bottom:10px;
   color:#79fff4;
@@ -839,37 +673,8 @@ a[aria-disabled="true"]:hover { background:inherit; }
   border:1px solid #315579;
   background:#091b30;
 }
-.tv-story-details .box-score h3 {
-  margin:20px 0 8px;
-  color:#fff;
-  font-size:14px;
-}
-.tv-story-details .box-score table {
-  background:#091b30;
-}
-.tv-story-details .box-score thead {
-  background:#123961;
-}
-.tv-postgame-highlights { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:18px; }
-.box-score table.performance-comparison { display:table; width:100%; table-layout:fixed; }
-.box-score .performance-comparison caption { caption-side:top; padding:12px 0; text-align:left; font-weight:700; line-height:1.5; }
-.box-score .performance-comparison thead { display:table-header-group; position:static; width:auto; height:auto; overflow:visible; clip-path:none; }
-.box-score .performance-comparison tbody { display:table-row-group; }
-.box-score .performance-comparison tr { display:table-row; }
-.box-score .performance-comparison th, .box-score .performance-comparison td { display:table-cell; padding:10px 8px; text-align:right; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
-.box-score .performance-comparison th:first-child { text-align:left; text-transform:capitalize; }
-.box-score .performance-comparison td::before { content:none; }
-.tv-postgame-player { min-width:0; padding:16px; background:#091b30; border-left:3px solid #ee3546; }
-.tv-postgame-label { display:block; color:#8fb4d3; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; overflow-wrap:anywhere; }
-.tv-story-details .tv-postgame-player h3 { margin:8px 0 14px; font-size:20px; overflow-wrap:anywhere; }
-.tv-postgame-player .tv-stat-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
-.tv-postgame-player .tv-stat-card { border:0; padding:8px 4px; background:#102b47; }
-.tv-postgame-shooting { margin:12px 0 0; color:#b9d9f4; font-size:12px; font-variant-numeric:tabular-nums; }
 @media(max-width:600px) {
   .tv-intro-tagline { max-width:calc(100% - 40px); }
-  .tv-postgame-highlights { grid-template-columns:1fr; }
-  .tv-story-details .tv-postgame-player h3 { font-size:18px; }
-  .tv-postgame-player { padding:12px; }
 }
 .tv-playback {
   display:flex;
@@ -892,10 +697,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-playback .tv-audio-button {
   padding:8px;
 }
-@media(max-width:760px) {
-  .tv-stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .tv-fact-grid { grid-template-columns:1fr; }
-}
 @media(max-width:600px) {
   .tv-panel { padding:14px; }
   .tv-story-header { padding:17px 16px 15px; }
@@ -905,9 +706,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
   }
   .tv-season-graphic,
   .tv-story-details .box-score { padding:14px 16px 18px; }
-  .tv-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-  .tv-stat-card { padding:13px 9px 11px; }
-  .tv-stat-card strong { font-size:24px; }
   .tv-matchup-grid { grid-template-columns:1fr; gap:8px; }
   .tv-matchup-card { padding:13px 12px; }
   .tv-matchup-teams strong { font-size:14px; }
@@ -918,84 +716,50 @@ a[aria-disabled="true"]:hover { background:inherit; }
   #tvNext { grid-column:2; }
 }
 
-
-/* Season review stat tables */
-.season-summary-table-wrap {
-  max-width:100%;
-  overflow:hidden;
-  border:1px solid var(--line);
-  border-radius:10px;
-}
-.article-body .season-summary-table {
-  width:100%;
-  border-collapse:collapse;
-  table-layout:fixed;
-  white-space:normal;
-  font-family:'Segoe UI',Arial,sans-serif;
-  font-size:15px;
-  font-variant-numeric:tabular-nums;
-}
-.article-body .season-summary-table thead {
-  background:#123553;
-}
-.article-body .season-summary-table th,
-.article-body .season-summary-table td {
-  padding:11px 10px;
-  border-bottom:1px solid var(--line);
-  text-align:right;
-}
-.article-body .season-summary-table th:first-child,
-.article-body .season-summary-table td:first-child {
-  text-align:left;
-}
-.article-body .season-summary-table thead th {
-  color:var(--muted);
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-}
-.article-body .season-summary-table tbody th {
-  color:var(--ink);
-  font-weight:700;
-}
-.article-body .season-summary-table tbody td {
-  color:#c4d9ed;
-}
-.article-body .season-summary-table tbody tr:last-child th,
-.article-body .season-summary-table tbody tr:last-child td {
-  border-bottom:0;
-}
-
+/* Season stat graphics: a broadcast board, not a stack of boxes. */
+.tv-board { margin:0; border:1px solid #23466b; background:linear-gradient(180deg,#0b2038,#081829); }
+.tv-board-head { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; padding:12px 16px 11px; border-bottom:2px solid #ee3546; }
+.tv-board-kicker { color:#79fff4; font-size:10px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+.tv-board-title { color:#fff; font-size:15px; font-weight:800; }
+.tv-board-scroll { overflow-x:auto; }
+.tv-board-table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.tv-board-table thead th { padding:10px 14px 8px; color:#8fb4d3; font-size:10px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; white-space:nowrap; border-bottom:1px solid #23466b; }
+.tv-board-table :is(th,td) { text-align:right; }
+.tv-board-table :is(th,td).is-text, .tv-board-table th.is-name, .tv-board-table thead th:first-child { text-align:left; }
+.tv-board-table tbody :is(th,td) { padding:13px 14px; border-top:1px solid #142d48; color:#dce9f7; font-size:15px; font-weight:600; white-space:nowrap; }
+.tv-board-table tbody tr:first-child :is(th,td) { border-top:0; }
+.tv-board-table tbody tr:nth-child(even) :is(th,td) { background:#0a1c31; }
+.tv-board-table tbody th.is-name { color:#fff; font-weight:800; white-space:normal; }
+.tv-board-table tbody td.is-text { color:#c9dcf0; white-space:normal; }
+.tv-board-table td.is-lead { color:#79fff4; font-weight:900; }
+.tv-board-table td.is-empty { color:#4f6f8f; }
+.tv-board-table .is-rank { width:1%; padding-right:4px; color:#6f93b5; font-weight:900; text-align:left; }
+.tv-board-table tbody tr:first-child th.is-name { box-shadow:inset 3px 0 #ee3546; }
+.tv-name-short { display:none; white-space:nowrap; }
+.tv-callout { display:grid; gap:6px; padding:20px 22px; border:1px solid #23466b; border-left:4px solid #ee3546; background:linear-gradient(180deg,#0b2038,#081829); }
+.tv-callout-label { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.tv-callout-value { color:#fff; font-size:clamp(44px,9vw,68px); font-weight:900; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.tv-callout-context { color:#abc8e6; font-size:14px; font-weight:700; }
 @media(max-width:600px) {
-  .article-body .season-summary-table {
-    width:100%;
-    min-width:0;
-    table-layout:fixed;
-    font-size:10px;
-  }
-  .article-body .season-summary-table th,
-  .article-body .season-summary-table td {
-    padding:8px 3px;
-    overflow-wrap:anywhere;
-    word-break:normal;
-  }
-  .article-body .season-summary-table thead th {
-    font-size:9px;
-    line-height:1.15;
-    letter-spacing:0;
-  }
-  .article-body .season-summary-table tbody th {
-    font-size:11px;
-    line-height:1.2;
-  }
-  .article-body .season-summary-table[aria-label="Top three players"] th:first-child {
-    width:30%;
-  }
-  .article-body .season-summary-table[aria-label="Top three teams"] th:first-child {
-    width:34%;
-  }
-  .article-body .season-summary-table[aria-label="Top three teams"] th:nth-child(2) {
-    width:18%;
-  }
+  .tv-board-head { padding:11px 12px 10px; }
+  .tv-season-graphic { padding-left:10px; padding-right:10px; }
+  .tv-board-table thead th { padding:9px 4px 7px; font-size:9px; letter-spacing:.04em; }
+  .tv-board-table tbody :is(th,td) { padding:11px 4px; font-size:13.5px; }
+  .tv-board-table :is(th,td):first-child { padding-left:10px; }
+  .tv-board-table :is(th,td):last-child { padding-right:10px; }
+  .tv-board-table .tv-name-full:has(+ .tv-name-short) { display:none; }
+  .tv-name-short { display:inline; }
+}
+.tv-board-table th.is-name .tv-name-sub { display:block; margin-top:2px; color:#7f9fbe; font-size:11px; font-weight:700; letter-spacing:.02em; }
+.tv-name-tag { display:inline-block; margin-left:8px; padding:2px 5px 1px; border-radius:2px; background:#ee3546; color:#fff; font-size:9px; font-weight:900; letter-spacing:.08em; vertical-align:2px; text-transform:uppercase; }
+.tv-story-details .box-score .tv-board { margin-top:18px; }
+.tv-board + .tv-board { margin-top:16px; }
+/* Articles carry the same boards, in the UI face rather than the body serif. */
+.article-graphic { margin:28px 0 4px; padding:0; font-family:'Segoe UI',Arial,sans-serif; }
+.season-summary .tv-board { margin-top:6px; font-family:'Segoe UI',Arial,sans-serif; }
+@media(max-width:600px) {
+  .tv-board-table .is-optional { display:none; }
+  .tv-story-details .box-score { padding-left:10px; padding-right:10px; }
+  .tv-name-tag { margin-left:5px; padding:1px 4px; font-size:8px; }
+  .tv-board-table th.is-name .tv-name-sub { font-size:10px; }
 }

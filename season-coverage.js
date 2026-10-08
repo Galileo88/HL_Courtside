@@ -329,6 +329,9 @@
       const person=snapshot.featuredPlayer;
       const postseason=story.statsPeriod==='finals'||story.statsPeriod==='playoffs'||snapshot.tables?.some(t=>t.label==='Playoff player statistics');
       const stats=featuredStatsForStory(story);
+      // One game (a title game) is a box-score line: totals, no games played.
+      if(stats?.GP===1)return {label:'Title game statistics',single:true,headers:['Player','PTS','REB','AST','STL','BLK','FG%','3P%'],
+        rows:[[C.playerDisplay({fn:person.name}),...['PTS','REB','AST','STL','BLK'].map(k=>Number.isFinite(stats[k])?stats[k]:'—'),pct(stats,'FGM','FGA'),pct(stats,'TPM','TPA')]]};
       if(stats){const table=playerTable(postseason?'Postseason player statistics':'Player season statistics',[{p:{fn:person.name},s:stats}]);return table;}
     }
     return {headers:snapshot?.headers||[],rows:(snapshot?.rows||[]).slice(0,5)};

@@ -176,3 +176,13 @@ test('team review headlines add something the record does not already say',()=>{
   assert.ok(headlines.length>0);
   for(const h of headlines){assert.doesNotMatch(h,/winning season|losing season|(?:above|below|over|under) \.500|a winning record/i,h);assert.match(h,/review: /);}
 });
+test('a title-game award line shows game totals without games played',()=>{
+  const story={eventKey:'award-3-1',type:'Award announcement',statsPeriod:'finals',seasonSnapshot:{featuredPlayer:{name:'Herman Peterson',
+    finalsStats:{GP:1,PTS:17,REB:13,AST:2,STL:0,BLK:0,FGM:7,FGA:8,TPM:0,TPA:1},regularStats:{GP:32,PTS:700,REB:200,AST:50,STL:10,BLK:5,FGM:300,FGA:500,TPM:5,TPA:20}}}};
+  const facts=S.factsForStory(story);
+  assert.equal(facts.single,true);assert.ok(!facts.headers.includes('GP'));assert.ok(!facts.headers.includes('PPG'));
+  assert.deepEqual(facts.rows[0].slice(0,4),['Herman Peterson',17,13,2]);assert.equal(facts.rows[0][6],'87.5%');
+  // A multi-game Finals line keeps games played and per-game rates.
+  story.seasonSnapshot.featuredPlayer.finalsStats={GP:4,PTS:117,REB:30,AST:3,STL:2,BLK:1,FGM:40,FGA:58,TPM:9,TPA:13};
+  const series=S.factsForStory(story);assert.ok(series.headers.includes('GP'));assert.ok(series.headers.includes('PPG'));
+});
