@@ -63,7 +63,6 @@ body {
 .tv-panel { margin-top: 22px; background: #0b1425; color: #f3f6fb; padding: 24px; }
 .tv-title { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
 .tv-title h1 { margin: 0; font-size: 28px; font-style: italic; }
-.tv-badge { background: var(--red); padding: 8px 12px; font-size: 11px; font-weight: 900; letter-spacing: 1px; }
 .tv-studio { margin: 0; }
 .tv-stage { position: relative; }
 .tv-stage > img { display: block; }
