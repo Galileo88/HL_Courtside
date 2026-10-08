@@ -58,14 +58,52 @@
   function shadow(ctx, x, foot, w = 11) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, foot - 2, w, 4, 0, 0, Math.PI * 2); ctx.fill(); }
   // One 32 x 32 cell of a three-column atlas.
   const cell = (ctx, image, index, x, y, size = 32, cols = 3) => ctx.drawImage(image, index % cols * 32, Math.floor(index / cols) * 32, 32, 32, x, y, size, size);
-  async function arena(ctx, scene, crowd) {
-    const floor = await window.HoopWireCourt.render(scene.team, { includeHoops: false });
+  // The game's broadcast camera: an elevated view from beyond the near
+  // sideline, so the floor recedes and the far stands rise behind the court.
+  // The floor is projected row by row; people and chairs stand at their
+  // projected spot at whole-pixel scale. focus is the floor point the camera
+  // frames, at 2x there, the native scale of the wide action shots.
+  const STANDS_BASE = 310, RANGE = 520, LENS = 2 * RANGE, HEIGHT = 240, RAKE = 55 * Math.PI / 180;
+  async function arena(scene, crowd, [camX, focusY]) {
+    const team = scene.team, floor = await window.HoopWireCourt.render(team, { includeHoops: false });
+    const plane = document.createElement('canvas'); plane.width = 2048; plane.height = 1024;
+    const p = plane.getContext('2d'); p.imageSmoothingEnabled = false;
     // Outside the apron the game shows its dark arena floor, not the court image's margin.
-    ctx.fillStyle = '#141020'; ctx.fillRect(0, 0, 2048, 1024);
-    ctx.fillStyle = '#262439'; ctx.fillRect(COURT[0] + 16, COURT[1] + 32, 992, 448);
-    ctx.drawImage(floor.canvas, 151, 55, 722, 402, COURT[0] + 151, COURT[1] + 55, 722, 402);
-    ctx.drawImage(tinted(art[crowd], teamColor(scene.team, 0, '#147dff')), 0, CROWD_TOP);
-    return floor.customCourt;
+    p.fillStyle = '#141020'; p.fillRect(0, 0, 2048, 1024);
+    p.fillStyle = '#262439'; p.fillRect(COURT[0] + 16, COURT[1] + 32, 992, 448);
+    p.drawImage(floor.canvas, 151, 55, 722, 402, COURT[0] + 151, COURT[1] + 55, 722, 402);
+    const canvas = document.createElement('canvas'); canvas.width = 768; canvas.height = 432;
+    const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    const near = focusY + RANGE, horizon = 300 - LENS * HEIGHT / RANGE;
+    const project = (wx, wy) => { const z = near - wy, s = LENS / z; return [384 + (wx - camX) * s, horizon + LENS * HEIGHT / z, s]; };
+    ctx.fillStyle = '#0c0a14'; ctx.fillRect(0, 0, 768, 432);
+    const top = Math.floor(project(camX, STANDS_BASE)[1]);
+    for (let y = Math.max(0, top); y < 432; y++) {
+      const z = LENS * HEIGHT / (y + .5 - horizon), wy = near - z, s = LENS / z;
+      ctx.drawImage(plane, camX - 384 / s, Math.floor(wy), 768 / s, 1, 0, y, 768, 1);
+    }
+    // The far stands: a raked plane rising back from the far apron, drawn row
+    // by row like the floor, so each row of fans sits higher and farther away.
+    const fans = tinted(art[crowd], teamColor(team, 0, '#147dff')), rows = STANDS_BASE - CROWD_TOP, zBase = near - STANDS_BASE;
+    const at = v => { const d = rows - v, z = zBase + d * Math.cos(RAKE); return [horizon + LENS * (HEIGHT - d * Math.sin(RAKE)) / z, LENS / z]; };
+    for (let v = 0; v < rows; v++) {
+      const [y0, s] = at(v), [y1] = at(v + 1), top = Math.floor(y0), h = Math.ceil(y1) - top;
+      if (h > 0) ctx.drawImage(fans, camX - 384 / s, v, 768 / s, 1, 0, top, 768, h);
+    }
+    return { canvas, ctx, project, customCourt: floor.customCourt };
+  }
+  // A person or prop on the floor at (wx, wy), at the projected whole-pixel scale.
+  function stand(ctx, project, wx, wy) { const [x, y, s] = project(wx, wy); return [x, y, Math.max(1, Math.round(s))]; }
+  function placed(ctx, project, list) {
+    for (const a of list.filter(a => a.data).sort((a, b) => a.foot - b.foot)) {
+      const [x, y, k] = stand(ctx, project, a.x, a.foot);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, y - k, 11 * k, 3 * k, 0, 0, Math.PI * 2); ctx.fill();
+      const tile = document.createElement('canvas'); tile.width = 128; tile.height = 168;
+      window.HoopWirePlayer.draw(tile, a.data, a.team, 0, a.frame, a.pose, a.facing, {});
+      ctx.drawImage(tile, Math.round(x - 16 * k), Math.round(y - 42 * k), 32 * k, 42 * k);
+      a.screen = [x, y, k];
+    }
+    return list;
   }
   function depth(ctx, list) { list.filter(a => a.data).sort((a, b) => a.foot - b.foot).forEach(a => { shadow(ctx, a.x, a.foot); person(ctx, a.data, a.team, a.pose, a.frame, a.x, a.foot, a.facing); }); }
 
@@ -107,34 +145,35 @@
     },
     // A rough season: a thin crowd, a quiet bench, the coach on the sideline.
     async poor(scene, rand) {
-      const camera = [700, 250, 384, 216], { canvas, ctx } = stage(camera);
-      const customCourt = await arena(ctx, scene, scene.record && scene.record[0] / Math.max(1, scene.record[0] + scene.record[1]) < .3 ? 'crowd-0' : 'crowd-50');
-      // The bench on the sideline, under the stands: chairs, a few players sitting.
+      const crowd = scene.record && scene.record[0] / Math.max(1, scene.record[0] + scene.record[1]) < .3 ? 'crowd-0' : 'crowd-50';
+      const { canvas, ctx, project, customCourt } = await arena(scene, crowd, [880, 350]);
+      // The bench on the far sideline: chairs, a few players sitting, the coach in front.
       const seat = 334, sitters = (scene.players || []).slice(0, 3);
-      for (const x of [760, 786, 812, 838, 864, 890, 916, 942]) cell(ctx, art.chair, 0, x - 16, seat - 30);
-      [786, 864, 916].forEach((x, i) => person(ctx, sitters[i], scene.team, 'bench-idle', i % 4, x, seat + 2, 'left'));
-      depth(ctx, [{ data: scene.coach, team: scene.team, pose: 'idle', frame: 0, x: 968, foot: 372, facing: 'left' }]);
-      const light = ctx.createRadialGradient(968, 352, 12, 968, 352, 260);
-      light.addColorStop(0, 'rgba(0,0,0,.05)'); light.addColorStop(1, 'rgba(6,9,20,.55)');
-      ctx.fillStyle = light; ctx.fillRect(...camera);
+      for (const x of [776, 802, 828, 854, 880, 906, 932, 958]) { const [sx, sy, k] = stand(ctx, project, x, seat); cell(ctx, art.chair, 0, Math.round(sx - 16 * k), Math.round(sy - 32 * k), 32 * k); }
+      placed(ctx, project, [802, 880, 932].map((x, i) => ({ data: sitters[i], team: scene.team, pose: 'bench-idle', frame: i % 4, x, foot: seat + 2, facing: 'left' })));
+      placed(ctx, project, [{ data: scene.coach, team: scene.team, pose: 'idle', frame: 0, x: 900, foot: 372, facing: 'left' }]);
+      const [cx, cy] = project(900, 372), light = ctx.createRadialGradient(cx, cy - 40, 12, cx, cy - 40, 520);
+      light.addColorStop(0, 'rgba(0,0,0,.04)'); light.addColorStop(1, 'rgba(6,9,20,.55)');
+      ctx.fillStyle = light; ctx.fillRect(0, 0, 768, 432);
       return { canvas, extra: { customCourt } };
     },
     // A good season: a full house, confetti, the coach and the stars at center court.
     async good(scene, rand) {
-      const camera = [832, 224, 384, 216], { canvas, ctx } = stage(camera);
-      const customCourt = await arena(ctx, scene, 'crowd-100');
+      const { canvas, ctx, project, customCourt } = await arena(scene, 'crowd-100', [1024, 404]);
       const players = scene.players || [];
-      depth(ctx, [
-        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: 912, foot: 392, facing: 'right' },
-        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: 1132, foot: 396, facing: 'left' },
-        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: 966, foot: 410, facing: 'right' },
-        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: 1080, foot: 412, facing: 'left' },
-        { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: 1024, foot: 420, facing: 'left' }
+      const list = placed(ctx, project, [
+        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: 930, foot: 390, facing: 'right' },
+        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: 1118, foot: 392, facing: 'left' },
+        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: 972, foot: 408, facing: 'right' },
+        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: 1076, foot: 410, facing: 'left' },
+        { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: 1024, foot: 420, facing: 'left', coach: true }
       ]);
-      if (scene.champion) ctx.drawImage(art.trophy, 1012, 352, 24, 24);
-      // The game's confetti, in the team's colors.
+      const coach = list.find(a => a.coach)?.screen;
+      // The trophy, raised over the coach's head.
+      if (scene.champion && coach) { const [x, y, k] = coach; ctx.drawImage(art.trophy, Math.round(x - 12 * k), Math.round(y - 60 * k), 24 * k, 24 * k); }
+      // The game's confetti, in the team's colors, over the whole frame.
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
-      for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 96 + (i % 5) * 96 + rand() * 40, camera[1] - 80 + Math.floor(i / 5) * 110 + rand() * 40, 160, 160);
+      for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], -80 + (i % 5) * 190 + rand() * 60, -100 + Math.floor(i / 5) * 230 + rand() * 60, 320, 320);
       return { canvas, extra: { customCourt } };
     }
   };
@@ -161,7 +200,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 2, seed: id, kind: `coach-${context.coachScene}`,
+      version: 3, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court }),
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
