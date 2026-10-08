@@ -135,9 +135,10 @@
     let customCourt=null,sceneInputs=scene;
     if (String(scene.kind).startsWith('coach-')) {
       // Coach stories: hiring, firing, a rough season, a good one.
-      const drawn=await window.HoopWireCoachScenes.draw(ctx,scene,art);
-      sceneInputs={...scene,...(drawn.pressLogoData!==undefined?{pressLogoData:drawn.pressLogoData,pressLeagueLogoData:drawn.pressLeagueLogoData}:{})};
-      customCourt=drawn.customCourt||null;
+      const drawn=await window.HoopWireCoachScenes.draw(scene,art),extra=drawn.extra||{};
+      ctx.drawImage(drawn.canvas,0,0);
+      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{})};
+      customCourt=extra.customCourt||null;
     } else if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
       const press=stage.getContext('2d');press.imageSmoothingEnabled=false;
