@@ -204,6 +204,8 @@
     for(const list of quiet.values())if(list.length>=3){roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0]),own:n=>angle.has(n)});for(const n of list)if(!angle.has(n))inRoundup.set(n,`roundup-${list[0].type}-${list[0].phase}-all`);}
     for(const event of events.filter(n=>!bundled.has(n))){
       const info=event.data||{},jersey=info.retiredNumber;
+      // An award story's award: the league's entry, with its trophy sprite and colors.
+      const awardOf=data=>(league.awards||[]).find(a=>a.id===data.awardId)||null;
       let coachEvent=[26,27,28,29].includes(event.type);
       const personId=event.type===25&&jersey?.pid>0?jersey.pid:event.pid;
       const player=(coachEvent?coaches:players).get(personId)||([22,25].includes(event.type)?coaches.get(personId):null);
@@ -295,7 +297,7 @@
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
-      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':null,potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
+      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':event.type===12&&featured&&awardOf(info)?'award':null,...(event.type===12&&featured&&awardOf(info)?{awardee:featured,award:awardOf(info)}:{}),potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
     }
     return result;
   }

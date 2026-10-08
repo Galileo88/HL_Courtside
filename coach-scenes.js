@@ -6,8 +6,10 @@
 (() => {
   "use strict";
   const art = {};
+  // The game's award statuettes, by the spriteName the league's awards name.
+  const AWARDS = ['mvp', 'fmvp', 'dpoy', 'roty', '6moty', 'mip', 'asmvp', 'trophy', 'poty', 'mop', 'all_star'];
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', 'cameraman-body', 'cameraman-head', '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', 'cameraman-body', 'cameraman-head', ...AWARDS.map(a => `award-${a}`), '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -89,7 +91,7 @@
   // red channel. Primary (the column) takes 237, 231 at 1.3x and 229 at 0.7x;
   // secondary (the ball) 163, 219 and 103; base 38, 57 and 20; plate 227 and 221 at 1.3x.
   function trophy(colors) {
-    const image = ['championship', 'natty'].includes(colors?.sprite) ? art[colors.sprite] : art.championship;
+    const image = ['championship', 'natty'].includes(colors?.sprite) ? art[colors.sprite] : AWARDS.includes(colors?.sprite) ? art[`award-${colors.sprite}`] : art.championship;
     if (!colors) return image;
     const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
     const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
@@ -275,14 +277,27 @@
       hang([122, 52, 48, 46], primary, secondary, mark);
       hang([214, 52, 48, 46], '#f2f2f2', '#13285c', leagueMark);
       const base = stageFloor(ctx, teamColor(team, 0, '#1d428a'));
-      depth(ctx, [{ data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
+      // An award puts the player at the podium in a suit, the commissioner
+      // beside them presenting, and the award's statuette, in the award's own
+      // colors, on a pedestal across the stage.
+      const award = scene.kind === 'coach-award';
+      depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
-      depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
+      if (award) {
+        shadow(ctx, 140, base - 5, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 6, 'right');
+        const [px0, top] = [236, base - 22];
+        ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(px0 + 2, top + 2, 20, 22);
+        ctx.fillStyle = '#14182a'; ctx.fillRect(px0, top, 20, 22); ctx.fillStyle = '#1f2540'; ctx.fillRect(px0 + 2, top + 2, 16, 20);
+        ctx.fillStyle = '#c9a24a'; ctx.fillRect(px0 - 1, top, 22, 2);
+        ctx.drawImage(trophy(scene.award), px0 - 6, top - 30, 32, 32);
+      } else depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
       // TV cameras at either side of the stage, aimed at the podium.
       cameraman(ctx, rand, 80, base - 2, 'right'); cameraman(ctx, rand, 288, base - 2, 'left');
       audience(ctx, rand, null, [[180, 4], [202, 14]], { cheer: 0, chairs: true, spacing: 20 });
       return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: leagueMark?.data || scene.pressLeagueLogoData || null } };
     },
+    // A player award: the press conference stage, the player at the podium.
+    award(scene, rand) { return scenes.hire(scene, rand); },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
       // A tight 3x shot on the coach and the lockers either side, like the press conference.
@@ -411,6 +426,10 @@
     return (scenes[style] || scenes.hire)(scene, seeded(scene.seed || 'coach'), sceneArt);
   }
   function caption(scene) {
+    if (scene.kind === 'coach-award') {
+      const C = window.HoopWireCore, who = scene.awardee ? C.playerDisplay(scene.awardee) : 'The winner';
+      return `${who} of the ${C.teamDisplay(scene.team)} at the podium with the ${scene.season} ${scene.award?.name || 'award'} trophy.`;
+    }
     if (scene.kind === 'coach-draft') {
       const C = window.HoopWireCore, who = scene.draftee ? C.playerDisplay(scene.draftee) : 'The pick';
       const round = scene.pick?.rd ? ` in round ${scene.pick.rd}` : '';
@@ -453,8 +472,10 @@
       // The broadcast crew at the table works for the arena's home team.
       broadcasters: ((context.venue || team)?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).slice(0, 4).map(p => ({ ...snap(p), isCoach: true })),
       draftee: context.draftee ? { ...snap(context.draftee), wearsSuit: true, isCoach: false } : null, pick: context.pick || null,
+      awardee: context.awardee ? { ...snap(context.awardee), wearsSuit: true, isCoach: false } : null,
+      award: context.award ? { name: context.award.name, sprite: context.award.spriteName, primary: context.award.primaryC, secondary: context.award.secondaryC, base: context.award.baseC, plate: context.award.plateC } : null,
       players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, season
     };
   }
-  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft'] };
+  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft', 'coach-award'] };
 })();
