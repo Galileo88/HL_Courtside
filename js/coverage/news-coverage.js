@@ -1065,7 +1065,7 @@
         paragraphs,
         importance: worth[kind] || 90,
         templateVersion: 5,
-        editorialVersion: 3,
+        editorialVersion: 4,
         quotesEnabled: false,
         leagueName: league.leagueName,
         createdAt: new Date().toISOString(),
@@ -1153,7 +1153,6 @@
             `${name(lead.p)} of ${T(lead.t).full} heads a senior class that has played its last college game. ${cap(last(lead.p))} averaged ${line(lead)} in a final season.`,
             `Also out of eligibility: ${C.listJoin(done.slice(1, 4).map(x => `${name(x.p)} (${T(x.t).short}, ${perGame(x.s, 'PTS')} points)`))}.`,
             champ ? `${cap(T(champion).full)} ${C.verb(T(champion), 'send')} ${name(champ.p)} out a champion.` : '',
-            `Draft night will decide who keeps playing.`,
           ].filter(Boolean),
           board: {
             kicker: 'Senior class',

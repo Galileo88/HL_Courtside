@@ -143,7 +143,10 @@ test('a finished college season keeps its beat on the pro calendar with save-bac
   );
   assert.ok(rows.every(s => s.day === 33 && s.seasonSnapshot.board.rows.length >= 3));
   assert.ok(rows[1].seasonSnapshot.roundup.items.every(x => x.year === 'Sr.'));
-  assert.doesNotMatch(rows.flatMap(s => s.paragraphs).join(' '), /projected|counted as gone|returning next season/);
+  assert.doesNotMatch(
+    rows.flatMap(s => s.paragraphs).join(' '),
+    /projected|counted as gone|returning next season|will decide who keeps playing/
+  );
   assert.ok(N.candidates(college, save.seasonLeagues).every(x => x.story.day >= 11 && x.story.day <= 33));
   college.season.news.push(
     {
