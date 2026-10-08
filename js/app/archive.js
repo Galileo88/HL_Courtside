@@ -236,6 +236,10 @@
       Number.isInteger(s.day) &&
       s.day > 0 &&
       ((Number.isInteger(s.gid) && s.gid > 0 && s.id === `${s.fingerprint}:${s.season}:game:${s.gid}`) ||
+        (s.kind === 'performance' &&
+          Number.isInteger(s.gid) &&
+          Number.isInteger(s.playerId) &&
+          s.id === `${s.fingerprint}:${s.season}:performance:${s.gid}:${s.playerId}`) ||
         (s.kind === 'season' &&
           typeof s.eventKey === 'string' &&
           /^[a-z0-9-]+$/.test(s.eventKey) &&
