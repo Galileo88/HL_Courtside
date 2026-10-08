@@ -508,7 +508,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?5:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -568,12 +568,25 @@
         const identity=margin===null?null:defendingRank<=3&&scoringRank<=3?'both':defendingRank<=3&&defendingRank<scoringRank?'defense':scoringRank<=3&&scoringRank<defendingRank?'offense':null;
         const playoff=entrants.has(r.team.id);
         const mark=`${record.W}-${record.L}`,a=article(mark);
-        const headline=winPct>=.7?`${T.nickname} review: ${a} ${mark} season that set the standard`:
-          record.W>record.L?`${T.nickname} review: ${playoff?`${mark} and a ticket to the postseason`:identity==='defense'?`${mark}, built on defense`:identity==='offense'?`${mark}, powered by the offense`:winPct>=.6?`${a} ${mark} season worth building on`:`${mark}, and a winning season to show for it`}`:
-          record.W===record.L?`${T.nickname} review: a .500 season, and the questions that come with it`:
-          winPct<=.3?`${T.nickname} review: ${a} ${mark} season to forget`:`${T.nickname} review: ${mark} and searching for answers`;
         const run=playoffRun(r.team.id,bracket,lookup,league.leagueType===1),exit=run.find(x=>x.done&&!x.won),title=winner?.id===r.team.id,alive=run.length&&!exit&&!title;
         const prior=(r.team.season||[]).find(x=>x.yr===year-1)?.seasonStats,change=prior&&Number.isInteger(prior.W)&&prior.W+prior.L>0?record.W-prior.W:null;
+        // The record is in every headline, so the rest of it has to say what
+        // the record can't: how it ended, how it moved, or where it ranked.
+        const standing=1+records.filter(x=>x.year.seasonStats.W>record.W).length,shared=records.filter(x=>x.year.seasonStats.W===record.W).length>1;
+        const swing=change!==null&&Math.abs(change)>=8?`${[8,11,18].includes(Math.abs(change))||String(Math.abs(change)).startsWith('8')?'an':'a'} ${C.num(Math.abs(change))}-win ${change>0?'jump':'drop'} from last season`:null;
+        const review=text=>`${T.nickname} review: ${text}`,finalRound=exit&&['Finals','title game'].includes(exit.label);
+        const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
+        const headline=title?review(record.W>record.L?`${mark} and a championship`:`${mark}, then a championship`):
+          winPct>=.7?review(exit?`${a} ${mark} season that ended in the ${exit.label}`:`${a} ${mark} season that set the standard`):
+          record.W>record.L?review(finalRound?`${mark} and a run to the ${exit.label}`:exit?`${mark}, then out in the ${exit.label}`:alive?`${mark} and still playing`:
+            bracketSet&&!playoff?`${mark} and left out of the ${field}`:swing?`${mark}, ${swing}`:playoff?`${mark} and a ticket to the ${league.leagueType===1?'tournament':'postseason'}`:
+            identity==='defense'?`${mark}, built on defense`:identity==='offense'?`${mark}, powered by the offense`:
+            winPct>=.6?`${a} ${mark} season worth building on`:`${mark}, ${shared?'tied for ':''}${ordinal(standing)} in the league`):
+          deep?review(`${mark}, then a run to the ${exit.label}`):
+          record.W===record.L?review(playoff?`a .500 season and a ${league.leagueType===1?'tournament bid':'playoff spot'}`:'a .500 season, and the questions that come with it'):
+          playoff?review(`${mark}, and in the ${field} anyway`):
+          swing?review(change>0?`${mark}, but ${swing}`:`${mark}, ${swing}`):
+          winPct<=.3?review(`${a} ${mark} season to forget`):review(`${mark} and searching for answers`);
         const post=title?', then won the championship':exit?`, then saw the season end in the ${exit.label} against ${C.teamRef(exit.opponent).full}${exit.firstTo>1?`, ${exit.losses}-${exit.wins}`:''}`:alive?`, and ${T.city||!T.plural?'is':'are'} still alive in the ${run.at(-1).label}`:playoff?', good for a place in the playoff field':'';
         const opener=`${cap(T.full)} ${winPct>=.7?'dominated the regular season, finishing':record.W>record.L?'closed the regular season at':record.W===record.L?'split the regular season at':'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change!==null&&Math.abs(change)>=5?` That is ${C.plural(Math.abs(change),'win')} ${change>0?'better':'worse'} than last season's ${prior.W}-${prior.L}.`:''}`;
         const profile=margin===null?'':`${identity==='defense'?`Defense was the calling card. ${cap(T.short)} ${defendingRank===1?`had the league's stingiest defense`:`ranked ${ordinal(defendingRank)} in points allowed`} at ${avg(record,'OPP')} points allowed a night`:

@@ -52,7 +52,7 @@ A performance story runs when a sports desk would look twice, not when a percent
 
 - **Awards** each lead with their own evidence: MVP with the full line and team record, Finals MVP or Most Outstanding Player with Finals numbers, DPOY with blocks, steals and team defense rank, Rookie of the Year with starts, Sixth Man with games off the bench, Most Improved with last season against this one, stat titles with their category. Mention other awards won the same year. All-Star selections don't get individual stories.
 - **Championship** stories tell the run: "outlasted the Peaks in seven games in the first round … then swept the Colonials for the title", plus the Finals MVP.
-- **Team reviews** include how the season ended (the round, the opponent, the series score) and the change from last season.
+- **Team reviews** include how the season ended (the round, the opponent, the series score) and the change from last season. The headline carries the record, so the rest of it says what the record can't: a title, a deep run, where the season ended, a winning team left out of the field, a big swing from last season, the team's identity, or its place in the standings. Never "a winning season" after a winning record.
 - **Mid-round playoff coverage** is a daily "where every series stands" tracker with real series scores. A preview runs only before a round tips off.
 - **Roundups.** The draft becomes one draft-night story, with lottery picks and their college averages and an Andre "steal" when a later pick out-scored the top pick in college. Four or more signings, commitments or draft declarations in a day become one roundup led by the biggest names. A day of rookie contracts is a line, not a feed.
 
