@@ -228,7 +228,7 @@
     const push=(key,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
       const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:cal.day,type,headline,paragraphs,
-        importance:90,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:90,templateVersion:5,editorialVersion:3,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
         seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
       result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
@@ -277,7 +277,7 @@
         const paragraphs=[`It is never too early. HoopWire's first look at next season puts ${T(top.t).full} at No. 1. ${T(top.t).plural?'They bring':'It brings'} back ${pct(top)} percent of their scoring, led by ${name(top.star.p)} at ${perGame(top.star.s,'PTS')} points a game.`,
           `Rounding out the top five: ${C.listJoin(teams.slice(1,5).map(x=>`${T(x.t).short} (${rec(x)})`))}.`,
           ...ranked.filter(x=>x.t.id===champion?.id).map(x=>{const at=ranked.indexOf(x)+1;return at<=10?`The ${year} champions, ${T(champion).full}, open at No. ${at}.`:`The ${year} champions, ${T(champion).full}, come in at No. ${at}, with ${pct(x)} percent of their scoring back.`;}),
-          `This is HoopWire's projection, not the official poll, which comes out when the new season opens. It weighs last season's record, how much of the scoring returns and the talent level of who is back, and it counts the big board's underclassmen as gone.`].filter(Boolean);
+          `The voters get their say when the new season opens. Until then, this is how we see it: last season's record, the scoring coming back and the talent left on the roster, with every underclassman on our big board already out the door.`].filter(Boolean);
         const lead={p:top.star.p,t:top.t};
         push('offseason-early-top-ten',{type:'College offseason',kind:'early-top-ten',headline:`Way-too-early top 10: ${T(top.t).nickname} ${C.verb(T(top.t),'open')} next season at No. 1`,paragraphs,items:teams.map(x=>x.star),lead,
           board:{kicker:'Next season',title:'HoopWire early top 10',headers:['School','Record','Final poll','Scoring back','Top returner'],rows:teams.map(x=>[C.teamDisplay(x.t),rec(x),x.poll>0?x.poll:'—',`${pct(x)}%`,name(x.star.p)]),ranked:true},

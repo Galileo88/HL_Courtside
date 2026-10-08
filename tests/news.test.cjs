@@ -16,7 +16,7 @@ test('a finished college season keeps its beat on the pro calendar with save-bac
  const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story);
  assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-watch','offseason-returning','offseason-early-top-ten']);
  assert.ok(rows.every(s=>s.day===33&&s.seasonSnapshot.board.rows.length>=5));
- assert.match(rows[2].paragraphs.join(' '),/not the official poll/);
+ assert.match(rows[2].paragraphs.join(' '),/voters get their say when the new season opens/);
  // Nobody is both an early-entry prospect and a returning star.
  const board=new Set(rows[0].seasonSnapshot.roundup.items.map(x=>x.name));assert.ok(rows[1].seasonSnapshot.roundup.items.every(x=>!board.has(x.name)));
  assert.ok(N.candidates(college,save.seasonLeagues).every(x=>x.story.day>=11&&x.story.day<=33));
