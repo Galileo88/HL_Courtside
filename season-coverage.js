@@ -526,7 +526,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?12:eventKey==='seeding-snub'?1:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?8:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?12:eventKey==='seeding-snub'?1:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?9:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -633,9 +633,11 @@
         const shooting=record.FGA>0?`They shot ${pct(record,'FGM','FGA')} from the floor${record.TPA>0?` and ${pct(record,'TPM','TPA')} from 3-point range`:''}.`:'';
         const second=leaders[1]&&leaders[1].s.GP>0?` ${C.playerDisplay(leaders[1].p)} was next at ${avg(leaders[1].s,'PTS')} points a game.`:'';
         const star=p?`${C.playerDisplay(p.p)} led the team in scoring, averaging ${line(p.s)}.${second}`:'';
+        // Press follows the good teams and the very bad ones; the middle of the table gets a line.
+        const place=league.leagueType===1&&poll?poll:powerRank,reviewValue=title?120:place<=3?100:place===teamCount?95:place<=Math.ceil(teamCount/4)?85:place>=Math.floor(teamCount*.85)?70:50;
         add(`team-${r.team.id}-regular`,'Team season review',headline,
           [opener,[profile,shooting].filter(Boolean).join(' '),star],[r.team],
-          ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,90,
+          ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,reviewValue,
           {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
       }
     }

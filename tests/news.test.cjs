@@ -46,3 +46,12 @@ test('the college offseason reports the real draft class, who is back and the of
  assert.match(poll.paragraphs.join(' '),/The case for No\. 1 is the freshman class\. .* signed four recruits, more than any other program/);
  assert.ok(rows.every(s=>s.day===1));
 });
+test('news value follows who it is about: role-player retirements share a roundup, stars keep their own story',()=>{
+ const l=fixture(),roster=l.teams[0].roster;
+ for(let i=0;i<4;i++)roster.push({id:20+i,tid:1,fn:'Bench',ln:`Guy${i}`,stats:[{yr:8,league:0,season:[{tid:1,GP:40,PTS:80,REB:40,AST:20}]}]});
+ roster.push({id:30,tid:1,fn:'Big',ln:'Star',awards:[{id:2,league:0,yearsWon:[7,8]}],stats:[{yr:8,league:0,season:[{tid:1,GP:80,PTS:2000,REB:500,AST:400}]}]});
+ l.season.news=[...[20,21,22,23].map(pid=>event(17,{pid})),event(17,{pid:30})];
+ const rows=N.candidates(l).map(x=>x.story),star=rows.find(s=>s.headline==='Big Star calls it a career'),group=rows.find(s=>s.seasonSnapshot?.roundup?.type===17);
+ assert.ok(star&&star.importance>=120);assert.ok(group&&group.importance<star.importance);assert.match(group.headline,/four veterans into retirement/);
+ const folded=rows.filter(s=>s.inRoundup);assert.equal(folded.length,4);assert.ok(folded.every(s=>s.inRoundup===group.id&&s.importance<20));
+});

@@ -131,6 +131,15 @@
     return snapshots;
   }
 
+  // A game's place on the front page. ctx.importance decides which games get
+  // written up; once written, a game between good teams outranks one between
+  // bad ones, and any decent game outranks a bench player's career night.
+  function frontPageWeight(ctx) {
+    const good = r => Array.isArray(r) && r[0] + r[1] >= 5 && r[0] / (r[0] + r[1]) >= 0.6;
+    const contenders = [ctx.winnerPre, ctx.loserPre].filter(good).length;
+    return ctx.importance + 30 + (contenders === 2 ? 15 : contenders === 1 ? 5 : 0);
+  }
+
   function buildFingerprint(league) {
     const teams = (league.teams || [])
       .map(t => `${t.id}:${t.shortName || ""}:${t.name || ""}`)
@@ -761,7 +770,7 @@
       day: ctx.dayNumber,
       gid: ctx.game.gId,
       type: gameType(ctx),
-      importance: ctx.importance,
+      importance: frontPageWeight(ctx),
       headline: headline(ctx, seed),
       paragraphs: paragraphs.filter(Boolean),
       templateVersion: 3,

@@ -18,6 +18,20 @@
     const sum={};for(const k of ['GP',...Object.keys(names)])if(lines.every(s=>valid(s[k])))sum[k]=lines.reduce((n,s)=>n+s[k],0);
     return sum.GP>0?sum:null;
   }
+  // How big a name a player is, from the save: career production in this
+  // league, how long they lasted, and the honors on their record.
+  // Roughly: under 12 a role player, 12 a regular, 18 a star.
+  const honorWeight={0:1.5,1:8,2:12,3:4,4:3,5:3,6:3,7:4,8:4,9:4,10:3,11:3,101:3,100:2,96:2};
+  function stature(p,league){
+    if(!p)return 0;
+    const career=history(p,league),current=S.stats(p,league,C.seasonYear(league));
+    const ppg=Math.max(career?.GP>0?career.PTS/career.GP:0,current?.GP>=5?current.PTS/current.GP:0);
+    const honors=(p.awards||[]).filter(a=>a.league===league.leagueType).reduce((n,a)=>n+(honorWeight[a.id]||0)*(a.yearsWon||[]).length,0);
+    const hall=(league.hallOfFame||[]).some(h=>h?.id===p.id)?20:0;
+    return Math.round((ppg+honors+Math.min(career?.GP||0,600)/100+hall)*10)/10;
+  }
+  const tier=v=>v>=18?'star':v>=12?'regular':'role';
+  const scopeOf=e=>e.scope||(/^career/i.test(e.label||'')?'career':'season');
   function data(league){
     const lookup=C.buildLookups(league),year=C.seasonYear(league),players=new Map(lookup.players);
     for(const p of [...(league.retirees||[]),...(league.hallOfFame||[])])if(!players.has(p.id))players.set(p.id,p);
@@ -54,11 +68,11 @@
   function candidates(league){
     const d=data(league),{lookup,year,players,retired}=d,fp=C.buildFingerprint(league),day=lookup.latestDay+1,result=[];
     if(day<1)return result;
-    function add(key,type,headline,paragraphs,team,player,evidence,game){
+    function add(key,type,headline,paragraphs,team,player,evidence,game,value=null){
       if(!team||!paragraphs.length)return;
       const opponent=lookup.teams.get(game?.homeTeam===team.id?game.awayTeam:game?.homeTeam)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type,headline,paragraphs,
-        importance:type==='Record watch'?75:105,templateVersion:5,editorialVersion:2,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:Math.round(value??(type==='Record watch'?75:105)),templateVersion:5,editorialVersion:3,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:[{id:team.id,name:C.teamDisplay(team),logoURL:team.logoURL||null}],
         seasonSnapshot:{headers:['Category','Mark','Context'],rows:evidence.map(e=>[e.label,e.value,e.detail]),evidence:structuredClone(evidence),source:'uploaded-save',
           pid:player?.id??null,teamId:team.id,gid:game?.gId??null}};
@@ -89,7 +103,10 @@
         const teamEntries=entries.filter(r=>r.tid===team.id);
         if(record&&teamEntries.length&&value===Math.max(...teamEntries.map(r=>r.value))){paragraphs.push(`It is also the ${C.teamDisplay(team)} franchise record for ${label} in a game.`);evidence.push({label:`Team player game record: ${label}`,value,detail:C.teamDisplay(team),record:structuredClone(record),gameId:game.gId,stat:k,stage,previous:before(teamEntries)});}
       }
-      if(paragraphs.length)add(`milestone-${period}-${player.id}-${game.gId}`,evidence.some(e=>e.mark)?'Milestone':'Single-game record',evidence[0].mark?`${name} reaches ${evidence[0].mark.toLocaleString('en-US')} ${evidence[0].label}`:`${name} posts ${evidence[0].label.startsWith('Career')?'a career-best':'a record-book'} ${evidence[0].value} ${evidence[0].label.split(': ').at(-1)}`,paragraphs,team,player,evidence,game);
+      // A record-book line is news for anyone; a career high mostly matters for the names people know.
+      const lift=({star:25,regular:10,role:0})[tier(stature(player,league))]+(period==='playoffs'?10:0);
+      const worth=Math.max(...evidence.map(e=>/^League game record/.test(e.label)?115:/^Team player game record/.test(e.label)?90+lift/2:e.mark?(scopeOf(e)==='career'?80:65)+lift:/^Career game high/.test(e.label)?45+lift:60));
+      if(paragraphs.length)add(`milestone-${period}-${player.id}-${game.gId}`,evidence.some(e=>e.mark)?'Milestone':'Single-game record',evidence[0].mark?`${name} reaches ${evidence[0].mark.toLocaleString('en-US')} ${evidence[0].label}`:`${name} posts ${evidence[0].label.startsWith('Career')?'a career-best':'a record-book'} ${evidence[0].value} ${evidence[0].label.split(': ').at(-1)}`,paragraphs,team,player,evidence,game,worth);
     }
     // The record book can substantiate a single-game mark even after a box score is overwritten.
     for(const period of ['season','playoffs','finals'])for(const [k,label] of Object.entries(names)){
@@ -103,7 +120,7 @@
         if(!played||!p||!team||result.some(x=>x.story.seasonSnapshot.evidence.some(e=>e.record?.pid===p.id&&e.record?.gameResults?.gId===played.game.gId&&e.record?.value===record.value)))continue;
         add(`single-game-${period}-${p.id}-${k.toLowerCase()}-${played.game.gId}`,'Single-game record',`${C.playerDisplay(p)} posts a league-record ${record.value} ${label}`,
           [`${C.possessive(C.playerDisplay(p))} ${record.value} ${label} against ${C.teamRef(lookup.teams.get(played.game.homeTeam===team.id?played.game.awayTeam:played.game.homeTeam)).full} stand atop the league's ${period==='season'?'regular-season':period==='finals'?'Finals':'playoff'} single-game record book.`],team,p,
-          [{label:`Single-game ${label}`,value:record.value,detail:period,record:structuredClone(record),gameId:played.game.gId,stat:k,stage:period==='season'?'regular-season':period==='finals'?'Finals':'playoff',previous:(()=>{const o=entries.filter(r=>r!==record).map(r=>r.value);return o.length?Math.max(...o):null;})()}],played.game);
+          [{label:`Single-game ${label}`,value:record.value,detail:period,record:structuredClone(record),gameId:played.game.gId,stat:k,stage:period==='season'?'regular-season':period==='finals'?'Finals':'playoff',previous:(()=>{const o=entries.filter(r=>r!==record).map(r=>r.value);return o.length?Math.max(...o):null;})()}],played.game,115);
       }
     }
     // Where a record came from: a season mark has its year; a career mark is
@@ -137,7 +154,7 @@
               const name=C.playerDisplay(player),holder=C.playerDisplay(record.p);
               add(`record-${scope}-${gap===0?'tie':'break'}-${player.id}-${k.toLowerCase()}-${record.s[k]}`,'League record',`${name} ${gap===0?'ties':'passes'} ${holder} in the record book`,
                 [`${name} has ${total[k]} ${scope==='season'?'regular-season':'career regular-season'} ${label}, ${gap===0?'matching':'surpassing'} ${holder}'s ${record.s[k]}. ${snap.stats[k]} against ${C.teamRef(lookup.teams.get(f.game.homeTeam===team.id?f.game.awayTeam:f.game.homeTeam)).full} put ${C.surname(name)} ${gap===0?'level':'over the top'}.`],team,player,
-                [{label:`${scope} ${label}`,value:total[k],detail:`Previous mark: ${record.s[k]}`,holder:record.p.id,holderName:holder,target:record.s[k],tie:gap===0,gameId:f.game.gId,stat:k,scope,source:'player.stats'}],f.game);
+                [{label:`${scope} ${label}`,value:total[k],detail:`Previous mark: ${record.s[k]}`,holder:record.p.id,holderName:holder,target:record.s[k],tie:gap===0,gameId:f.game.gId,stat:k,scope,source:'player.stats'}],f.game,(scope==='career'?125:115)+({star:10,regular:5,role:0})[tier(stature(player,league))]);
             }
             continue;
           }
@@ -147,7 +164,7 @@
           const name=C.playerDisplay(player),holder=C.playerDisplay(record.p),title=scope==='season'?'single-season mark':'career lead';
           add(`watch-${scope}-${player.id}-${k.toLowerCase()}-${record.p.id}-${record.s[k]}`,'Record watch',`${name} closes in on ${holder}'s ${title}`,
             [`${name} is now only ${C.plural(gap,label.replace(/s$/,''))} shy of the ${league.shortName||league.leagueName} ${scope==='season'?'single-season':'career'} record, ${Number(record.s[k]).toLocaleString('en-US')}, ${recordOrigin(record,scope,holder,league,year)}.`],team,player,
-            [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,holderName:holder,recordYear:record.yr??null,stat:k,scope,watch:true,source:'player.stats'}]);
+            [{label:`${scope} ${label}`,value:total[k],detail:`${gap} behind ${holder}`,target:record.s[k],holder:record.p.id,holderName:holder,recordYear:record.yr??null,stat:k,scope,watch:true,source:'player.stats'}],undefined,55+({star:25,regular:10,role:0})[tier(stature(player,league))]+(scope==='career'?5:0));
         }
       }
     }
@@ -166,11 +183,11 @@
         add(`team-scoring-${direction}-${team.id}-${entry.game.gId}`,'Team record',`${T.nickname} ${C.verb(T,'hit')} season ${direction} with ${value} points`,
           [direction==='high'?`${C.capitalize(T.full)} scored ${value} points against ${O.full}, their most in a game this season. The previous high was ${high}.`:
             `${C.capitalize(T.full)} managed just ${value} points against ${O.full}, their lowest output of the season. The previous low was ${low}.`],team,null,
-          [{label:`Team season scoring ${direction}`,value,detail:`Previous: ${direction==='high'?high:low}`,gameId:entry.game.gId,source:'season.schedule',stat:'PTS',direction,previous:direction==='high'?high:low,average:Number((earlier.reduce((n,x)=>n+score(x.game),0)/earlier.length).toFixed(1))}],entry.game);
+          [{label:`Team season scoring ${direction}`,value,detail:`Previous: ${direction==='high'?high:low}`,gameId:entry.game.gId,source:'season.schedule',stat:'PTS',direction,previous:direction==='high'?high:low,average:Number((earlier.reduce((n,x)=>n+score(x.game),0)/earlier.length).toFixed(1))}],entry.game,(direction==='high'?55:50)+(teamYear.W/Math.max(1,teamYear.W+teamYear.L)>=.6?10:0));
       }
     }
     return result;
   }
   function eligibleGames(league){const d=data(league);return new Set(d.snapshots.filter(s=>contextFor(d,s)).map(s=>`${s.pid}:${s.gid}`));}
-  return {history,enrich,candidates,eligibleGames};
+  return {history,enrich,candidates,eligibleGames,stature,tier};
 });

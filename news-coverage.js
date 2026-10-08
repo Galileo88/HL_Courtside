@@ -12,7 +12,9 @@
     const last=player.ln||C.surname(C.playerDisplay(player)),a=k=>(s[k]/s.GP).toFixed(1);
     return `${last} ${player.retired?'averaged':'is averaging'} ${a('PTS')} points, ${a('REB')} rebounds and ${a('AST')} assists in ${C.plural(s.GP,'game')} this season.`;
   }
-  const roundupTypes=new Set([2,3,14,15]),roundupSize=4;
+  const roundupTypes=new Set([2,3,14,15,18,19,20,21,26]),roundupSize=4;
+  // Option decisions travel together; so do a phase's hires and its quiet retirements.
+  const optionTypes=new Set([18,19,20,21]),wholePhase=t=>t===2||t===26||t===16||t===17||optionTypes.has(t),groupOf=t=>optionTypes.has(t)?'option':t;
   const perGame=(s,k)=>s?.GP>0&&Number.isFinite(s[k])?(s[k]/s.GP).toFixed(1):null;
   function college(p){const s=p?.history?.collegeStats?.season;return s?.GP>0&&Number.isFinite(s.PTS)?s:null;}
   function contextFor(team,lookup,league,player){
@@ -20,9 +22,11 @@
     return {winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:player||team.roster?.[0],potg:player||null,potgStatsTrusted:!!player,
       gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}};
   }
-  function roundup(list,{league,lookup,players,year,fp,result,day}){
+  function roundup(list,{league,lookup,players,coaches,year,fp,result,day}){
     const type=list[0].type,short=league.shortName||league.leagueName,cap=C.capitalize;
-    const rows=list.map(n=>({n,p:players.get(n.pid),t:lookup.teams.get(n.tid)})).filter(x=>x.p&&x.t);
+    // Retirement news often points at no current team; the player's last team from the stat lines stands in.
+    const lastTeam=p=>{const lines=(p?.stats||[]).filter(x=>x.league===league.leagueType).sort((a,b)=>b.yr-a.yr).flatMap(x=>x.season||[]);return lines.map(x=>lookup.teams.get(x.tid)).find(Boolean)||lookup.teams.get(p?.tid)||null;};
+    const rows=list.map(n=>{const p=(type===26?coaches:players).get(n.pid);return {n,p,t:lookup.teams.get(n.tid)||(type===16||type===17?lastTeam(p):null)};}).filter(x=>x.p&&x.t);
     if(!rows.length)return;
     const T=t=>C.teamRef(t),name=p=>C.playerDisplay(p),last=p=>p.ln||C.surname(name(p));
     let headline,paragraphs=[],table,lead,storyType,headers;
@@ -69,6 +73,40 @@
       if(rows.length>1)paragraphs.push(`Other top names: ${C.listJoin(rows.slice(1,5).map(x=>`${name(x.p)} to ${T(x.t).nick}`))}.`);
       if(busiest&&busiest[1]>=3)paragraphs.push(`${cap(T(lookup.teams.get(busiest[0])).full)} had the busiest day, landing ${C.plural(busiest[1],'commitment')}.`);
       headers=['School','Recruit','Age'];table=rows.map(x=>[C.teamDisplay(x.t),name(x.p),x.p.age||'—']);
+    }else if(optionTypes.has(type)){
+      // Contract options: the biggest name leads, the rest is a list.
+      const accepted=x=>[18,20].includes(x.n.type),owner=x=>x.n.type<20?'player':'team';
+      rows.sort((a,b)=>R.stature(b.p,league)-R.stature(a.p,league)||a.p.id-b.p.id);
+      lead=rows[0];storyType='Contract options';
+      const what=x=>owner(x)==='player'?`${name(x.p)} ${accepted(x)?'exercised':'declined'} a player option with ${T(x.t).full}`:`${cap(T(x.t).full)} ${accepted(x)?'picked up':'declined'} the team option on ${C.possessive(name(x.p))} contract`;
+      const declined=rows.filter(x=>!accepted(x)).length;
+      headline=`${name(lead.p)} headlines ${C.plural(rows.length,'contract option')}${declined?`, ${C.num(declined)} declined`:''}`;
+      paragraphs.push(`${what(lead)}, the biggest name among ${C.plural(rows.length,'option decision')} around the league.`);
+      const rest=rows.slice(1).filter(x=>R.tier(R.stature(x.p,league))!=='role').slice(0,3);
+      if(rest.length)paragraphs.push(`${rest.map(what).join('. ')}.`);
+      if(declined)paragraphs.push(`Of those, ${C.num(declined)} ${declined===1?'was':'were'} declined, sending ${declined===1?'that player':'those players'} toward free agency.`);
+      headers=['Player','Team','Option','Decision'];table=rows.map(x=>[name(x.p),C.teamDisplay(x.t),cap(owner(x)),accepted(x)?'Accepted':'Declined']);
+    }else if(type===26){
+      // The coaching carousel, led by the strongest team that made a hire.
+      const strength=t=>{const r=(t.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;return r?r.W/Math.max(1,r.W+r.L):0;};
+      rows.sort((a,b)=>strength(b.t)-strength(a.t)||a.t.id-b.t.id);
+      lead=rows[0];storyType='Coaching change';
+      const rec=t=>{const r=(t.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;return r?` (${r.W}-${r.L} last season)`:'';};
+      headline=`Coaching carousel: ${C.plural(rows.length,league.leagueType===1?'program':'team')} ${rows.length===1?'changes':'change'} coaches`;
+      paragraphs.push(`${cap(T(lead.t).full)}${rec(lead.t)} hired ${name(lead.p)}, the biggest job filled in an offseason when ${C.plural(rows.length,league.leagueType===1?'program':'team')} changed coaches.`);
+      if(rows.length>1)paragraphs.push(`Also hiring: ${C.listJoin(rows.slice(1,6).map(x=>`${T(x.t).nick} (${name(x.p)})`))}${rows.length>6?`, among ${C.plural(rows.length-6,'other')}`:''}.`);
+      headers=['Team','Hire'];table=rows.map(x=>[C.teamDisplay(x.t),name(x.p)]);
+    }else if(type===16||type===17){
+      // Role players at the end of the line: one story for the group.
+      const career=x=>R.history(x.p,league);
+      rows.sort((a,b)=>R.stature(b.p,league)-R.stature(a.p,league)||a.p.id-b.p.id);
+      lead=rows[0];storyType=type===17?'Retirement':'Retirement announcement';
+      const c=career(lead),careerLine=x=>{const h=career(x);return h?.GP>0?`${(h.PTS/h.GP).toFixed(1)} points over ${h.GP} games`:'';};
+      headline=type===17?`${name(lead.p)} leads ${C.plural(rows.length,'veteran')} into retirement`:`${name(lead.p)} among ${C.plural(rows.length,'veteran')} set to retire`;
+      paragraphs.push(`${rows.length<10?C.capitalize(C.plural(rows.length,'player')):`In all, ${C.plural(rows.length,'player')}`} ${type===17?'retired':'announced plans to retire'}, a group led by ${name(lead.p)} of ${T(lead.t).full}${c?.GP>0?`, who averaged ${careerLine(lead)}`:''}.`);
+      if(rows.length>1)paragraphs.push(`${type===17?'Also retiring':'Also on the way out'}: ${C.listJoin(rows.slice(1,5).map(x=>`${name(x.p)} (${T(x.t).nick})`))}${rows.length>5?`, among ${C.plural(rows.length-5,'other')}`:''}.`);
+      paragraphs.push(`Most were role players who stuck around. Few careers in this league go longer.`.replace(/Few careers.*$/,(()=>{const longest=[...rows].sort((a,b)=>(career(b)?.GP||0)-(career(a)?.GP||0))[0],h=career(longest);return h?.GP>0?`The longest run belonged to ${name(longest.p)}: ${h.GP} games.`:'';})()));
+      headers=['Player','Team','GP','PPG'];table=rows.map(x=>{const h=career(x);return [name(x.p),C.teamDisplay(x.t),h?.GP||'—',h?.GP>0?(h.PTS/h.GP).toFixed(1):'—'];});
     }else{
       const s=x=>S.stats(x.p,league,year);
       rows.sort((a,b)=>(Number(perGame(s(b),'PTS'))||0)-(Number(perGame(s(a),'PTS'))||0));
@@ -84,11 +122,11 @@
         years:x.n.data?.contract?.yrs||null,rookie:x.p.yrs===0,college:c?{PTS:perGame(c,'PTS'),REB:perGame(c,'REB'),AST:perGame(c,'AST')}:null,
         season:cur?.GP>0?{PTS:perGame(cur,'PTS'),REB:perGame(cur,'REB')}:null,last:prev?.GP>0?{PTS:perGame(prev,'PTS'),REB:perGame(prev,'REB')}:null};};
     const ordered=type===2?rows:type===3?[...rows].sort((a,b)=>Number(a.p.yrs===0)-Number(b.p.yrs===0)):rows;
-    const key=`roundup-${type}-${list[0].phase}-${type===2?year:list[0].date}`;
+    const key=`roundup-${groupOf(type)}-${list[0].phase}-${type===2?year:wholePhase(type)?'all':list[0].date}`;
     if(result.some(x=>x.story.eventKey===key))return;
     const related=[...new Map(rows.map(x=>[x.t.id,x.t])).values()];
     const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type:storyType,headline,paragraphs,
-      importance:type===2?120:95,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+      importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:3,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
     result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
@@ -111,9 +149,13 @@
       (n.phase===phase?n.date>=firstDay&&n.date<=currentDay:recentPhase(n)));
     // A day with many routine moves becomes one roundup instead of a feed of briefs.
     const grouped=new Map();
-    for(const n of events)if(roundupTypes.has(n.type)){const k=`${n.type}:${n.phase}:${n.type===2?'all':n.date}`;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(n);}
+    for(const n of events)if(roundupTypes.has(n.type)){const k=`${groupOf(n.type)}:${n.phase}:${wholePhase(n.type)?'all':n.date}`;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(n);}
     const bundled=new Set([...grouped.values()].filter(list=>list.length>=roundupSize||list[0].type===2).flat());
-    for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,year,fp,result,day:dayOf(list[0])});
+    for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0])});
+    // Role players' retirements share one roundup; names people know keep their own story.
+    const quiet=new Map(),inRoundup=new Map();
+    for(const n of events)if((n.type===16||n.type===17)&&players.has(n.pid)&&R.tier(R.stature(players.get(n.pid),league))==='role'){const k=`${n.type}:${n.phase}`;quiet.set(k,[...(quiet.get(k)||[]),n]);}
+    for(const list of quiet.values())if(list.length>=3){roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0])});for(const n of list)inRoundup.set(n,`roundup-${list[0].type}-${list[0].phase}-all`);}
     for(const event of events.filter(n=>!bundled.has(n))){
       const info=event.data||{},jersey=info.retiredNumber;
       let coachEvent=[26,27,28,29].includes(event.type);
@@ -193,7 +235,13 @@
       team ||= related[0];if(!team)continue;
       const key=event.type===12?`award-${info.awardId}-${event.pid}`:event.type===13?'championship':`news-${C.hashString(JSON.stringify(canonical({league:event.league,phase:event.phase,date:event.date,type:event.type,tid:event.tid,pid:event.pid,gid:event.gid,data:info})))}`;
       if(result.some(x=>x.story.eventKey===key))continue;
-      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:dayOf(event),type,headline,paragraphs,importance:[16,17,22,25].includes(event.type)?125:85,templateVersion:event.type===10?6:5,editorialVersion:1,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+      // News value follows who it's about: a star's retirement leads, a bench player's is a line in a roundup.
+      const size=coachEvent?0:R.stature(player,league),now=!coachEvent&&player?S.stats(player,league,year):null,ppg=now?.GP>0?now.PTS/now.GP:0;
+      const teamRec=team&&((team.season||[]).find(r=>r.yr===year&&r.seasonStats?.GP>0)||(team.season||[]).find(r=>r.yr===year-1))?.seasonStats,winPct=teamRec&&teamRec.W+teamRec.L>0?teamRec.W/(teamRec.W+teamRec.L):.5;
+      const value=event.type===16||event.type===17?(R.tier(size)==='role'?40:Math.min(135,60+2.5*size)):event.type===22?120:event.type===25?100:event.type===13?125:event.type===12?85:
+        event.type===10?Math.min(110,45+3*ppg+(winPct>=.6?15:0)):event.type===11?Math.min(80,35+2*ppg):event.type===7?Math.min(125,60+2.5*Math.max(size,...(info.trade?.teams||[]).flatMap(t=>(t.assets||[]).map(a=>R.stature(players.get(a.pid),league))))):
+        [26,27,28,29].includes(event.type)?Math.round(Math.min(100,70+(winPct-.5)*40+(event.type===28?10:0))):[3,5,6,18,19,20,21].includes(event.type)?Math.min(100,45+2*size):event.type===30?Math.min(110,50+2*size):event.type===31?Math.min(120,60+2.5*size):50;
+      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:dayOf(event),type,headline,paragraphs,importance:inRoundup.has(event)?10:Math.round(value),...(inRoundup.has(event)?{inRoundup:`${fp}:${year}:season:${inRoundup.get(event)}`}:{}),templateVersion:event.type===10?6:5,editorialVersion:2,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
@@ -227,10 +275,12 @@
     const grade=x=>(x.p.pot||0)+(pg(x,'PTS')+pg(x,'REB')/2+pg(x,'AST')*.7)/8;
     const item=x=>({name:name(x.p),team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,age:x.p.age||null,year:x.cls,senior:x.cls==='Sr.',pronoun:C.pronoun(x.p),season:{PTS:perGame(x.s,'PTS'),REB:perGame(x.s,'REB'),AST:perGame(x.s,'AST')}});
     const subs=list=>list.map(x=>C.teamDisplay(x.t));
+    // The offseason's big college stories: the draft class and the poll lead; the rest support.
+    const worth={'draft-class':110,'preseason-poll':105,'draft-watch':90,returning:85,seniors:80};
     const push=(key,day,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
       const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type,headline,paragraphs,
-        importance:90,templateVersion:5,editorialVersion:1,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:worth[kind]||90,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
         seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
       result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});

@@ -689,6 +689,21 @@
         if(vets.length>1)body.push(turn(3,`Also moving: ${join(vets.slice(1,4).map(x=>`${x.name} to ${T(x)}`))}.${rookies?` And ${C.plural(rookies,'rookie')} signed first deals.`:''}`));
       }else body.push(turn(1,"Rookie contracts don't win championships. Wake me up when a real free agent moves."),turn(3,`Mostly rookie deals, Jordan. ${top.name} with ${T(top)} is the headliner.`));
       close=pick(story,["The market's open. We'll keep tracking it.","More moves to come. Stay tuned.","Free agency isn't over. Not even close.","That's the latest from the market."],'fa:close');
+    }else if(r.type===16||r.type===17){
+      open=pick(story,[`${C.capitalize(C.plural(r.count,'veteran'))} ${r.type===17?'called it a career':'say this season is their last'}, led by ${top.name}. ${J}?`,`A long list of retirements, and ${top.name} tops it. ${J}?`],'ret:open');
+      body.push(turn(1,pick(story,[`Those are the guys who hold a locker room together. You don't see it in the box score.`,`Role players, most of them. But you need those guys to win anything.`],'ret:take')));
+      if(items.length>1)body.push(turn(3,`Also on the list: ${join(items.slice(1,4).map(x=>x.name))}.`));
+      close=pick(story,["Tip of the cap to all of them.","Enjoy retirement. They earned it.","That's a lot of years of basketball walking out the door."],'ret:close');
+    }else if([18,19,20,21].includes(r.type)){
+      open=pick(story,[`Contract decisions are in. ${C.capitalize(C.plural(r.count,'option'))} around the league, ${top.name} the biggest name. ${J}?`,`Option season. ${top.name} headlines it. ${J}?`],'opt:open');
+      body.push(turn(1,`Most of this is bookkeeping. The declined ones are what I care about. That's who hits the market.`));
+      close=pick(story,["Free agency's next.","The market's taking shape.","Now the real moves start."],'opt:close');
+    }else if(r.type===26){
+      open=pick(story,[`The coaching carousel is spinning. ${C.capitalize(C.plural(r.count,'team'))} with new coaches. ${J}?`,`New coaches everywhere. ${C.capitalize(C.plural(r.count,'team'))} made hires. ${J}?`],'car:open');
+      body.push(turn(1,`That's a lot of turnover. A new voice can change a team, but it takes time.`));
+      if(top)body.push(turn(3,`The biggest job filled: ${T(top)} with ${top.name}.`));
+      body.push(turn(2,`Some of these guys won't make it through the first season. That's the business.`));
+      close=pick(story,["New faces on the sideline.","We'll see who's still there next year.","The carousel never stops."],'car:close');
     }else if(r.type==='draft-watch'){
       const word={'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'}[top.year]||'player',sleeper=items.slice(1,4).find(x=>Number(x.season?.PTS)<8);
       open=pick(story,[`Draft watch. ${top.name} sits atop our big board. ${J}, is that the right No. 1?`,`The college season's over, so let's talk draft. ${top.name} is our top prospect. ${J}?`,`${top.name} tops the HoopWire big board. ${J}, go.`],'watch:open');

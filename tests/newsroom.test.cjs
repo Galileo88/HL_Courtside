@@ -3,7 +3,7 @@ const league=(id,type)=>({id,name:id,shortName:id.toUpperCase(),leagueType:type}
 const story=(id,fingerprint,day,importance=10,season=1967)=>({id,fingerprint,day,importance,season,headline:id,paragraphs:['A basketball story. More detail.']});
 test('mixed editions prioritize each latest day, balance supporting coverage and never repeat stories',()=>{
  const stories=[];for(const [id,day] of [['pro',90],['college',89]])for(let i=0;i<14;i++)stories.push(story(id+i,id,day-(i>8?1:0),100-i));
- stories.push(story('old','pro',80,999),story('older-year','pro',99,999,1966));
+ stories.push(story('old','pro',80,140),story('older-year','pro',99,999,1966));
  const edition=N.buildEdition({stories,leagues:[league('pro',0),league('college',1)]});assert.equal(edition.lead.id,'college0');assert.equal(edition.supporting[0].fingerprint,'pro');
  const all=[edition.lead,...edition.supporting,...edition.headlines,...edition.sections.flatMap(s=>s.items)];assert.equal(new Set(all.map(s=>s.id)).size,all.length);assert.ok(all.every(s=>!['old','older-year'].includes(s.id)));assert.ok(edition.sections.some(s=>s.label==='Pro Basketball'));assert.ok(edition.sections.some(s=>s.label==='College Basketball'));
  assert.deepEqual(N.buildEdition({stories:[...stories].reverse(),leagues:[league('pro',0),league('college',1)]}).lead,edition.lead);
@@ -43,4 +43,15 @@ test('one-league sparse editions shorten sections and unknown league routes stay
  const edition=N.buildEdition({stories,leagues});assert.equal(edition.lead.id,'only');assert.deepEqual(edition.supporting,[]);assert.deepEqual(edition.headlines,[]);assert.deepEqual(edition.sections,[]);
  assert.equal(N.buildEdition({stories,leagues,fingerprint:''}).lead,null);
  assert.equal(N.buildEdition({stories,leagues,fingerprint:'missing'}).lead,null);
+});
+test('one kind of story cannot take over the top of the page while other news waits',()=>{
+ const stories=[];for(let i=0;i<10;i++)stories.push({...story(`ret${i}`,'p',5,120-i),type:'Retirement'});
+ for(let i=0;i<4;i++)stories.push({...story(`game${i}`,'p',5,60-i),gid:i+1,gameSummary:{home:{name:'A',score:90},away:{name:'B',score:80}}});
+ stories.push({...story('inj','p',5,55),type:'Injury'},{...story('folded','p',5,200),type:'Retirement',inRoundup:'x'});
+ const e=N.buildEdition({stories,leagues:[league('p',0)]}),top=[e.lead,...e.supporting];
+ assert.equal(e.lead.id,'ret0');assert.equal(top.filter(s=>N.family(s)==='farewell').length,1);assert.ok(top.some(s=>N.family(s)==='game'));assert.ok(top.some(s=>s.id==='inj'));
+ const shown=[...top,...e.headlines].map(s=>s.id);assert.ok(['game0','game1','game2','game3','inj'].every(id=>shown.includes(id)));
+ // Caps relax once nothing else is left.
+ assert.ok(shown.indexOf('game3')<shown.indexOf('ret3'));
+ assert.ok(![e.lead,...e.supporting,...e.headlines,...e.sections.flatMap(s=>s.items)].some(s=>s.id==='folded'));
 });
