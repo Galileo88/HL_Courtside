@@ -216,11 +216,12 @@
       // Floorboards, closer together toward the wall.
       ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let y = floor + 4, gap = 4; y < edge; y += gap, gap += 1) ctx.fillRect(0, y, 384, 1);
       ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = teamColor(scene.team, 0, '#1d428a'); ctx.fillRect(0, edge, 384, 2);
-      // The podium's top is 25 pixels into its sprite; the coach stands behind it, shoulders above,
-      // feet 28 pixels above its base, as on the game's draft stage.
-      const podium = [168, edge - 20 - 64];
-      depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 140, foot: floor + 20, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: podium[1] + 36, facing: 'left' }]);
-      ctx.drawImage(art['draft-podium'], podium[0], podium[1], 64, 64);
+      // A press-room lectern: the game's podium at two-thirds size, which at this
+      // 3x zoom is exactly two screen pixels per sprite pixel. Its top is 25 of
+      // its 64 rows down; the coach stands close behind it, covered to the chest.
+      const base = edge - 20, size = 128 / 3, lectern = [200 - size / 2, base - size];
+      depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 150, foot: floor + 22, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: base - 12, facing: 'left' }]);
+      ctx.drawImage(art['draft-podium'], ...lectern, size, size);
       audience(ctx, rand, null, [[148, 4], [170, 14]], { cheer: 0, chairs: true, spacing: 20 });
       return { canvas, extra: { pressLogoData: wall.logoData, pressLeagueLogoData: wall.leagueLogoData } };
     },
@@ -393,7 +394,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 14, seed: id, kind: `coach-${context.coachScene}`,
+      version: 15, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
