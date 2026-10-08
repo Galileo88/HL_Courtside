@@ -31,10 +31,12 @@ body {
 }
 
 .brand {
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: -1.5px;
-  font-style: italic;
+  display: block;
+  line-height: 0;
+}
+.brand img {
+  width: auto;
+  height: 34px;
 }
 
 .tagline {
@@ -747,25 +749,13 @@ body.entry-screen {
   margin-bottom: 28px;
 }
 .menu-wordmark {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 14px;
   margin: 0 auto 22px;
 }
-.menu-wordmark svg {
-  width: 112px;
-  height: 112px;
-  flex-shrink: 0;
-}
-.menu-wordmark span {
-  font-size: clamp(34px, 5vw, 64px);
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: -2px;
-  color: #254f85;
-  -webkit-text-stroke: 1.5px #f0f7ff;
-  text-shadow: 3px 3px #03101c;
+.menu-wordmark img {
+  display: block;
+  width: min(520px, 100%);
+  height: auto;
+  margin: 0 auto;
 }
 .entry-screen .landing h1 {
   font-size: 30px;
@@ -940,18 +930,8 @@ body.entry-screen {
   .menu-card > p {
     min-height: 0;
   }
-  .menu-wordmark {
-    gap: 8px;
-  }
-  .menu-wordmark svg {
-    width: 74px;
-    height: 74px;
-  }
   .entry-screen .landing h1 {
     font-size: 25px;
-  }
-  .menu-wordmark span {
-    letter-spacing: -1px;
   }
 }
 

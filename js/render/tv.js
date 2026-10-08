@@ -1,6 +1,7 @@
 /* The HoopWire TV studio: four hosts at the announcer desk with the league's ad artwork. */
 (() => {
   'use strict';
+  const VERSION = 7;
   const cache = new Map();
   const names = [
     ['Maya', 'Brooks'],
@@ -39,7 +40,7 @@
     const announcers = Array.from({ length: 4 }, (_, i) => defaults(i));
     const adTeam = (league.teams || []).find(t => t.frontOffice?.adsURL);
     return {
-      version: 6,
+      version: VERSION,
       adSlots: randomAds(),
       leagueName: league.leagueName || 'HoopWire',
       season: window.HoopWireCore.seasonYear(league),
@@ -53,7 +54,7 @@
     return Array.from({ length: 4 }, () => Math.floor(Math.random() * 7));
   }
   function render(input) {
-    input = { ...input, version: 6, adSlots: input.adSlots || randomAds() };
+    input = { ...input, version: VERSION, adSlots: input.adSlots || randomAds() };
     const key = JSON.stringify(input);
     if (!cache.has(key))
       cache.set(
@@ -65,11 +66,22 @@
       );
     return cache.get(key);
   }
+  // A brand logo, centered on x, scaled to the given height. Logos are smooth art, unlike the pixel sprites.
+  function drawLogo(ctx, logo, x, y, height) {
+    const width = (logo.width * height) / logo.height;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(logo, x - width / 2, y, width, height);
+    ctx.restore();
+  }
   async function compose(input, withHosts = true) {
     const C = window.HoopWireCourt;
-    const [table, graphic, ads] = await Promise.all([
+    const [table, graphic, tvLogo, banner, ads] = await Promise.all([
       C.loadImage('assets/scene/announce-table.png'),
       C.loadImage('assets/scene/announce-table-graphic.png'),
+      C.loadImage('assets/brand/hoopwire_logo.png'),
+      C.loadImage('assets/brand/hoopwire_banner.png'),
       C.validURL(input.adsURL) ? C.loadImage(input.adsURL, true).catch(() => null) : null,
       window.HoopWirePlayer.ready(),
     ]);
@@ -91,12 +103,8 @@
     ctx.strokeStyle = '#278ec0';
     ctx.lineWidth = 4;
     ctx.strokeRect(245, 22, 470, 151);
+    drawLogo(ctx, tvLogo, 480, 32, 76);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'italic 900 42px Arial';
-    ctx.fillText('HOOPWIRE TV', 480, 84);
-    ctx.fillStyle = '#ee3546';
-    ctx.fillRect(338, 100, 284, 4);
     ctx.font = 'bold 14px Arial';
     ctx.fillStyle = '#b7cee5';
     ctx.fillText('THE DAILY DESK', 480, 132);
@@ -122,10 +130,7 @@
     ctx.drawImage(graphic, 0, 247, 960, 240);
     ctx.fillStyle = '#172f65';
     ctx.fillRect(8, 365, 944, 121);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'italic 900 32px Arial';
-    ctx.fillText('HOOPWIRE TV', 480, 398);
+    drawLogo(ctx, tvLogo, 480, 369, 34);
     // Pick from the first seven atlas tiles; the eighth repeats the first.
     if (ads) {
       const tileWidth = Math.min(Math.max(1, Number(input.adSize) || 256), ads.width);
@@ -150,12 +155,11 @@
     }
     ctx.fillStyle = '#0b1425';
     ctx.fillRect(0, 496, 960, 44);
-    ctx.fillStyle = '#d71920';
+    ctx.fillStyle = '#050b15';
     ctx.fillRect(0, 496, 176, 44);
+    drawLogo(ctx, banner, 88, 505, 26);
     ctx.textAlign = 'left';
-    ctx.font = 'italic bold 18px Arial';
     ctx.fillStyle = 'white';
-    ctx.fillText('HOOPWIRE', 25, 524);
     ctx.font = 'bold 13px Arial';
     ctx.fillText(`DAILY COVERAGE  /  SEASON ${input.season}`, 202, 523);
     const imageBlob = await new Promise((resolve, reject) =>
@@ -172,5 +176,5 @@
       adsHeight: ads?.height || null,
     };
   }
-  window.HoopWireTV = { inputs, render };
+  window.HoopWireTV = { inputs, render, version: VERSION };
 })();

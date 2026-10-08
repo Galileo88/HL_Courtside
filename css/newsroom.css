@@ -111,11 +111,14 @@
   align-items: center;
   justify-content: center;
   height: auto;
-  font-size: clamp(20px, 4vw, 48px);
-  font-style: italic;
-  font-weight: 900;
-  letter-spacing: -1px;
   background: linear-gradient(130deg, #0d3971, #071722);
+}
+.wire-placeholder img {
+  width: 55%;
+  max-width: 420px;
+  height: auto;
+  aspect-ratio: auto;
+  background: none;
 }
 .wire-card-body {
   padding: 16px;
@@ -295,8 +298,8 @@
     min-height: 60px;
     padding: 0 16px;
   }
-  body:not(.entry-screen) .brand {
-    font-size: 27px;
+  body:not(.entry-screen) .brand img {
+    height: 28px;
   }
   .nav {
     padding: 0 16px;
@@ -449,9 +452,6 @@
     font-size: 18px;
     line-height: 1.35;
     margin-top: 6px;
-  }
-  :is(.wire-supporting, .wire-story-grid) .wire-placeholder {
-    font-size: 16px;
   }
   .wire-section > h2 {
     font-size: 21px;

@@ -26,8 +26,12 @@
         });
         return img;
       }
-      const placeholder = element('div', `${className} wire-placeholder`, 'HOOPWIRE');
+      const placeholder = element('div', `${className} wire-placeholder`),
+        logo = element('img');
+      logo.src = 'assets/brand/hoopwire_banner.png';
+      logo.alt = '';
       placeholder.setAttribute('aria-hidden', 'true');
+      placeholder.append(logo);
       return placeholder;
     };
     const card = (story, lead = false) => {
