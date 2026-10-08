@@ -153,7 +153,17 @@
       // camera's zoom so the logos land on screen without being resampled.
       const backdrop=await window.HoopWirePressBackdrop.render(art['press-background'],scene.team,scene.pressLogoData,{scale:2*canvas.width/design.camera[2],league:scene.league,leagueData:scene.pressLeagueLogoData});
       sceneInputs={...scene,pressLogoData:backdrop.logoData,pressLogoStatus:backdrop.status,pressLeagueLogoData:backdrop.leagueLogoData,pressLeagueLogoStatus:backdrop.leagueStatus};
-      window.HoopWirePressBackdrop.paint(ctx,backdrop,design.camera);
+      // In the close shots the wall behind the player is softly out of focus, like
+      // a shallow depth of field, so the logos don't compete with the player:
+      // painted sharp, shrunk to a third with smoothing, then drawn back up with
+      // smoothing. The wider group shots keep the wall sharp.
+      if(variant==='player-close-up'||variant==='player-profile'){
+        const wall=document.createElement('canvas');wall.width=canvas.width;wall.height=canvas.height;
+        window.HoopWirePressBackdrop.paint(wall.getContext('2d'),backdrop,design.camera);
+        const soft=document.createElement('canvas');soft.width=Math.round(canvas.width/3);soft.height=Math.round(canvas.height/3);
+        const softCtx=soft.getContext('2d');softCtx.imageSmoothingEnabled=true;softCtx.imageSmoothingQuality='high';softCtx.drawImage(wall,0,0,soft.width,soft.height);
+        ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(soft,0,0,canvas.width,canvas.height);ctx.restore();
+      }else window.HoopWirePressBackdrop.paint(ctx,backdrop,design.camera);
       const left=scene.teammates?.[0],right=scene.coach||scene.teammates?.[1];
       if(variant==='group'){
         player(press,left,scene.team,scene.uniformIndex,56,104,192);
