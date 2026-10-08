@@ -739,6 +739,16 @@ body.entry-screen {
   margin: 0 auto;
   padding: 28px 0 40px;
 }
+@media (min-width: 801px) {
+  .entry-screen .shell {
+    box-sizing: border-box;
+    min-height: 100svh;
+    padding: 34px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
 .entry-screen .landing {
   padding: 0;
   border: 0;
