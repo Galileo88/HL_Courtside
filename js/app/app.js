@@ -737,7 +737,6 @@
       fingerprint = C.buildFingerprint(league);
     const stories = [];
     const contexts = pending();
-    status(`Composing ${contexts.length} story images…`);
     const composed = await Promise.all(
       contexts.map(async ctx => {
         const existing = state.stories.get(C.storyId(fingerprint, ctx.seasonYear, ctx.game.gId));
