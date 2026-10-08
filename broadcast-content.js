@@ -726,6 +726,20 @@
     }
     return [turn(0,open),...body,turn(0,close)];
   }
+  // College seeding: a strong record, a poor seed, and a desk that can't believe it.
+  function snubScript(story,n=first()){
+    const x=story.seasonSnapshot?.snub,lead=x?.lead;if(!lead)return genericScript(story,n);
+    const ref=t=>C.teamRef({city:t.teamCity,name:t.teamNickname||t.team}),T=t=>ref(t).nick,rec=t=>`${t.W}-${t.L}`,[M,J,A,N]=n;
+    const body=[];
+    const open=pick(story,[`The bracket is out, and ${T(lead)} ${C.verb(ref(lead),'have')} a complaint. ${rec(lead)} and a No. ${lead.seed} seed. ${J}?`,`${rec(lead)}, and ${T(lead)} get a ${lead.seed} seed. ${J}, explain that.`,`Seeding snub of the year: ${T(lead)}, ${rec(lead)}, seeded ${lead.seed}th. ${J}?`].map(t=>t.replace(/(\d+)th\b/,(m,d)=>`${d}${Number(d)%100>=11&&Number(d)%100<=13?'th':Number(d)%10===1?'st':Number(d)%10===2?'nd':Number(d)%10===3?'rd':'th'}`)),'snub:open');
+    body.push(turn(1,pick(story,[`That's a robbery. You win ${lead.W} games, you should be hosting, not hoping.`,`I don't get it. ${lead.W} wins used to mean something.`,`Disrespect. Plain and simple. ${cap(T(lead))} earned better than that.`],'snub:take')));
+    body.push(turn(3,lead.poll?`Here's why: the bracket follows the poll, and the poll had ${T(lead)} at No. ${lead.poll}. The record never moved the voters.`:`Here's why: the bracket follows the poll, not the standings.`));
+    if(x.gift)body.push(turn(2,`And ${T(x.gift)} ${C.verb(ref(x.gift),'go')} ${rec(x.gift)} and ${C.verb(ref(x.gift),'get')} a No. ${x.gift.seed}? Explain that one to me.`),turn(1,`I can't. Nobody can.`));
+    else if(x.company?.length)body.push(turn(2,`${cap(T(x.company[0]))} got the same treatment: ${rec(x.company[0])} and a No. ${x.company[0].seed}.`));
+    if(x.left?.length)body.push(turn(3,`At least ${T(lead)} ${C.verb(ref(lead),'are')} in. ${cap(T(x.left[0]))} went ${rec(x.left[0])} and missed the field.`));
+    const close=pick(story,["Somebody's playing with a chip on their shoulder.","Now go prove the voters wrong.","Seeds are just numbers once the ball goes up.","Circle that first game."],'snub:close');
+    return [turn(0,open),...body,turn(0,close)];
+  }
   function reportedReaction(story,n=first()){
     if(!story.quotesEnabled||!story.templateVersion)return [];
     const quotes=(story.paragraphs||[]).flatMap(p=>typeof p==='string'?[...p.matchAll(/[“"]([^”"]+)[”"]\s+([^.!?“"]+?) said\.(?:\s+[“"]([^”"]+)[”"])?/g)]:[]).filter(q=>q[1].length<=240);
@@ -745,6 +759,7 @@
     if(story.performanceSnapshot)return Performance.script(story,n);
     if(story.seasonSnapshot?.roundup)return roundupScript(story,n);
     if(story.type==='Season leaders')return leadersScript(story,n);
+    if(story.type==='Seeding snub')return snubScript(story,n);
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return awardScript(story,n);
     if(story.type==='Playoff preview'||story.eventKey?.startsWith('playoff-round-'))return playoffScript(story,n);
     if(story.type==='Championship review'||story.eventKey==='championship')return championshipScript(story,n);

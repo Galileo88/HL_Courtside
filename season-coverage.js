@@ -526,7 +526,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?8:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?12:eventKey==='seeding-snub'?1:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?8:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -566,7 +566,9 @@
       add('regular-wrap','Regular-season review',`${league.shortName||league.leagueName}: ${year} regular season in review`,
         [`${C.capitalize(C.listJoin(sorted.filter(r=>r.year.seasonStats.W===sorted[0].year.seasonStats.W).map(r=>C.teamRef(r.team).full)))} set the pace in ${year}, closing the regular season with ${sorted[0].year.seasonStats.W} wins.`,
           ...sorted.slice(0,3).map(r=>`${C.teamDisplay(r.team)} went ${r.year.seasonStats.W}-${r.year.seasonStats.L}. ${teamLine(C.teamDisplay(r.team),r.year.seasonStats)}`)],teams,
-        ['Team','W','L','Seed'],sorted.map(r=>[C.teamDisplay(r.team),r.year.seasonStats.W,r.year.seasonStats.L,r.year.seed||'—']));
+        // College seeds follow the game's poll, so the standings carry both.
+        league.leagueType===1?['Team','W','L','Seed','Poll']:['Team','W','L','Seed'],
+        sorted.map(r=>[C.teamDisplay(r.team),r.year.seasonStats.W,r.year.seasonStats.L,r.year.seed||'—',...(league.leagueType===1?[r.year.poll>0?r.year.poll:'—']:[])]));
       const totals=[...players.values()].map(p=>({p,s:stats(p,league,year)})).filter(x=>x.s);
       const leaderRows=[];
       for(const k of ['PTS','REB','AST','STL','BLK']){
@@ -654,6 +656,37 @@
         add(`award-${award.id}-${p.id}`,'Award announcement',awardHeadline(kind,C.playerDisplay(p),award.name,team,year),
           [`${C.playerDisplay(p)} has won the ${year} ${award.name}${/award$/i.test(award.name)?'':' award'}.`],team?[team]:[],
           ['Award','Winner','Year'],[[award.name,C.playerDisplay(p),year]],p,kind==='mvp'||kind==='finals'?130:kind==='other'||kind==='asmvp'||kind==='threes'?90:115,extra);
+      }
+    }
+    // College brackets are seeded from the poll, not the standings, so a
+    // strong record can draw a poor seed (and the reverse). When the gap is
+    // wide, that's a story.
+    if(complete&&!winner&&league.leagueType===1){
+      const field=records.filter(r=>r.year.seed>0&&entrants.has(r.team.id)).map(r=>({r,team:r.team,W:r.year.seasonStats.W,L:r.year.seasonStats.L,seed:r.year.seed,poll:r.year.poll>0?r.year.poll:null}));
+      if(field.length>=8){
+        for(const x of field)x.expected=1+field.filter(o=>o.W>x.W).length;
+        const T=x=>C.teamRef(x.team),rec=x=>`${x.W}-${x.L}`,cap=C.capitalize;
+        const snubs=field.filter(x=>x.seed-x.expected>=4).sort((a,b)=>(b.seed-b.expected)-(a.seed-a.expected)||b.W-a.W||a.seed-b.seed);
+        const gifts=field.filter(x=>x.expected-x.seed>=4).sort((a,b)=>(b.expected-b.seed)-(a.expected-a.seed)||a.seed-b.seed);
+        const cutoff=Math.min(...field.map(x=>x.W)),left=records.filter(r=>!entrants.has(r.team.id)&&r.year.seasonStats.W>cutoff).map(r=>({team:r.team,W:r.year.seasonStats.W,L:r.year.seasonStats.L,poll:r.year.poll>0?r.year.poll:null})).sort((a,b)=>b.W-a.W).slice(0,2);
+        const lead=snubs[0];
+        if(lead){
+          const tiedWith=field.filter(o=>o!==lead&&o.W===lead.W).length,better=field.filter(o=>o.W>lead.W).length;
+          const standing=better===0?(tiedWith?'tied for the best record in the field':'the best record in the field'):`${tiedWith?'tied for ':''}the ${ordinal(better+1)}-best record in the field`;
+          const lower=field.filter(o=>o.seed>lead.seed).length;
+          const paragraphs=[`${cap(T(lead).full)} went ${rec(lead)}, ${standing}, and drew a No. ${lead.seed} seed. ${lower===0?'Nobody in the bracket is seeded lower.':`Only ${C.plural(lower,'team')} in the bracket ${lower===1?'is':'are'} seeded lower.`}`,
+            lead.poll?(lead.poll-lead.expected>=4?`The bracket follows the poll, and the poll never bought in. ${cap(T(lead).nick)} finished No. ${lead.poll}.`:`The bracket follows the poll, not the standings, and the poll had ${T(lead).nick} at No. ${lead.poll}.`):`The bracket follows the poll, not the standings.`];
+          const company=snubs.slice(1,3);
+          if(company.length)paragraphs.push(`${cap(T(lead).nick)} ${C.verb(T(lead),'have')} company: ${C.listJoin(company.map(x=>`${T(x).nick} (${rec(x)}) drew No. ${x.seed}`))}.`);
+          const gift=gifts[0];
+          if(gift)paragraphs.push(`At the other end, ${T(gift).full} went ${rec(gift)} and still landed the No. ${gift.seed} seed${gift.poll?`, on the strength of a No. ${gift.poll} poll ranking`:''}.`);
+          if(left.length)paragraphs.push(`${cap(C.listJoin(left.map(x=>`${C.teamRef(x.team).full} (${x.W}-${x.L})`)))} didn't make the field at all.`);
+          const rows=[...new Set([lead,...company,...gifts.slice(0,2)])].sort((a,b)=>b.W-a.W||a.seed-b.seed).map(x=>[C.teamDisplay(x.team),rec(x),x.seed,x.poll??'—']);
+          const brief=x=>({team:C.teamDisplay(x.team),teamCity:x.team.city||null,teamNickname:x.team.name||null,W:x.W,L:x.L,seed:x.seed??null,poll:x.poll??null,expected:x.expected??null});
+          add('seeding-snub','Seeding snub',`Seeding snub: ${rec(lead)} ${T(lead).nickname} handed a No. ${lead.seed} seed`,paragraphs,
+            [lead.team,...company.map(x=>x.team),...(gift?[gift.team]:[])],['Team','Record','Seed','Poll'],rows,null,108,
+            {board:{kicker:'Bracket',title:'Record vs. seed',headers:['Team','Record','Seed','Poll'],rows},snub:{lead:brief(lead),company:company.map(brief),gift:gift?brief(gift):null,left:left.map(brief),field:field.length}});
+        }
       }
     }
     if(complete&&!winner){
