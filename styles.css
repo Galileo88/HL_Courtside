@@ -739,6 +739,15 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-callout-label { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
 .tv-callout-value { color:#fff; font-size:clamp(44px,9vw,68px); font-weight:900; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .tv-callout-context { color:#abc8e6; font-size:14px; font-weight:700; }
+.tv-title-card { grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:10px 28px; align-items:start; }
+.tv-title-card-main, .tv-title-card-road { display:grid; gap:6px; align-content:start; }
+.tv-title-card-team { color:#fff; font-size:clamp(30px,5vw,44px); font-weight:900; line-height:1.05; letter-spacing:-.02em; }
+.tv-title-card-award { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; margin-top:6px; }
+.tv-title-card-road .tv-title-card-award { margin-top:0; }
+.tv-title-card-run { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+.tv-title-card-run li { display:grid; grid-template-columns:minmax(92px,auto) 1fr; gap:12px; color:#e3eefa; font-size:14px; font-weight:700; }
+.tv-title-card-round { color:#8fb2d6; font-size:11px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; padding-top:2px; }
+@media (max-width:640px) { .tv-title-card { grid-template-columns:1fr; } }
 @media(max-width:600px) {
   .tv-board-head { padding:11px 12px 10px; }
   .tv-season-graphic { padding-left:10px; padding-right:10px; }

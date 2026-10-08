@@ -22,6 +22,7 @@
     return verified ? window.HoopWireCore.choose(id,['action','interview','action'],'scene-kind') : 'action';
   }
   const actionVariants=['drive','close-up','dunk','three-point','pass','pass-close-up','drive-tight','shot-close-up','pass-tight','dunk-tight'];
+  const injuryVariants=['injury','injury-close'];
   const interviewVariants=['group','player-close-up','player-profile','player-coach'];
   function interviewDesign(seed,variant){
     variant=interviewVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,interviewVariants,'interview-framing');
@@ -29,7 +30,7 @@
     return {variant,camera:[...cameras[variant]]};
   }
   function actionDesign(seed, variant, side) {
-    variant=actionVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,actionVariants,'action-variant');
+    variant=[...actionVariants,...injuryVariants].includes(variant)?variant:window.HoopWireCore.choose(seed,actionVariants,'action-variant');
     const layouts={
       drive:{label:'Drive to the basket',pose:'dribbling',frame:1,camera:[510,94,384,216],subject:[695,270],support:[[615,192],[641,291],[684,185],[762,249],[783,299]]},
       'close-up':{label:'Close-up ball handling',pose:'dribbling',frame:1,camera:[626,176,192,108],subject:[695,270],support:[[649,235],[755,265],[672,217],[750,245],[790,275]]},
@@ -40,7 +41,11 @@
       'drive-tight':{label:'Player close-up driving',pose:'dribbling',frame:1,camera:[647,222,96,54],subject:[695,270],support:[[615,192],[641,291],[684,185],[762,249],[783,299]]},
       'shot-close-up':{label:'Player close-up shooting',pose:'shooting',frame:4,camera:[566,194,112,63],subject:[610,250],groundFoot:256,flightBall:[636,204],support:[[717,205],[738,286],[698,251],[762,249],[791,290]]},
       'pass-tight':{label:'Player close-up passing',pose:'passing',frame:2,camera:[617,206,96,54],subject:[665,254],flightBall:[694,236],support:[[760,264],[702,191],[743,216],[787,273],[791,208]]},
-      'dunk-tight':{label:'Player close-up dunking',pose:'dunking',frame:0,camera:[730,168,96,54],subject:[778,216],groundFoot:276,support:[[714,228],[734,254],[720,204],[813,249],[847,247]]}
+      'dunk-tight':{label:'Player close-up dunking',pose:'dunking',frame:0,camera:[730,168,96,54],subject:[778,216],groundFoot:276,support:[[714,228],[734,254],[720,204],[813,249],[847,247]]},
+      // Injuries: the player down on the floor in the game's injured pose,
+      // teammates standing over them, the opponents a step away.
+      injury:{label:'Injury on the floor',pose:'injured-leg',frame:0,camera:[576,158,256,144],subject:[680,254],support:[[652,238],[710,242],[618,270],[758,274],[788,220]]},
+      'injury-close':{label:'Close-up of an injury',pose:'injured-leg',frame:0,camera:[624,200,128,72],subject:[680,254],support:[[652,238],[710,242],[618,270],[758,274],[788,220]]}
     };
     side=['left','right'].includes(side)?side:window.HoopWireCore.choose(seed,['left','right'],'court-side');
     const action={variant,side,...structuredClone(layouts[variant])};
@@ -71,8 +76,9 @@
     const liveTeam = team?.id === ctx.loser?.id ? ctx.loser : ctx.winner;
     const featured = ctx.potg || ctx.scenePlayer;
     const teammates = (liveTeam?.roster || []).filter(p => p.id !== featured?.id).sort((a,b) => a.id-b.id).slice(0,2).map(playerSnapshot);
-    const action=actionDesign(id);
-    return {version:16,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:sceneKind(id,ctx.potgStatsTrusted),
+    // An injury story shows the player down on the floor in an action scene.
+    const action=actionDesign(id,ctx.injury?C.choose(id,injuryVariants,'injury-framing'):undefined);
+    return {version:16,seed:id,league:{name:league.leagueName||ctx.leagueName,logoURL:league.logoURL||null},attackDirection:action.side,action,interview:interviewDesign(id),ball:structuredClone(ctx.gameBall),kind:ctx.injury?'action':sceneKind(id,ctx.potgStatsTrusted),
       pose:action.pose,
       player:playerSnapshot(ctx.potg || ctx.scenePlayer),team:teamSnapshot(team),opponent:teamSnapshot(opponent),
       opponentPlayer:playerSnapshot(opponent?.roster?.[0]),
@@ -114,7 +120,7 @@
       description=story.kind==='season'?`${group} ${plural?'discuss':'discusses'} ${story.type==='Award announcement'?'the award announcement':'the season'}.`:
         `${group} ${plural?'answer':'answers'} postgame questions${result==='win'?' after a win':result==='loss'?' after a loss':result==='tie'?' after a tied game':''}.`;
     }else{
-      const actions={drive:'drives to the basket','close-up':'handles the ball',dunk:'goes up for a dunk','three-point':'takes a three-point shot',pass:'passes to a teammate','pass-close-up':'passes to a teammate','drive-tight':'drives to the basket','shot-close-up':'takes a three-point shot','pass-tight':'passes to a teammate','dunk-tight':'goes up for a dunk'};
+      const actions={drive:'drives to the basket','close-up':'handles the ball',dunk:'goes up for a dunk','three-point':'takes a three-point shot',pass:'passes to a teammate','pass-close-up':'passes to a teammate',injury:'goes down with an injury','injury-close':'goes down with an injury','drive-tight':'drives to the basket','shot-close-up':'takes a three-point shot','pass-tight':'passes to a teammate','dunk-tight':'goes up for a dunk'};
       description=`${name} ${actions[scene.action?.variant]||'in action'} against ${opponent}.`;
     }
     const matchup=teams.length===2?`${teams[0].name} vs ${teams[1].name}`:scene.team&&scene.opponent?`${C.teamDisplay(scene.team)} vs ${C.teamDisplay(scene.opponent)}`:null;
@@ -137,7 +143,7 @@
       // Coach stories: hiring, firing, a rough season, a good one.
       const drawn=await window.HoopWireCoachScenes.draw(scene,art),extra=drawn.extra||{};
       ctx.drawImage(drawn.canvas,0,0);
-      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{})};
+      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{}),...(extra.adsData!==undefined?{adsData:extra.adsData}:{})};
       customCourt=extra.customCourt||null;
     } else if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
@@ -217,5 +223,5 @@
     }
     return updated;
   }
-  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants,interviewDesign,interviewVariants,refreshFraming,caption};
+  window.HoopWireScenes={inputs,render,upgrade,sceneKind,actionDesign,actionVariants,injuryVariants,interviewDesign,interviewVariants,refreshFraming,caption};
 })();

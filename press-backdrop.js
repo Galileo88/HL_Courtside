@@ -119,5 +119,15 @@
     }
     ctx.restore();
   }
-  window.HoopWirePressBackdrop={render,paint};
+  // A league's logo, or the Hoop Land mark the game falls back to.
+  async function leagueLogo(league,savedData){
+    const loaded=await logoFor(league,savedData).catch(()=>null);
+    return loaded?{...loaded,status:'loaded'}:{...(await hoopLand().catch(()=>null)||{}),data:null,status:league?.logoURL?'unavailable':'default'};
+  }
+  // A team's logo, or the varsity letter the game falls back to.
+  async function teamLogo(team,savedData){
+    const loaded=await logoFor(team,savedData).catch(()=>null);
+    return loaded?{...loaded,status:'loaded'}:{...(await varsityLetter(team).catch(()=>null)||{}),data:null,status:team?.logoURL?'unavailable':'letter'};
+  }
+  window.HoopWirePressBackdrop={render,paint,leagueLogo,teamLogo};
 })();

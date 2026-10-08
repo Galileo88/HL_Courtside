@@ -624,7 +624,7 @@
           playoff?review(`${mark}, and in the ${field} anyway`):
           swing?review(change>0?`${mark}, but ${swing}`:`${mark}, ${swing}`):
           winPct<=.3?review(`${a} ${mark} season to forget`):review(`${mark} and searching for answers`);
-        const post=title?', then won the championship':exit?`, then saw the season end in the ${exit.label} against ${C.teamRef(exit.opponent).full}${exit.firstTo>1?`, ${exit.losses}-${exit.wins}`:''}`:alive?`, and ${T.city||!T.plural?'is':'are'} still alive in the ${run.at(-1).label}`:playoff?', good for a place in the playoff field':'';
+        const post=title?', then won the championship':exit?`, then saw the season end in the ${exit.label} against ${C.teamRef(exit.opponent).full}${exit.firstTo>1?`, ${exit.losses}-${exit.wins}`:''}`:alive?(run.at(-1).done&&run.at(-1).won?`, and ${T.city||!T.plural?'is':'are'} through to the next round after beating ${C.teamRef(run.at(-1).opponent).full} in the ${run.at(-1).label}${run.at(-1).firstTo>1?`, ${run.at(-1).wins}-${run.at(-1).losses}`:''}`:`, and ${T.city||!T.plural?'is':'are'} still alive in the ${run.at(-1).label}`):playoff?', good for a place in the playoff field':'';
         const opener=`${cap(T.full)} ${winPct>=.7?'dominated the regular season, finishing':record.W>record.L?'closed the regular season at':record.W===record.L?'split the regular season at':'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change!==null&&Math.abs(change)>=5?` That is ${C.plural(Math.abs(change),'win')} ${change>0?'better':'worse'} than last season's ${prior.W}-${prior.L}.`:''}`;
         const profile=margin===null?'':`${identity==='defense'?`Defense was the calling card. ${cap(T.short)} ${defendingRank===1?`had the league's stingiest defense`:`ranked ${ordinal(defendingRank)} in points allowed`} at ${avg(record,'OPP')} points allowed a night`:
           identity==='offense'?`The offense carried them. ${cap(T.short)} ${scoringRank===1?`had the league's top offense`:`ranked ${ordinal(scoringRank)} in scoring`} at ${avg(record,'PTS')} points a night`:
@@ -641,10 +641,16 @@
           {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
         // Some reviews show the coach: celebrating a big year, or alone on the sideline in a bad one.
         // The postseason has the last word: no confetti for a team left out, no gloom after a tournament run.
-        const mood=title||(winPct>=.62&&(playoff||!bracketSet))?'good':winPct<=.38&&!run.some(x=>x.won)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
+        // Celebrations belong to the postseason: a title always gets one, and a team
+        // still alive after winning a series or tournament game gets one in rotation
+        // with the sideline in front of a full, cheering home crowd. A strong record
+        // without a postseason win gets only the sideline.
+        const advanced=!exit&&run.filter(x=>x.done&&x.won).at(-1);
+        const strong=winPct>=.62&&(playoff||!bracketSet);
+        const mood=title?'good':advanced?C.choose(`${r.team.id}:${year}`,['good','strong'],'postseason-scene'):strong?'strong':winPct<=.38&&!run.some(x=>x.won)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
         if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene')){
           const clincher=title&&lookup.completed.filter(x=>x.game.tRound===rounds.length&&x.game.winner===r.team.id).at(-1)?.game;
-          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p),venue:clincher&&(league.teams||[]).find(t=>t.id===clincher.homeTeam)||r.team});
+          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,advanced:!title&&advanced?advanced.label:null,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p),venue:clincher&&(league.teams||[]).find(t=>t.id===clincher.homeTeam)||r.team});
         }
       }
     }
