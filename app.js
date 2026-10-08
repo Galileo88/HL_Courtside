@@ -506,9 +506,11 @@ branch.append(summary);
   function tvStoryKicker(story) {
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return 'AWARD SPOTLIGHT';
     if(story.eventKey?.startsWith('playoff-round-')||story.type==='Playoff preview')return 'PLAYOFF DESK';
+    if(story.type==='Seeding snub')return 'BRACKET WATCH';
     if(story.eventKey==='championship'||story.type==='Championship review')return 'CHAMPIONSHIP DESK';
     if(story.type==='Regular-season review'||story.type==='Team season review'||story.type==='Season leaders')return 'SEASON WRAP';
-    if(story.type==='Draft watch')return 'DRAFT WATCH';
+    if(story.type==='Draft watch'||story.type==='Draft class')return 'DRAFT WATCH';
+    if(story.type==='Preseason poll')return 'PRESEASON';
     if(story.type==='College offseason')return 'COLLEGE OFFSEASON';
     if(story.performanceSnapshot)return 'PLAYER WATCH';
     if(/record|milestone/i.test(story.type||''))return 'RECORD BOOK';
@@ -540,6 +542,8 @@ branch.append(summary);
       }
       shell.append(grid);return shell;
     }
+    // Records and milestones get a record card: the mark, what it beat, the game.
+    if(story.seasonSnapshot?.source==='uploaded-save'&&story.seasonSnapshot.evidence?.length){shell.append(recordCard(story));return shell;}
     // Offseason boards carry their own caption, ranks and school lines.
     const board=story.seasonSnapshot?.board;
     if(board?.rows?.length){shell.append(statBoard({kicker:board.kicker,title:board.title,headers:board.headers,rows:board.rows.slice(0,limit),ranked:!!board.ranked,subs:board.subs?.slice(0,limit)||null}));return shell;}
@@ -559,11 +563,13 @@ branch.append(summary);
   }
   function tvBoard(story,headers,rows){
     const [kicker,title]=tvBoardCaption(story,headers);
-    return statBoard({kicker,title,headers,rows,ranked:story.type==='Regular-season review'});
+    // College standings switch between the bracket seed and the poll behind it.
+    const toggle=headers.includes('Seed')&&headers.includes('Poll')?['Seed','Poll']:null;
+    return statBoard({kicker,title,headers,rows,ranked:story.type==='Regular-season review',toggle});
   }
   // The one stat-table style for TV and articles. subs puts a small line
   // (a team) under each name; tags marks a row (player of the game).
-  function statBoard({kicker,title,headers,rows,ranked=false,people=/^player$/i.test(headers[0]||''),subs=null,tags=null,highlight=true,optional=[]}){
+  function statBoard({kicker,title,headers,rows,ranked=false,people=/^player$/i.test(headers[0]||''),subs=null,tags=null,highlight=true,optional=[],toggle=null}){
     const board=document.createElement('figure');board.className='tv-board';
     const caption=document.createElement('figcaption');caption.className='tv-board-head';
     const k=document.createElement('span');k.className='tv-board-kicker';k.textContent=kicker;
@@ -606,6 +612,90 @@ branch.append(summary);
     });
     table.append(thead,tbody);
     const scroll=document.createElement('div');scroll.className='tv-board-scroll';scroll.append(table);board.append(scroll);
+    // A two-way column switch (seed or poll): one column shows at a time.
+    const cols=toggle?.map(h=>headers.indexOf(h));
+    if(cols?.every(i=>i>0)){
+      const offset=ranked?1:0,group=document.createElement('div');group.className='tv-board-toggle';group.setAttribute('role','group');group.setAttribute('aria-label','Column');
+      const show=active=>{
+        for(const tr of table.rows)toggle.forEach((h,i)=>{const cell=tr.cells[cols[i]+offset];if(cell)cell.hidden=h!==active;});
+        for(const b of group.children)b.setAttribute('aria-pressed',String(b.dataset.col===active));
+      };
+      for(const h of toggle){const b=document.createElement('button');b.type='button';b.dataset.col=h;b.textContent=h;b.addEventListener('click',()=>show(h));group.append(b);}
+      caption.append(group);show(toggle[0]);
+    }
+    return board;
+  }
+  // One card per record story: the mark beside what it beat, a progress bar
+  // for a record chase, and the game and stat line it came from.
+  const recordStat={PTS:'points',REB:'rebounds',AST:'assists',STL:'steals',BLK:'blocks',TPM:'three-pointers',FGM:'field goals',FTM:'free throws',TO:'turnovers'};
+  function recordSpec(e){
+    const label=String(e.label||''),detail=String(e.detail||''),n=v=>v==null||v===''||!Number.isFinite(Number(v))?null:Number(v);
+    const stat=recordStat[e.stat]||label.split(': ').at(-1).replace(/^(season|career|single-game)\s+/i,'');
+    const scope=e.scope||(/^career\b/i.test(label)?'career':/^season\b/i.test(label)?'season':null);
+    const stageName=v=>({'regular-season':'Regular season',season:'Regular season',playoff:'Playoffs',playoffs:'Playoffs',finals:'Finals',Finals:'Finals'})[v]||null;
+    const signed=v=>v==null?null:v>0?`+${v}`:String(v);
+    if(e.watch||/ behind /.test(detail)){
+      const target=n(e.target),holder=e.holderName||/^\d[\d,]* behind (.+)$/.exec(detail)?.[1]||null;
+      return {kicker:'Record watch',title:`${scope==='career'?'Career':'Single-season'} ${stat}`,value:e.value,unit:stat,
+        progress:target?{now:n(e.value),target}:null,facts:[['Record',target],['To go',target!=null?target-n(e.value):null],['Held by',holder]]};
+    }
+    if(e.mark)return {kicker:'Milestone',title:`${scope==='career'?'Career':'Season'} ${stat}`,value:e.mark,unit:`${scope==='career'?'career ':''}${stat}`,
+      facts:[['Total now',n(e.value)],['This game',n(e.before)!=null?n(e.value)-n(e.before):null],['Stage',stageName(e.stage)]]};
+    if(/^Previous mark/.test(detail)){
+      const target=n(e.target)??n(/(\d[\d,]*)/.exec(detail)?.[1]?.replace(/,/g,''));
+      return {kicker:'League record',title:`${scope==='career'?'Career':'Single-season'} ${stat}`,value:e.value,unit:stat,
+        facts:[[e.tie?'Matches':'Previous mark',target],['Previous holder',e.holderName||null],['Margin',e.tie?'Tied':signed(target!=null?n(e.value)-target:null)]]};
+    }
+    if(/^Career game high/i.test(label))return {kicker:'Career high',title:`${C.capitalize(stat)} in a game`,value:e.value,unit:stat,facts:[['Season average',n(e.average)],['Stage',stageName(e.stage||detail)]]};
+    if(/^(League game record|Single-game)/i.test(label))return {kicker:'League record',title:`Single-game ${stat}`,value:e.value,unit:stat,facts:[['Previous record',n(e.previous)],['Stage',stageName(e.stage||detail)]]};
+    if(/^Team player game record/i.test(label))return {kicker:'Franchise record',title:`Single-game ${stat}`,value:e.value,unit:stat,facts:[['Previous record',n(e.previous)],['Team',detail||null]]};
+    if(/^Team season scoring/i.test(label)){
+      const dir=e.direction||(/low/i.test(label)?'low':'high'),prev=n(e.previous)??n(/Previous: (\d+)/.exec(detail)?.[1]);
+      return {kicker:'Team record',title:`Season scoring ${dir}`,value:e.value,unit:'points',facts:[[`Previous ${dir}`,prev],['Difference',signed(prev!=null?n(e.value)-prev:null)],['Season average',n(e.average)]]};
+    }
+    return {kicker:'Record book',title:C.capitalize(label),value:e.value,unit:'',facts:[['Context',detail||null]]};
+  }
+  function recordGame(story,gid){
+    const days=state.leagues.find(l=>l.id===story.fingerprint)?.gameResults?.[story.season]||{};
+    for(const [day,games] of Object.entries(days))if(games?.[gid])return {day:Number(day),...games[gid]};
+    return null;
+  }
+  function recordCard(story){
+    const snap=story.seasonSnapshot,evidence=snap.evidence,lead=evidence[0],spec=recordSpec(lead);
+    const make=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node;};
+    const board=make('figure','tv-board tv-record'),head=make('figcaption','tv-board-head');
+    head.append(make('span','tv-board-kicker',spec.kicker),make('span','tv-board-title',spec.title));board.append(head);
+    const body=make('div','tv-record-body'),hero=make('div','tv-record-hero');
+    hero.append(make('strong','tv-record-value',tvFormat(spec.value)));if(spec.unit)hero.append(make('span','tv-record-unit',spec.unit));
+    const facts=make('dl','tv-record-facts');
+    for(const [k,v] of spec.facts.filter(([,v])=>v!=null&&v!=='')){const row=make('div','tv-record-fact');row.append(make('dt','',k),make('dd','',typeof v==='number'?tvFormat(v):String(v)));facts.append(row);}
+    body.append(hero);if(facts.childElementCount)body.append(facts);board.append(body);
+    if(spec.progress?.target>0&&spec.progress.now!=null){
+      const share=Math.max(0,Math.min(1,spec.progress.now/spec.progress.target)),bar=make('div','tv-record-progress'),track=make('div','tv-record-track'),fill=make('span','tv-record-fill');
+      fill.style.width=`${(share*100).toFixed(1)}%`;track.append(fill);track.setAttribute('role','img');track.setAttribute('aria-label',`${tvFormat(spec.progress.now)} of ${tvFormat(spec.progress.target)}`);
+      const ends=make('div','tv-record-ends');ends.append(make('span','',`${tvFormat(spec.progress.now)} now`),make('span','',`${tvFormat(spec.progress.target)} record`));
+      bar.append(track,ends);board.append(bar);
+    }
+    if(evidence.length>1){
+      const also=make('ul','tv-record-also');
+      for(const e of evidence.slice(1,4)){const x=recordSpec(e),li=make('li','');li.append(make('span','',x.kicker),make('strong','',`${tvFormat(x.value)} ${x.unit}`.trim()));also.append(li);}
+      board.append(also);
+    }
+    // The game it happened in, from the archived final and the box score.
+    const gid=snap.gid??lead.gameId??lead.record?.gameResults?.gId,game=gid!=null?recordGame(story,gid):null;
+    if(game?.home&&game?.away){
+      const foot=make('div','tv-record-game'),score=make('div','tv-record-score');
+      score.append(make('span','tv-record-final',`Final · Day ${game.day}`));
+      for(const side of [game.away,game.home]){const row=make('div',side.score>Math.min(game.away.score,game.home.score)?'is-win':'');row.append(make('span','',side.name),make('strong','',String(side.score)));score.append(row);}
+      foot.append(score);
+      const pid=snap.pid??lead.record?.pid,line=pid!=null?state.snapshots.get(C.snapshotId(story.fingerprint,story.season,gid,pid)):null;
+      if(line?.stats){
+        const strip=make('div','tv-record-line'),keys=['PTS','REB','AST','STL','BLK'],key=evidence.map(e=>e.stat).find(Boolean);
+        for(const k of keys){if(!Number.isFinite(line.stats[k]))continue;const cell=make('div',k===key?'is-lead':'');cell.append(make('strong','',String(line.stats[k])),make('span','',k));strip.append(cell);}
+        if(strip.childElementCount)foot.append(strip);
+      }
+      board.append(foot);
+    }
     return board;
   }
   function tvCallout(headers,row){

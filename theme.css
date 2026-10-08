@@ -111,3 +111,48 @@ dialog h2 { font-family:var(--hw-font-ui); font-weight:800; letter-spacing:-.01e
   .archive-panel .actions .label-more { display:none; }
   .archive-panel .actions button.danger { margin-left:0; }
 }
+
+/* Record cards: the mark beside what it beat, then the game it came from. */
+.tv-record-body { display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); align-items:stretch; }
+.tv-record-hero { display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:120px; padding:18px 24px; border-right:1px solid var(--hw-line); background:linear-gradient(135deg,rgba(238,53,70,.16),rgba(238,53,70,0) 70%); }
+.tv-record-value { color:#fff; font-family:var(--hw-font-ui); font-size:clamp(52px,11vw,76px); font-weight:900; line-height:.9; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.tv-record-unit { color:var(--hw-accent); font-family:var(--hw-font-ui); font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.tv-record-facts { display:flex; flex-direction:column; justify-content:center; margin:0; padding:6px 0; }
+.tv-record-fact { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:10px 18px; }
+.tv-record-fact + .tv-record-fact { border-top:1px solid var(--hw-line-soft); }
+.tv-record-fact dt { color:var(--hw-muted); font-family:var(--hw-font-ui); font-size:10px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; white-space:nowrap; }
+.tv-record-fact dd { margin:0; color:var(--hw-text); font-family:var(--hw-font-ui); font-size:17px; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.tv-record-progress { padding:14px 18px 12px; border-top:1px solid var(--hw-line); }
+.tv-record-track { height:10px; border-radius:5px; background:var(--hw-line-soft); overflow:hidden; }
+.tv-record-fill { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,var(--hw-blue),var(--hw-accent)); }
+.tv-record-ends { display:flex; justify-content:space-between; margin-top:7px; color:var(--hw-muted); font-family:var(--hw-font-ui); font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; font-variant-numeric:tabular-nums; }
+.tv-record-also { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:12px 18px; list-style:none; border-top:1px solid var(--hw-line); }
+.tv-record-also li { display:flex; align-items:baseline; gap:8px; padding:6px 10px; border:1px solid var(--hw-line); border-radius:var(--hw-radius); background:var(--hw-panel-deep); font-family:var(--hw-font-ui); }
+.tv-record-also span { color:var(--hw-muted); font-size:10px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+.tv-record-also strong { color:var(--hw-text); font-size:14px; font-weight:800; }
+.tv-record-game { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px 20px; align-items:center; padding:14px 18px; border-top:1px solid var(--hw-line); background:rgba(8,24,41,.6); font-family:var(--hw-font-ui); }
+.tv-record-score { display:grid; gap:4px; min-width:0; }
+.tv-record-final { color:var(--hw-accent); font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.tv-record-score div { display:flex; justify-content:space-between; gap:12px; color:var(--hw-muted); font-size:14px; font-weight:700; }
+.tv-record-score div span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tv-record-score div strong { font-variant-numeric:tabular-nums; }
+.tv-record-score div.is-win { color:var(--hw-text); font-weight:800; }
+.tv-record-line { display:flex; gap:4px; }
+.tv-record-line div { display:flex; flex-direction:column; align-items:center; min-width:42px; padding:6px 4px; border:1px solid var(--hw-line-soft); border-radius:var(--hw-radius); }
+.tv-record-line strong { color:var(--hw-text); font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+.tv-record-line span { color:var(--hw-muted); font-size:9px; font-weight:900; letter-spacing:.1em; }
+.tv-record-line div.is-lead { border-color:var(--hw-accent); background:rgba(121,255,244,.08); }
+.tv-record-line div.is-lead strong { color:var(--hw-accent); }
+@media (max-width:560px) {
+  .tv-record-hero { min-width:0; padding:16px 16px; }
+  .tv-record-fact { padding:9px 12px; gap:8px; }
+  .tv-record-fact dd { font-size:15px; }
+  .tv-record-game { grid-template-columns:1fr; padding:12px; }
+  .tv-record-line div { flex:1; min-width:0; }
+}
+
+/* Board column switch (college standings: seed or poll). */
+.tv-board-toggle { display:inline-flex; margin-left:auto; border:1px solid var(--hw-line); border-radius:999px; overflow:hidden; }
+.tv-board-toggle button { min-height:0; padding:4px 12px; border:0; border-radius:0; background:transparent; color:var(--hw-muted); font-family:var(--hw-font-ui); font-size:10px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; box-shadow:none; }
+.tv-board-toggle button[aria-pressed="true"] { background:var(--hw-accent); color:var(--hw-panel-deep); }
+.tv-board-toggle button:hover:not([aria-pressed="true"]) { color:var(--hw-text); background:transparent; }

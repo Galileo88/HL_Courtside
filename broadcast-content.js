@@ -697,17 +697,38 @@
       if(sleeper)body.push(turn(3,`${sleeper.name} is on that board at ${sleeper.season.PTS} points a game. That's a bet on the ceiling.`),turn(1,`That's a projection pick. Show me production.`));
       if(Number.isInteger(r.seniors))body.push(turn(3,r.seniors?`${cap(C.num(r.seniors))} of our top ten are seniors. The rest would have to declare early.`:`Not one senior in our top ten. Every one of them would have to declare early.`));
       close=pick(story,["The board will move. It always does.","Draft night is a long way off.","We'll update the board as the decisions come in."],'watch:close');
+    }else if(r.type==='seniors'){
+      open=pick(story,[`Last call for the seniors. ${top.name} leads the class out the door. ${J}?`,`The senior class has played its last college game. ${top.name} headlines it. ${J}?`],'sen:open');
+      body.push(turn(1,`${top.season?.PTS} a night in a final season. That's how you go out.`));
+      if(items.length>1)body.push(turn(3,`Also out of eligibility: ${join(items.slice(1,4).map(x=>`${x.name} at ${x.season?.PTS}`))}.`));
+      body.push(turn(2,`Some of them get drafted. Some of them don't. Either way, that chapter's closed.`));
+      close=pick(story,["Tip of the cap to the seniors.","That's a class that gave us a lot.","Draft night decides the rest."],'sen:close');
+    }else if(r.type==='draft-class'){
+      open=pick(story,[`The draft class is set. ${C.capitalize(C.plural(r.count,'college player'))} are in it, led by ${top.name}. ${J}?`,`${top.name} is officially headed to the draft. ${J}, the class as a whole?`],'class:open');
+      body.push(turn(1,top.season?.PTS?`${top.season.PTS} a night as a ${({'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'})[top.year]||'player'}. He's ready. I'm not worried about that one.`.replace(/He's ready/,top.pronoun==='she'?"She's ready":top.pronoun==='he'?"He's ready":`${C.surname(top.name)}'s ready`):`I like the top of this class.`));
+      if(r.fresh)body.push(turn(2,`${C.capitalize(C.num(r.fresh))} of them played one college season. One. That's a lot of projection.`),turn(1,`That's the game now, ${A}. Talent goes when it's ready.`));
+      if(items.length>1)body.push(turn(3,`Also in the class: ${join(items.slice(1,4).map(x=>`${x.name} out of ${x.teamCity||x.team}`))}.`));
+      close=pick(story,["Now the pros get their look.","Draft night is next.","Plenty of rosters just got thinner."],'class:close');
+    }else if(r.type==='preseason-poll'){
+      const teams=r.teams||[],first=teams[0];if(!first)return genericScript(story,n);
+      const ref=x=>C.teamRef({city:x.teamCity,name:x.teamNickname||x.team}),TT=x=>ref(x).nick;
+      open=pick(story,[`The preseason poll is out, and ${TT(first)} ${C.verb(ref(first),'are')} No. 1. ${J}, agree?`,`${cap(TT(first))} ${C.verb(ref(first),'open')} the season at the top of the poll. ${J}?`],'pre:open');
+      body.push(turn(1,first.starters===0?`No starters back and they're No. 1? The voters are betting on talent. I need to see it.`:first.starters>=4?`${C.capitalize(C.num(first.starters))} starters back. Hard to argue with that.`:`I'll take it. ${first.star?`${first.star} at ${first.starPTS} a night is a good place to start.`:'Talent wins.'}`));
+      if(r.champion)body.push(turn(2,r.championRank&&r.championRank<=25?`The defending champs at No. ${r.championRank}. They'll have something to say about that.`:`And the defending champs start unranked. That's going to be on the locker-room wall.`));
+      if(teams.length>1)body.push(turn(3,`Rounding out the top five: ${join(teams.slice(1,5).map(x=>ref(x).short))}.`));
+      close=pick(story,["Now go play the games.","Polls are for the preseason. The season is for proving them wrong.","Ask us again in a month."],'pre:close');
     }else if(r.type==='returning'){
-      open=pick(story,[`Let's look ahead. ${top.name} is the best scorer coming back next season. ${J}?`,`Who's back next year? ${top.name} leads the list. ${J}?`,`${top.name}, ${top.season?.PTS} points a game, and coming back. ${J}?`],'back:open');
-      body.push(turn(1,`${top.season?.PTS} a night, and ${last(top)} is coming back? That's trouble for everybody else.`));
+      open=pick(story,[`Let's look at who's back. ${top.name} is the best returning scorer in the country. ${J}?`,`Who's back this season? ${top.name} leads the list. ${J}?`,`${top.name}, ${top.season?.PTS} points a game last season, and back for more. ${J}?`],'back:open');
+      body.push(turn(1,`${top.season?.PTS} a night, and ${last(top)} is back? That's trouble for everybody else.`));
       if(items.length>1)body.push(turn(3,`Also back: ${join(items.slice(1,4).map(x=>`${x.name} at ${x.season?.PTS}`))}.`));
-      body.push(turn(2,`If they all actually come back. Somebody on that list is going to get a draft itch.`));
-      close=pick(story,["Next season's already taking shape.","That's who's back. For now.","We'll see who's still there when the season opens."],'back:close');
+      body.push(turn(2,`Experience matters in this sport. Those teams know what they've got.`));
+      close=pick(story,["The season's taking shape.","That's who's back.","Now let's see what they do with it."],'back:close');
     }else if(r.type==='early-top-ten'){
       const teams=r.teams||[],first=teams[0];if(!first)return genericScript(story,n);
       const ref=x=>C.teamRef({city:x.teamCity,name:x.teamNickname||x.team}),TT=x=>ref(x).nick,rank=r.championRank;
       open=pick(story,[`Way-too-early top 10. We've got ${TT(first)} at No. 1. ${J}, agree?`,`It's never too early. ${cap(TT(first))} ${C.verb(ref(first),'open')} next season at No. 1 on our list. ${J}?`,`Our early top 10 is out, and ${TT(first)} ${C.verb(ref(first),'are')} on top. ${J}, go.`],'early:open');
-      body.push(turn(1,`I'll take it. ${first.kept} percent of the scoring back, and ${first.star} at ${first.starPTS} a night. That's a real start.`));
+      const starters=first.starters>0?(first.startersBack===first.starters?`All ${C.num(first.starters)} starters back`:first.startersBack?`${cap(C.num(first.startersBack))} starters back`:`No starters back`):null;
+      body.push(turn(1,starters?`I'll take it. ${starters}, and ${first.star} at ${first.starPTS} a night. That's a real start.`:`I'll take it. ${first.star} at ${first.starPTS} a night is a real start.`));
       if(rank&&r.champion)body.push(turn(2,rank===1?`Hard to argue. The champs bring back enough to do it again.`:rank>10?`The defending champs aren't even in the top ten? I'd keep the champs higher until somebody knocks them off.`:`The defending champs at No. ${rank}? I'd keep the champs higher until somebody knocks them off.`));
       if(teams.length>1)body.push(turn(3,`Rounding out the top five: ${join(teams.slice(1,5).map(x=>ref(x).short))}.`));
       close=pick(story,["It's never too early.","Ask us again when the season opens.","Plenty of time for this list to look silly."],'early:close');
@@ -724,6 +745,20 @@
       body.push(turn(2,`Not all of them are ready. Some of them are going to wish they'd stayed.`));
       close=pick(story,["Draft night just got more interesting.","Now we wait for draft day.","Big decisions all around.","That's the early-entry list."],'dec:close');
     }
+    return [turn(0,open),...body,turn(0,close)];
+  }
+  // College seeding: a strong record, a poor seed, and a desk that can't believe it.
+  function snubScript(story,n=first()){
+    const x=story.seasonSnapshot?.snub,lead=x?.lead;if(!lead)return genericScript(story,n);
+    const ref=t=>C.teamRef({city:t.teamCity,name:t.teamNickname||t.team}),T=t=>ref(t).nick,rec=t=>`${t.W}-${t.L}`,[M,J,A,N]=n;
+    const body=[];
+    const open=pick(story,[`The bracket is out, and ${T(lead)} ${C.verb(ref(lead),'have')} a complaint. ${rec(lead)} and a No. ${lead.seed} seed. ${J}?`,`${rec(lead)}, and ${T(lead)} get a ${lead.seed} seed. ${J}, explain that.`,`Seeding snub of the year: ${T(lead)}, ${rec(lead)}, seeded ${lead.seed}th. ${J}?`].map(t=>t.replace(/(\d+)th\b/,(m,d)=>`${d}${Number(d)%100>=11&&Number(d)%100<=13?'th':Number(d)%10===1?'st':Number(d)%10===2?'nd':Number(d)%10===3?'rd':'th'}`)),'snub:open');
+    body.push(turn(1,pick(story,[`That's a robbery. You win ${lead.W} games, you should be hosting, not hoping.`,`I don't get it. ${lead.W} wins used to mean something.`,`Disrespect. Plain and simple. ${cap(T(lead))} earned better than that.`],'snub:take')));
+    body.push(turn(3,lead.poll?`Here's why: the bracket follows the poll, and the poll had ${T(lead)} at No. ${lead.poll}. The record never moved the voters.`:`Here's why: the bracket follows the poll, not the standings.`));
+    if(x.gift)body.push(turn(2,`And ${T(x.gift)} ${C.verb(ref(x.gift),'go')} ${rec(x.gift)} and ${C.verb(ref(x.gift),'get')} a No. ${x.gift.seed}? Explain that one to me.`),turn(1,`I can't. Nobody can.`));
+    else if(x.company?.length)body.push(turn(2,`${cap(T(x.company[0]))} got the same treatment: ${rec(x.company[0])} and a No. ${x.company[0].seed}.`));
+    if(x.left?.length)body.push(turn(3,`At least ${T(lead)} ${C.verb(ref(lead),'are')} in. ${cap(T(x.left[0]))} went ${rec(x.left[0])} and missed the field.`));
+    const close=pick(story,["Somebody's playing with a chip on their shoulder.","Now go prove the voters wrong.","Seeds are just numbers once the ball goes up.","Circle that first game."],'snub:close');
     return [turn(0,open),...body,turn(0,close)];
   }
   function reportedReaction(story,n=first()){
@@ -745,6 +780,7 @@
     if(story.performanceSnapshot)return Performance.script(story,n);
     if(story.seasonSnapshot?.roundup)return roundupScript(story,n);
     if(story.type==='Season leaders')return leadersScript(story,n);
+    if(story.type==='Seeding snub')return snubScript(story,n);
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return awardScript(story,n);
     if(story.type==='Playoff preview'||story.eventKey?.startsWith('playoff-round-'))return playoffScript(story,n);
     if(story.type==='Championship review'||story.eventKey==='championship')return championshipScript(story,n);

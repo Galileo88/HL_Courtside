@@ -17,7 +17,7 @@ test('year reviews develop the leading teams and qualified players in prose with
  const player=(id,PTS,GP=4)=>({id,tid:1,fn:'Player',ln:String(id),awards:id===1?[{id:2,league:0,yearsWon:[0,1]}]:[],stats:[{league:0,yr:1,season:[{tid:1,GP,PTS,REB:40,AST:32,STL:8,BLK:4,TO:8,FGM:40,FGA:80,TPM:8,TPA:20,FTM:10,FTA:12,MIN:[4800]}]}]});
  l.teams[0].roster=[player(1,160),player(2,120),player(3,100),player(4,90,1)];l.teams[1].roster=[];
  const story=S.candidates(l).find(c=>c.story.eventKey==='regular-wrap').story,text=story.paragraphs.join(' ');
- assert.equal(story.paragraphs.length,4);assert.equal(story.editorialVersion,11);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
+ assert.equal(story.paragraphs.length,4);assert.equal(story.editorialVersion,12);assert.equal(story.seasonSnapshot.reviewPlayers.length,4);
  assert.match(text,/best record|finished level/);assert.match(text,/outscored opponents by/);
  assert.ok(story.paragraphs.some(p=>p.split(/\s+/).length>30));assert.doesNotMatch(text,/PPG|RPG|APG| · /);
  const groups=S.seasonReviewLists(story);assert.equal(groups.length,2);assert.equal(groups[1].items.length,3);
@@ -185,4 +185,18 @@ test('a title-game award line shows game totals without games played',()=>{
   // A multi-game Finals line keeps games played and per-game rates.
   story.seasonSnapshot.featuredPlayer.finalsStats={GP:4,PTS:117,REB:30,AST:3,STL:2,BLK:1,FGM:40,FGA:58,TPM:9,TPA:13};
   const series=S.factsForStory(story);assert.ok(series.headers.includes('GP'));assert.ok(series.headers.includes('PPG'));
+});
+test('college seeding snubs compare the bracket seed with the record and name the poll behind it',()=>{
+ const rows=[[24,8,15,16],[23,9,1,1],[22,10,2,2],[21,11,3,3],[20,12,4,4],[19,13,6,6],[18,14,7,7],[17,15,8,8],[8,24,5,5],[16,16,9,9]];
+ const teams=rows.map(([W,L,seed,poll],id)=>({id:id+1,city:`City${id+1}`,name:`Team${id+1}`,roster:[],season:[{yr:1969,seed,poll,seasonStats:{GP:32,W,L}}]}));
+ teams.push({id:20,city:'Left',name:'Outs',roster:[],season:[{yr:1969,seed:0,poll:30,seasonStats:{GP:32,W:21,L:11}}]});
+ const series=[];for(let i=0;i<10;i+=2)series.push({topSeed:i+1,lowerSeed:i+2,firstTo:1,winner:0});
+ const league={leagueName:'College',shortName:'NC',leagueType:1,teams,season:{currentYear:1969,startingYear:1,totalGames:32,schedule:[],news:[],playoffs:[{yr:1969,rounds:[{series}]}]}};
+ league.season.currentYear=1969;league.season.startingYear=1969;
+ const story=S.candidates(league,[league]).map(x=>x.story).find(s=>s.eventKey==='seeding-snub');
+ assert.ok(story,'snub story');assert.match(story.headline,/24-8 Team1 handed a No\. 15 seed/);
+ const text=story.paragraphs.join(' ');assert.match(text,/poll never bought in.*No\. 16/);assert.match(text,/8-24 and still landed the No\. 5 seed/);assert.match(text,/Left Outs \(21-11\) didn't make the field/);
+ assert.deepEqual(story.seasonSnapshot.board.headers,['Team','Record','Seed','Poll']);
+ const pro={...structuredClone(league),leagueType:0};assert.ok(!S.candidates(pro,[pro]).some(x=>x.story.eventKey==='seeding-snub'));
+ const wrap=S.candidates(league,[league]).find(x=>x.story.eventKey==='regular-wrap')?.story;if(wrap)assert.deepEqual(wrap.seasonSnapshot.headers,['Team','W','L','Seed','Poll']);
 });
