@@ -1,15 +1,16 @@
 /* Coach story scenes, built from the game's own art at the game's scale:
    the game's arena (stairs, crowd, court), the bench chairs and sitting and
-   celebrating sprites, the press wall and podium, the locker room. The
+   celebrating sprites, the press wall and podium, the locker room, and the
+   draft stage. The
    camera frames a 384 x 216 piece of the world at 2x, the same framing as
    the wide action shots, so people are their native 32 x 42. */
 (() => {
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'camera-flash', 'draft-podium', 'locker-room'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'camera-flash', 'draft-podium', 'locker-room', 'podium-background', '../assets/draft_logo'];
   function load() {
-    ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name] = image; }));
+    ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
   }
   const hex = value => /^#?[\da-f]{6}$/i.test(String(value || '')) ? '#' + String(value).replace('#', '') : null;
@@ -110,6 +111,24 @@
     const sheet = art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`];
     return { body: swap(art['spectator-body'], 0, body), head: swap(sheet, cheer ? Math.floor(rand() * 3) : 0, head) };
   }
+  // An image cropped to its visible pixels, so a padded logo fills its box.
+  function trim(image) {
+    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) { const n = (i - 3) / 4, x = n % c.width, y = Math.floor(n / c.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 < 0) return image;
+    const out = document.createElement('canvas'); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height); return out;
+  }
+  // A fan seen from behind, facing the stage: the second row of the head sheets.
+  function fanBack(rand, team, cheer) {
+    const pick = list => list[Math.floor(rand() * list.length)], skin = pick(SKIN), hair = pick(HAIR);
+    const r = rand(), shirt = r < .5 ? teamColor(team, 0, '#147dff') : r < .8 ? teamColor(team, 1, '#ffffff') : pick(['#f2f2f2', '#2e3a59', '#8a7a5c']);
+    const map = { '220,129,88': shade(skin, 1), '215,85,66': shade(skin, .82), '225,174,120': shade(skin, 1.12), '50,175,0': shade(skin, 1), '45,60,90': shade(hair, 1),
+      '20,125,255': shade(shirt, 1), '10,175,255': shade(shirt, 1.15), '5,200,255': shade(shirt, 1.3) };
+    return swap(art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`], 3 + Math.floor(rand() * 3), map);
+  }
   async function arena(scene, crowd, camera, rand, { fill = 1, cheer = false, bench = [], benchPose = 'bench-idle', announcers = [] } = {}) {
     // The floor, the crowd and the fans belong to the home team of the arena.
     const team = scene.venue || scene.team, floor = await window.HoopWireCourt.render(team, { includeHoops: false });
@@ -207,6 +226,69 @@
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
       for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 40 + (i % 5) * 95 + rand() * 30, camera[1] - 50 + Math.floor(i / 5) * 115 + rand() * 30, 160, 160);
       return { canvas, extra: { customCourt } };
+    },
+    // Draft night: the pick at the game's podium in front of the stage screens.
+    // The center screen stacks the league logo, the DRAFT DAY mark and the
+    // year; the side screens show the pick's portrait. Fans fill the floor in
+    // front of the stage, facing it.
+    async draft(scene, rand) {
+      const { canvas, ctx, world, screen } = stage([0, 0, 384, 216]), team = scene.team, player = scene.draftee;
+      const primary = teamColor(team, 0, '#1d428a'), secondary = teamColor(team, 1, '#ffffff');
+      // The game's draft backdrop: its Hoop Land pattern at half size, one screen pixel per pattern pixel, close to the game's 20:48 scale against the players.
+      ctx.fillStyle = '#0a1534'; ctx.fillRect(0, 0, 384, 216);
+      for (let y = 0; y < 150; y += 64) for (let x = 0; x < 384; x += 64) ctx.drawImage(art['podium-background'], x, y, 64, 64);
+      ctx.fillStyle = 'rgba(6,10,28,.45)'; ctx.fillRect(0, 0, 384, 150);
+      const panel = (x, y, w, h) => {
+        ctx.fillStyle = '#05070d'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+        ctx.fillStyle = '#20263a'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+        const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#13285c'); g.addColorStop(1, '#070d22');
+        ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+      };
+      // Center screen: league logo above DRAFT DAY, the year below.
+      const center = [124, 8, 136, 88]; panel(...center);
+      const logo = await window.HoopWirePressBackdrop.leagueLogo(scene.league ? { logoURL: scene.league.logoURL } : null, scene.pressLeagueLogoData);
+      screen();
+      if (logo?.image) {
+        const box = [2 * 192 - 70, 22, 140, 44], image = trim(logo.image), fit = Math.min(box[2] / image.width, box[3] / image.height);
+        const k = logo.pixel && fit >= 1 ? Math.floor(fit) : fit, w = Math.round(image.width * k), h = Math.round(image.height * k);
+        ctx.imageSmoothingEnabled = !logo.pixel || k < 1; ctx.drawImage(image, Math.round(box[0] + (box[2] - w) / 2), Math.round(box[1] + (box[3] - h) / 2), w, h);
+      }
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(art.draft_logo, 2 * 192 - 78, 72, 156, 76);
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = '900 30px Arial';
+      ctx.fillText(String(scene.season || ''), 384, 182);
+      world();
+      // Side screens: the pick's portrait in the team's colors, the pick number beneath.
+      for (const x of [22, 278]) {
+        panel(x, 18, 84, 78);
+        ctx.fillStyle = primary; ctx.fillRect(x + 6, 24, 72, 54);
+        ctx.fillStyle = secondary; ctx.fillRect(x + 6, 76, 72, 2);
+        if (player) { const p = document.createElement('canvas'); p.width = 128; p.height = 112; window.HoopWirePlayer.portrait(p, player, team, 0); ctx.drawImage(p, x + 10, 22, 64, 56); }
+        screen(); ctx.fillStyle = '#ffffff'; ctx.font = '900 16px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(scene.pick?.pk ? `NO. ${scene.pick.pk} PICK` : 'DRAFT PICK', 2 * (x + 42), 2 * 92); world();
+      }
+      // Spotlight on the podium.
+      ctx.globalCompositeOperation = 'lighter';
+      const spot = ctx.createRadialGradient(192, 130, 6, 192, 130, 90); spot.addColorStop(0, 'rgba(120,150,220,.35)'); spot.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
+      // The stage: its deck, then its front face.
+      ctx.fillStyle = '#1b2033'; ctx.fillRect(0, 150, 384, 22); ctx.fillStyle = '#2d3550'; ctx.fillRect(0, 150, 384, 1);
+      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, 172, 384, 44); ctx.fillStyle = primary; ctx.fillRect(0, 172, 384, 2);
+      // The pick behind the podium: the game stands the player's feet 27 pixels above the podium's base.
+      const base = 172, podium = [160, base - 64];
+      if (player) { shadow(ctx, 192, base - 26, 10); person(ctx, player, team, 'suit-standing', 0, 192, base - 27, 'left'); }
+      ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 3; i++) ctx.drawImage(art['camera-flash'], 20 + rand() * 320, 90 + rand() * 60, 40, 40);
+      ctx.globalCompositeOperation = 'source-over';
+      // Fans on the floor in front of the stage, backs to the camera, the near row lower and darker.
+      const crowd = document.createElement('canvas'); crowd.width = 384; crowd.height = 216;
+      const c = crowd.getContext('2d'); c.imageSmoothingEnabled = false;
+      for (const [y, offset] of [[180, 0], [194, 8], [208, 4]]) for (let x = -8 + offset; x < 392; x += 16 + Math.floor(rand() * 3)) if (rand() < .92) c.drawImage(fanBack(rand, team, rand() < .35), x - 16, y - 16 + Math.floor(rand() * 2));
+      c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(4,6,16,.35)'; c.fillRect(0, 0, 384, 216);
+      ctx.drawImage(crowd, 0, 0);
+      return { canvas, extra: { pressLogoData: scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
     }
   };
 
@@ -216,6 +298,10 @@
     return (scenes[style] || scenes.hire)(scene, seeded(scene.seed || 'coach'), sceneArt);
   }
   function caption(scene) {
+    if (scene.kind === 'coach-draft') {
+      const C = window.HoopWireCore, who = scene.draftee ? C.playerDisplay(scene.draftee) : 'The pick';
+      return `${who} at the podium after going No. ${scene.pick?.pk || 1} to the ${C.teamDisplay(scene.team)} in the ${scene.season} draft.`;
+    }
     const C = window.HoopWireCore, name = scene.coach ? C.playerDisplay(scene.coach) : 'The coach', team = C.teamDisplay(scene.team);
     const record = scene.record ? `${scene.record[0]}-${scene.record[1]} ` : '';
     return ({
@@ -247,8 +333,9 @@
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
       // The broadcast crew at the table works for the arena's home team.
       broadcasters: ((context.venue || team)?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).slice(0, 4).map(p => ({ ...snap(p), isCoach: true })),
+      draftee: context.draftee ? { ...snap(context.draftee), wearsSuit: true, isCoach: false } : null, pick: context.pick || null,
       players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, season
     };
   }
-  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good'] };
+  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft'] };
 })();

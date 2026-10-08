@@ -119,5 +119,10 @@
     }
     ctx.restore();
   }
-  window.HoopWirePressBackdrop={render,paint};
+  // A league's logo, or the Hoop Land mark the game falls back to.
+  async function leagueLogo(league,savedData){
+    const loaded=await logoFor(league,savedData).catch(()=>null);
+    return loaded?{...loaded,status:'loaded'}:{...(await hoopLand().catch(()=>null)||{}),data:null,status:league?.logoURL?'unavailable':'default'};
+  }
+  window.HoopWirePressBackdrop={render,paint,leagueLogo};
 })();

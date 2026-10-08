@@ -154,7 +154,9 @@
       importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:4,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
-    result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p),coachScene:'hire'}:contextFor(lead.t,lookup,league,lead.p)});
+    // Draft stories show the top pick on the draft stage.
+    result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p),coachScene:'hire'}
+      :type===2?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'draft',draftee:lead.p,pick:lead.n.data?.draftPick||null}:contextFor(lead.t,lookup,league,lead.p)});
   }
   function candidates(league,leagues=[]){
     const cal=calendar(league,leagues);
