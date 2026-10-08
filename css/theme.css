@@ -1,0 +1,552 @@
+/* HoopWire design system. One set of tokens and the shared pieces built
+   from them, loaded last so every page reads as one product:
+   - kicker: small teal capitals above a title (page, story, board)
+   - label: muted capitals for league, season and day
+   - title: the UI face, heavy, tight; prose alone uses the serif
+   - panel: deep navy, a hairline border, a red rule on top
+   - active state: teal underline */
+:root {
+  --hw-font-ui: 'Segoe UI', Arial, Helvetica, sans-serif;
+  --hw-font-serif: Georgia, 'Times New Roman', serif;
+  --hw-panel: #0d2744;
+  --hw-panel-deep: #081829;
+  --hw-raised: #0d3971;
+  --hw-line: #23466b;
+  --hw-line-soft: #142d48;
+  --hw-text: #f0f7ff;
+  --hw-text-2: #c9dcf0;
+  --hw-muted: #8fb4d3;
+  --hw-accent: #79fff4;
+  --hw-blue: #238bce;
+  --hw-blue-strong: #1455a5;
+  --hw-red: #ee3546;
+  --hw-radius: 4px;
+  --muted: var(--hw-muted);
+  --line: var(--hw-line);
+}
+
+/* Kickers. */
+.landing-kicker,
+.article-meta,
+.tv-story-kicker,
+.tv-board-kicker,
+.wire-heading .landing-kicker {
+  display: block;
+  color: var(--hw-accent);
+  font-family: var(--hw-font-ui);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.article-meta {
+  margin-bottom: 10px;
+}
+
+/* Labels: league, season, day. */
+.wire-meta,
+.article-byline,
+.newsroom-heading .muted,
+.wire-heading p,
+.tv-name-sub {
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.wire-meta,
+.wire-heading p {
+  font-size: 10px;
+}
+.article-byline {
+  font-size: 11px;
+  padding: 14px 0;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--hw-line);
+}
+
+/* Titles: page titles, then story headlines, then section headings. */
+.newsroom-heading h1,
+.archive-heading h1,
+.tv-title h1,
+.wire-heading h1 {
+  margin: 4px 0 6px;
+  color: var(--hw-text);
+  font-family: var(--hw-font-ui);
+  font-size: clamp(28px, 4vw, 40px);
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-shadow: none;
+}
+.article-headline,
+.tv-story-header h2,
+.wire-card h2,
+.wire-card h3 {
+  color: var(--hw-text);
+  font-family: var(--hw-font-ui);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+.wire-card h3 {
+  font-size: 18px;
+  line-height: 1.3;
+}
+.wire-headlines h2,
+.wire-section > h2,
+.season-summary h3 {
+  color: var(--hw-text);
+  font-family: var(--hw-font-ui);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+.archive-heading p.muted,
+.tv-title p {
+  color: var(--hw-text-2);
+}
+
+/* Panels: deep navy, hairline border, red rule on top, no offset shadow. */
+.panel,
+.article-card,
+.tv-story-details,
+.wire-headlines {
+  background: var(--hw-panel);
+  border: 1px solid var(--hw-line);
+  border-top: 3px solid var(--hw-red);
+  border-radius: var(--hw-radius);
+  box-shadow: none;
+}
+.tv-story-header::after {
+  display: none;
+}
+.tv-story-header {
+  border-bottom: 1px solid var(--hw-line);
+}
+.tv-board,
+.tv-callout,
+.tv-matchup-card,
+.status {
+  border-radius: var(--hw-radius);
+  overflow: hidden;
+}
+.archive-team {
+  border: 1px solid var(--hw-line);
+  background: var(--hw-raised);
+  border-radius: var(--hw-radius);
+  box-shadow: none;
+}
+.archive-team > summary:hover {
+  color: var(--hw-accent);
+}
+.site-menu-panel {
+  border-color: var(--hw-line);
+  box-shadow: 0 12px 30px #020b144d;
+}
+
+/* Active state: one teal underline everywhere. */
+.nav a[aria-current='page'] {
+  color: #fff;
+  border-bottom-color: var(--hw-accent);
+}
+.archive-league-switch button[aria-pressed='true'] {
+  border-bottom-color: var(--hw-accent);
+}
+
+/* Links and buttons: secondary by default, .primary for the one main action. */
+.text-action,
+.wire-read {
+  color: var(--hw-accent);
+  font-family: var(--hw-font-ui);
+  font-weight: 800;
+}
+button,
+.file-button {
+  color: var(--hw-text);
+  background: var(--hw-panel-deep);
+  border: 1px solid var(--hw-line);
+  border-radius: var(--hw-radius);
+  font-family: var(--hw-font-ui);
+  font-weight: 800;
+}
+/* Element-level hover so icon and menu buttons keep their own class styles. */
+button:hover,
+.file-button:hover {
+  background: var(--hw-blue-strong);
+  border-color: var(--hw-blue);
+}
+button:disabled:hover {
+  background: var(--hw-panel-deep);
+  border-color: var(--hw-line);
+}
+button.primary {
+  color: #fff;
+  background: var(--hw-blue-strong);
+  border-color: var(--hw-blue);
+}
+button.primary:hover {
+  background: #1969c3;
+}
+button:focus-visible,
+.file-button:focus-within {
+  outline: 3px solid var(--hw-accent);
+  outline-offset: 2px;
+}
+
+/* Dialogs and status notes share the panel look. */
+dialog {
+  color: var(--hw-text);
+  background: var(--hw-panel);
+  border: 1px solid var(--hw-line);
+  border-top: 3px solid var(--hw-red);
+  border-radius: var(--hw-radius);
+  box-shadow: 0 20px 50px #000a;
+}
+dialog h2 {
+  font-family: var(--hw-font-ui);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.status {
+  color: var(--hw-text);
+  background: var(--hw-panel);
+  border: 1px solid var(--hw-line);
+  border-left: 3px solid var(--hw-blue);
+}
+
+/* Page headers: kicker over title on every page. */
+.tv-title {
+  display: block;
+  margin-bottom: 18px;
+}
+.archive-heading > div > .landing-kicker {
+  margin-bottom: 2px;
+}
+
+/* The headline rail keeps its label above the headline at every width. */
+.wire-headlines a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wire-headlines strong {
+  order: 0;
+  margin: 0;
+}
+
+/* Stat boards: numbers and their column names sit centered. */
+.tv-board-table :is(th, td).is-num {
+  text-align: center;
+}
+.tv-board-table thead th.is-num {
+  text-align: center;
+}
+
+/* In-feed sponsor tiles mirror story cards; the gold label marks them as ads. */
+.wire-feed-ad h3 {
+  font-family: var(--hw-font-ui);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+.wire-feed-label {
+  letter-spacing: 0.14em;
+}
+
+/* The welcome card is a panel like the rest; its Choose save button stays the call to action. */
+.menu-card {
+  background: var(--hw-panel);
+  border: 1px solid var(--hw-line);
+  border-top: 3px solid var(--hw-red);
+  border-radius: var(--hw-radius);
+  box-shadow: none;
+}
+.menu-card h2 {
+  font-family: var(--hw-font-ui);
+  text-shadow: none;
+}
+
+/* Archive actions stay on one row; phones drop the repeated word. */
+@media (max-width: 600px) {
+  .archive-panel .actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .archive-panel .actions > :is(button, .file-button) {
+    margin: 0;
+    padding: 11px 6px;
+    text-align: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .archive-panel .actions > [hidden] {
+    display: none;
+  }
+  .archive-panel .actions .label-more {
+    display: none;
+  }
+  .archive-panel .actions button.danger {
+    margin-left: 0;
+  }
+}
+
+/* Record cards: the mark beside what it beat, then the game it came from. */
+.tv-record-body {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: stretch;
+}
+.tv-record-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 120px;
+  padding: 18px 24px;
+  border-right: 1px solid var(--hw-line);
+  background: linear-gradient(135deg, rgba(238, 53, 70, 0.16), rgba(238, 53, 70, 0) 70%);
+}
+.tv-record-value {
+  color: #fff;
+  font-family: var(--hw-font-ui);
+  font-size: clamp(52px, 11vw, 76px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.tv-record-unit {
+  color: var(--hw-accent);
+  font-family: var(--hw-font-ui);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tv-record-facts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0;
+  padding: 6px 0;
+}
+.tv-record-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+}
+.tv-record-fact + .tv-record-fact {
+  border-top: 1px solid var(--hw-line-soft);
+}
+.tv-record-fact dt {
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tv-record-fact dd {
+  margin: 0;
+  color: var(--hw-text);
+  font-family: var(--hw-font-ui);
+  font-size: 17px;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.tv-record-progress {
+  padding: 14px 18px 12px;
+  border-top: 1px solid var(--hw-line);
+}
+.tv-record-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--hw-line-soft);
+  overflow: hidden;
+}
+.tv-record-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--hw-blue), var(--hw-accent));
+}
+.tv-record-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.tv-record-also {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 18px;
+  list-style: none;
+  border-top: 1px solid var(--hw-line);
+}
+.tv-record-also li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--hw-line);
+  border-radius: var(--hw-radius);
+  background: var(--hw-panel-deep);
+  font-family: var(--hw-font-ui);
+}
+.tv-record-also span {
+  color: var(--hw-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.tv-record-also strong {
+  color: var(--hw-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+.tv-record-game {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 14px 18px;
+  border-top: 1px solid var(--hw-line);
+  background: rgba(8, 24, 41, 0.6);
+  font-family: var(--hw-font-ui);
+}
+.tv-record-score {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.tv-record-final {
+  color: var(--hw-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tv-record-score div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--hw-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+.tv-record-score div span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tv-record-score div strong {
+  font-variant-numeric: tabular-nums;
+}
+.tv-record-score div.is-win {
+  color: var(--hw-text);
+  font-weight: 800;
+}
+.tv-record-line {
+  display: flex;
+  gap: 4px;
+}
+.tv-record-line div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 42px;
+  padding: 6px 4px;
+  border: 1px solid var(--hw-line-soft);
+  border-radius: var(--hw-radius);
+}
+.tv-record-line strong {
+  color: var(--hw-text);
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.tv-record-line span {
+  color: var(--hw-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.tv-record-line div.is-lead {
+  border-color: var(--hw-accent);
+  background: rgba(121, 255, 244, 0.08);
+}
+.tv-record-line div.is-lead strong {
+  color: var(--hw-accent);
+}
+@media (max-width: 560px) {
+  .tv-record-hero {
+    min-width: 0;
+    padding: 16px 16px;
+  }
+  .tv-record-fact {
+    padding: 9px 12px;
+    gap: 8px;
+  }
+  .tv-record-fact dd {
+    font-size: 15px;
+  }
+  .tv-record-game {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .tv-record-line div {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Board column switch (college standings: seed or poll). */
+.tv-board-toggle {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--hw-line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tv-board-toggle button {
+  min-height: 0;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: none;
+}
+.tv-board-toggle button[aria-pressed='true'] {
+  background: var(--hw-accent);
+  color: var(--hw-panel-deep);
+}
+.tv-board-toggle button:hover:not([aria-pressed='true']) {
+  color: var(--hw-text);
+  background: transparent;
+}

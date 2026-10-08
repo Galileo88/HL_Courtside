@@ -1,119 +1,248 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HoopWire — Hoop Land News Generator</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="newsroom.css" />
-  <link rel="stylesheet" href="theme.css" />
-</head>
-<body class="entry-screen">
-  <header class="topbar">
-    <a class="brand" href="#welcome" aria-label="HoopWire main menu">HOOPWIRE</a>
-    <div class="tagline">OFFLINE HOOP LAND NEWSROOM</div>
-    <div class="site-menu">
-      <button id="siteMenuButton" class="site-menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="siteMenu"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button>
-      <div id="siteMenu" class="site-menu-panel" hidden><button id="menuUploadSave" type="button">Upload new save</button></div>
-    </div>
-  </header>
-
-  <nav class="nav">
-    <a href="#newsroom">Home</a>
-    <span id="leagueButtons" class="league-navigation"></span>
-    <a href="#tv">HoopWire TV</a>
-    <a href="#archive">Archive</a>
-  </nav>
-
-  <main class="shell">
-    <section id="welcome" class="setup landing">
-      <header class="menu-intro">
-        <div class="menu-wordmark"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#254f85" stroke="#fff" stroke-width="3"/><path d="M68 8A46 46 0 0 1 91 70L69 89C87 53 81 28 68 8Z" fill="#cc1634"/><g fill="none" stroke="#fff" stroke-width="3"><path d="M9 29C42 15 65 24 92 43M7 60C37 39 58 34 92 35M26 89C57 55 64 35 69 9M59 94C79 66 76 36 51 4"/><circle cx="50" cy="50" r="46"/></g></svg><span>HOOPWIRE</span></div>
-        <h1>The daily desk</h1>
-        <p>News and broadcasts for your Hoop Land league</p>
-      </header>
-      <div class="menu-grid">
-        <article class="menu-card load-card">
-          <svg class="menu-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 21v7h22v-7M16 23V4M9 11l7-7 7 7"/></svg>
-          <h2>Load save</h2><p>Upload your latest save to open the newsroom. Full coverage is created automatically.</p>
-          <div class="file-row"><label class="file-button">Choose save <span aria-hidden="true">↑</span><input id="saveFile" type="file" accept=".json,*/*" disabled /></label><span id="fileName">No save loaded</span></div>
-        </article>
-
-
-      </div>
-    </section>
-    <section id="newsroom" class="newsroom-heading hidden"><div><span class="landing-kicker">THE DAILY WIRE</span><h1>Newsroom</h1><p id="newsroomDay" class="muted"></p></div><div class="newsroom-tools"><div id="newsroomLeagueLabel" hidden><select id="newsroomLeague" hidden disabled></select></div></div></section>
-    <section id="status" class="status hidden" role="status"></section>
-
-    <section id="archive" class="panel archive-panel">
-      <div class="archive-heading"><div><span class="landing-kicker">The archive</span><h1 id="archiveTitle">League Archive</h1><p class="muted">Choose a team, year, and game day.</p></div></div>
-      <div id="archiveLeagueSwitch" class="archive-league-switch" role="group" aria-label="League" hidden></div>
-      <div id="archiveTree" class="archive-tree"></div>
-      <div hidden><select id="archiveLeague"></select><select id="archiveSeason"></select><select id="archiveDay"></select><select id="archiveTeam"><option value="">All teams</option></select></div>
-      <div class="actions"><button id="exportButton" aria-label="Export archive" disabled>Export<span class="label-more"> archive</span></button><label class="file-button" aria-label="Import archive">Import<span class="label-more"> archive</span><input id="importFile" type="file" accept=".json" disabled /></label><button id="refreshImagesButton" hidden disabled>Refresh images</button><button id="resetArchive" class="danger" aria-label="Reset archive" disabled>Reset<span class="label-more"> archive</span></button></div>
-    </section>
-    <section id="historicalStories" class="newsroom-heading hidden"><div><span class="landing-kicker">FROM THE ARCHIVE</span><h1 id="historicalTitle">Saved stories</h1></div><a class="text-action" href="#archive">Back to archive</a></section>
-    <dialog id="resetDialog"><h2 id="resetTitle">Reset the archive?</h2><p id="resetDescription"></p><div class="actions"><button id="cancelReset">Cancel</button><button id="confirmReset" class="primary">Reset archive</button></div></dialog>
-
-    <section id="feed" class="feed"></section>
-    <section id="tv" class="tv-panel hidden">
-      <div class="tv-title"><span class="landing-kicker">THE DAILY DESK</span><h1>HoopWire TV</h1></div>
-      <figure class="tv-studio"><div id="tvStage" class="tv-stage" tabindex="0" aria-label="HoopWire TV. Click or press Space to play or pause."><img id="tvStudio" width="960" height="540" alt="" hidden /><div id="tvLiveHosts" class="tv-live-hosts" aria-hidden="true"></div><img id="tvDeskForeground" class="tv-desk-foreground" width="960" height="540" alt="" aria-hidden="true" hidden /><div id="tvBubbles" class="tv-bubbles" aria-live="polite"></div><div id="tvTicker" class="tv-results-ticker" hidden></div>
-        <div id="tvIntro" class="tv-intro" hidden aria-label="HoopWire TV opening sequence">
-          <div class="tv-intro-grid" aria-hidden="true"></div><div class="tv-intro-orbit" aria-hidden="true"></div>
-          <div class="tv-intro-slash slash-one" aria-hidden="true"></div><div class="tv-intro-slash slash-two" aria-hidden="true"></div>
-          <div class="tv-intro-brand"><div class="tv-intro-eyebrow">THE DAILY DESK</div><img class="tv-intro-logo" src="assets/hoopwire_logo.png" width="1336" height="366" alt="HoopWire TV" /><div class="tv-intro-tagline">THE GAME. THE STORIES. THE CONVERSATION.</div></div>
-          <div class="tv-intro-footer"><span>BASKETBALL / EVERY ANGLE</span><span class="tv-intro-onair"><i aria-hidden="true"></i> HOOPWIRE TV</span></div>
-          <div class="tv-intro-progress" aria-hidden="true"></div><div class="tv-intro-wipe" aria-hidden="true"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HoopWire — Hoop Land News Generator</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/newsroom.css" />
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body class="entry-screen">
+    <header class="topbar">
+      <a class="brand" href="#welcome" aria-label="HoopWire main menu">HOOPWIRE</a>
+      <div class="tagline">OFFLINE HOOP LAND NEWSROOM</div>
+      <div class="site-menu">
+        <button
+          id="siteMenuButton"
+          class="site-menu-button"
+          type="button"
+          aria-label="Menu"
+          aria-expanded="false"
+          aria-controls="siteMenu"
+        >
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+        </button>
+        <div id="siteMenu" class="site-menu-panel" hidden>
+          <button id="menuUploadSave" type="button">Upload new save</button>
         </div>
-        <button id="tvStagePlay" class="tv-stage-play" type="button" aria-label="Play HoopWire TV episode"><span class="tv-stage-play-icon" aria-hidden="true">▶</span><span class="tv-stage-play-label">Play episode</span></button><button id="tvMute" class="tv-audio-button" type="button" aria-pressed="false" aria-label="Mute voices" title="Mute voices"><span aria-hidden="true">🔊</span></button></div><figcaption id="tvStudioCaption" class="sr-only"></figcaption></figure>
-      <div id="tvHosts" hidden></div>
-      <div class="tv-controls tv-playback" role="group" aria-label="Story navigation">
-        <button id="tvPrevious" aria-label="Previous Story" disabled><span aria-hidden="true">←</span> Previous Story</button>
-        <button id="tvNext" aria-label="Next Story" disabled>Next Story <span aria-hidden="true">→</span></button>
-        <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" />
       </div>
-      <div hidden><button id="tvLinePrevious">Previous line</button><button id="tvLineNext">Next line</button><select id="tvStorySelect"></select><div id="tvTranscript"></div></div>
-      <span id="tvDiscussionStatus" class="sr-only" role="status"></span>
-      <div id="tvSegment" class="tv-segment" aria-live="polite"></div>
+    </header>
 
-    </section>
-  </main>
+    <nav class="nav">
+      <a href="#newsroom">Home</a>
+      <span id="leagueButtons" class="league-navigation"></span>
+      <a href="#tv">HoopWire TV</a>
+      <a href="#archive">Archive</a>
+    </nav>
 
-  <template id="articleTemplate">
-    <article class="article-card">
-      <div class="article-meta"></div>
-      <h2 class="article-headline"></h2>
-      <div class="article-byline">HoopWire Staff</div>
-      <figure class="article-image">
-        <img width="768" height="432" alt="" />
-        <figcaption></figcaption>
-      </figure>
-      <div class="article-body"></div>
-    </article>
-  </template>
+    <main class="shell">
+      <section id="welcome" class="setup landing">
+        <header class="menu-intro">
+          <div class="menu-wordmark">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle cx="50" cy="50" r="46" fill="#254f85" stroke="#fff" stroke-width="3" />
+              <path d="M68 8A46 46 0 0 1 91 70L69 89C87 53 81 28 68 8Z" fill="#cc1634" />
+              <g fill="none" stroke="#fff" stroke-width="3">
+                <path
+                  d="M9 29C42 15 65 24 92 43M7 60C37 39 58 34 92 35M26 89C57 55 64 35 69 9M59 94C79 66 76 36 51 4"
+                />
+                <circle cx="50" cy="50" r="46" />
+              </g></svg
+            ><span>HOOPWIRE</span>
+          </div>
+          <h1>The daily desk</h1>
+          <p>News and broadcasts for your Hoop Land league</p>
+        </header>
+        <div class="menu-grid">
+          <article class="menu-card load-card">
+            <svg class="menu-icon" viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M5 21v7h22v-7M16 23V4M9 11l7-7 7 7" />
+            </svg>
+            <h2>Load save</h2>
+            <p>Upload your latest save to open the newsroom. Full coverage is created automatically.</p>
+            <div class="file-row">
+              <label class="file-button"
+                >Choose save <span aria-hidden="true">↑</span
+                ><input id="saveFile" type="file" accept=".json,*/*" disabled /></label
+              ><span id="fileName">No save loaded</span>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section id="newsroom" class="newsroom-heading hidden">
+        <div>
+          <span class="landing-kicker">THE DAILY WIRE</span>
+          <h1>Newsroom</h1>
+          <p id="newsroomDay" class="muted"></p>
+        </div>
+        <div class="newsroom-tools">
+          <div id="newsroomLeagueLabel" hidden><select id="newsroomLeague" hidden disabled></select></div>
+        </div>
+      </section>
+      <section id="status" class="status hidden" role="status"></section>
 
-  <script src="core.js"></script>
-  <script src="season-coverage.js"></script>
-  <script src="records-coverage.js"></script>
-  <script src="news-coverage.js"></script>
-  <script src="performance-coverage.js"></script>
-  <script src="archive.js"></script>
-  <script src="player-renderer.js"></script>
-  <script src="court-renderer.js"></script>
-  <script src="press-backdrop.js"></script>
-  <script src="scenes.js"></script>
-  <script src="coach-scenes.js"></script>
-  <script src="tv.js"></script>
-  <script src="vendor/animalese/riffwave.js"></script>
-  <script src="vendor/animalese/animalese.js"></script>
-  <script src="broadcast-context.js"></script>
-  <script src="broadcast-content.js"></script>
-  <script src="broadcast.js"></script>
-  <script src="newsroom.js"></script>
-  <script src="newsroom-ad-art.js"></script>
-  <script src="newsroom-promos.js"></script>
-  <script src="newsroom-view.js"></script>
-  <script src="app.js"></script>
-</body>
+      <section id="archive" class="panel archive-panel">
+        <div class="archive-heading">
+          <div>
+            <span class="landing-kicker">The archive</span>
+            <h1 id="archiveTitle">League Archive</h1>
+            <p class="muted">Choose a team, year, and game day.</p>
+          </div>
+        </div>
+        <div id="archiveLeagueSwitch" class="archive-league-switch" role="group" aria-label="League" hidden></div>
+        <div id="archiveTree" class="archive-tree"></div>
+        <div hidden>
+          <select id="archiveLeague"></select
+          ><select id="archiveSeason"></select
+          ><select id="archiveDay"></select
+          ><select id="archiveTeam">
+            <option value="">All teams</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button id="exportButton" aria-label="Export archive" disabled>
+            Export<span class="label-more"> archive</span></button
+          ><label class="file-button" aria-label="Import archive"
+            >Import<span class="label-more"> archive</span
+            ><input id="importFile" type="file" accept=".json" disabled /></label
+          ><button id="refreshImagesButton" hidden disabled>Refresh images</button
+          ><button id="resetArchive" class="danger" aria-label="Reset archive" disabled>
+            Reset<span class="label-more"> archive</span>
+          </button>
+        </div>
+      </section>
+      <section id="historicalStories" class="newsroom-heading hidden">
+        <div>
+          <span class="landing-kicker">FROM THE ARCHIVE</span>
+          <h1 id="historicalTitle">Saved stories</h1>
+        </div>
+        <a class="text-action" href="#archive">Back to archive</a>
+      </section>
+      <dialog id="resetDialog">
+        <h2 id="resetTitle">Reset the archive?</h2>
+        <p id="resetDescription"></p>
+        <div class="actions">
+          <button id="cancelReset">Cancel</button><button id="confirmReset" class="primary">Reset archive</button>
+        </div>
+      </dialog>
+
+      <section id="feed" class="feed"></section>
+      <section id="tv" class="tv-panel hidden">
+        <div class="tv-title">
+          <span class="landing-kicker">THE DAILY DESK</span>
+          <h1>HoopWire TV</h1>
+        </div>
+        <figure class="tv-studio">
+          <div
+            id="tvStage"
+            class="tv-stage"
+            tabindex="0"
+            aria-label="HoopWire TV. Click or press Space to play or pause."
+          >
+            <img id="tvStudio" width="960" height="540" alt="" hidden />
+            <div id="tvLiveHosts" class="tv-live-hosts" aria-hidden="true"></div>
+            <img
+              id="tvDeskForeground"
+              class="tv-desk-foreground"
+              width="960"
+              height="540"
+              alt=""
+              aria-hidden="true"
+              hidden
+            />
+            <div id="tvBubbles" class="tv-bubbles" aria-live="polite"></div>
+            <div id="tvTicker" class="tv-results-ticker" hidden></div>
+            <div id="tvIntro" class="tv-intro" hidden aria-label="HoopWire TV opening sequence">
+              <div class="tv-intro-grid" aria-hidden="true"></div>
+              <div class="tv-intro-orbit" aria-hidden="true"></div>
+              <div class="tv-intro-slash slash-one" aria-hidden="true"></div>
+              <div class="tv-intro-slash slash-two" aria-hidden="true"></div>
+              <div class="tv-intro-brand">
+                <div class="tv-intro-eyebrow">THE DAILY DESK</div>
+                <img
+                  class="tv-intro-logo"
+                  src="assets/brand/hoopwire_logo.png"
+                  width="1336"
+                  height="366"
+                  alt="HoopWire TV"
+                />
+                <div class="tv-intro-tagline">THE GAME. THE STORIES. THE CONVERSATION.</div>
+              </div>
+              <div class="tv-intro-footer">
+                <span>BASKETBALL / EVERY ANGLE</span
+                ><span class="tv-intro-onair"><i aria-hidden="true"></i> HOOPWIRE TV</span>
+              </div>
+              <div class="tv-intro-progress" aria-hidden="true"></div>
+              <div class="tv-intro-wipe" aria-hidden="true"></div>
+            </div>
+            <button id="tvStagePlay" class="tv-stage-play" type="button" aria-label="Play HoopWire TV episode">
+              <span class="tv-stage-play-icon" aria-hidden="true">▶</span
+              ><span class="tv-stage-play-label">Play episode</span></button
+            ><button
+              id="tvMute"
+              class="tv-audio-button"
+              type="button"
+              aria-pressed="false"
+              aria-label="Mute voices"
+              title="Mute voices"
+            >
+              <span aria-hidden="true">🔊</span>
+            </button>
+          </div>
+          <figcaption id="tvStudioCaption" class="sr-only"></figcaption>
+        </figure>
+        <div class="tv-controls tv-playback" role="group" aria-label="Story navigation">
+          <button id="tvPrevious" aria-label="Previous Story" disabled>
+            <span aria-hidden="true">←</span> Previous Story
+          </button>
+          <button id="tvNext" aria-label="Next Story" disabled>Next Story <span aria-hidden="true">→</span></button>
+          <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" />
+        </div>
+        <div hidden>
+          <button id="tvLineNext">Next line</button
+          ><select id="tvStorySelect"></select>
+          <div id="tvTranscript"></div>
+        </div>
+        <span id="tvDiscussionStatus" class="sr-only" role="status"></span>
+        <div id="tvSegment" class="tv-segment" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <template id="articleTemplate">
+      <article class="article-card">
+        <div class="article-meta"></div>
+        <h2 class="article-headline"></h2>
+        <div class="article-byline">HoopWire Staff</div>
+        <figure class="article-image">
+          <img width="768" height="432" alt="" />
+          <figcaption></figcaption>
+        </figure>
+        <div class="article-body"></div>
+      </article>
+    </template>
+
+    <script src="js/coverage/core.js"></script>
+    <script src="js/coverage/season-coverage.js"></script>
+    <script src="js/coverage/records-coverage.js"></script>
+    <script src="js/coverage/news-coverage.js"></script>
+    <script src="js/coverage/performance-coverage.js"></script>
+    <script src="js/app/archive.js"></script>
+    <script src="js/render/player-renderer.js"></script>
+    <script src="js/render/court-renderer.js"></script>
+    <script src="js/render/press-backdrop.js"></script>
+    <script src="js/render/scenes.js"></script>
+    <script src="js/render/coach-scenes.js"></script>
+    <script src="js/render/tv.js"></script>
+    <script src="vendor/animalese/riffwave.js"></script>
+    <script src="vendor/animalese/animalese.js"></script>
+    <script src="js/broadcast/broadcast-context.js"></script>
+    <script src="js/broadcast/broadcast-content.js"></script>
+    <script src="js/broadcast/broadcast.js"></script>
+    <script src="js/newsroom/newsroom.js"></script>
+    <script src="js/newsroom/newsroom-ad-art.js"></script>
+    <script src="js/newsroom/newsroom-promos.js"></script>
+    <script src="js/newsroom/newsroom-view.js"></script>
+    <script src="js/app/app.js"></script>
+  </body>
 </html>
