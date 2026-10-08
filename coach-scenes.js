@@ -238,14 +238,32 @@
       // Laid out like the draft: the curtains and stage, the coach behind the
       // game's podium where the pick stands, the executive beside it where the
       // commissioner stands, and the press seated in front, framed closer at 3x.
-      const { canvas, ctx } = stage([54, 60, 256, 144]), team = scene.team;
+      const camera = [54, 44, 256, 144], { canvas, ctx, world, screen } = stage(camera), team = scene.team;
+      const primary = teamColor(team, 0, '#1d428a'), secondary = teamColor(team, 1, '#ffffff');
       curtains(ctx, 128);
+      // The team's banner hangs on the curtains behind the podium: a rod on two
+      // cords, the team's color with a trim of its second, the logo on it.
+      const banner = [164, 50, 56, 50];
+      ctx.fillStyle = '#9aa3b8'; ctx.fillRect(banner[0] + 6, 0, 1, banner[1]); ctx.fillRect(banner[0] + banner[2] - 7, 0, 1, banner[1]);
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(banner[0] + 3, banner[1] + 3, banner[2], banner[3]);
+      ctx.fillStyle = secondary; ctx.fillRect(...banner);
+      ctx.fillStyle = primary; ctx.fillRect(banner[0] + 2, banner[1] + 2, banner[2] - 4, banner[3] - 4);
+      ctx.fillStyle = '#c9ced9'; ctx.fillRect(banner[0] - 4, banner[1] - 2, banner[2] + 8, 2); ctx.fillStyle = '#6b7389'; ctx.fillRect(banner[0] - 4, banner[1], banner[2] + 8, 1);
+      const mark = await window.HoopWirePressBackdrop.teamLogo(team, scene.pressLogoData);
+      if (mark?.image) {
+        screen();
+        const image = trim(mark.image), k0 = canvas.width / camera[2], box = [(banner[0] + 6 - camera[0]) * k0, (banner[1] + 5 - camera[1]) * k0, (banner[2] - 12) * k0, (banner[3] - 10) * k0];
+        const fit = Math.min(box[2] / image.width, box[3] / image.height), k = mark.pixel && fit >= 1 ? Math.floor(fit) : fit, w = Math.round(image.width * k), h = Math.round(image.height * k);
+        ctx.imageSmoothingEnabled = !mark.pixel || k < 1; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(image, Math.round(box[0] + (box[2] - w) / 2), Math.round(box[1] + (box[3] - h) / 2), w, h);
+        ctx.imageSmoothingEnabled = false; world();
+      }
       const base = stageFloor(ctx, teamColor(team, 0, '#1d428a'));
       depth(ctx, [{ data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
       depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
-      audience(ctx, rand, null, [[184, 4], [206, 14]], { cheer: 0, chairs: true, spacing: 20 });
-      return { canvas, extra: { pressLogoData: scene.pressLogoData || null, pressLeagueLogoData: scene.pressLeagueLogoData || null } };
+      audience(ctx, rand, null, [[180, 4], [202, 14]], { cheer: 0, chairs: true, spacing: 20 });
+      return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: scene.pressLeagueLogoData || null } };
     },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
@@ -406,7 +424,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 18, seed: id, kind: `coach-${context.coachScene}`,
+      version: 19, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
