@@ -443,6 +443,13 @@
         done:!!x.winner,won:x.winner===teamId};
     }));
   }
+  // How a team's season ended, for the desk to lead with.
+  function postseasonFacts(run,exit,title,alive,playoff,bracketSet,college){
+    const last=run.at(-1),series=r=>r?{round:r.label,opponent:C.teamDisplay(r.opponent),wins:r.wins,losses:r.losses,firstTo:r.firstTo}:null;
+    const result=title?'champion':exit&&['Finals','title game'].includes(exit.label)?'runnerup':exit?'eliminated':alive?'alive':bracketSet&&!playoff?'missed':null;
+    if(!result)return null;
+    return {result,college,roundsWon:run.filter(r=>r.done&&r.won).length,final:series(title?last:exit||last)};
+  }
   function runClause(r){
     const opp=C.teamRef(r.opponent).nick,where=r.label==='Finals'?'in the Finals':r.label==='title game'?'in the title game':`in the ${r.label}`;
     if(r.firstTo===1)return `beat ${opp} ${where}`;
@@ -508,7 +515,7 @@
     function add(eventKey,type,headline,paragraphs,related,headers,rows,featured=null,importance=110,extra=null){
       const team=related[0]||teams[0],opponent=related[1]||teams.find(t=>t.id!==team.id);
       const s={id:`${fp}:${year}:season:${eventKey}`,eventKey,kind:'season',fingerprint:fp,season:year,day,
-        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?7:4,
+        type,headline,paragraphs:paragraphs.filter(Boolean),importance,leagueName:league.leagueName,quotesEnabled:true,templateVersion:7,editorialVersion:eventKey==='regular-wrap'?11:eventKey==='leaders'?11:eventKey.startsWith('award-')||eventKey==='championship'?5:/^team-.*-regular$/.test(eventKey)?8:4,
         relatedTeams:related.map(teamData),seasonSnapshot:{headers,rows,leagueType:league.leagueType,year,
           teamRecords:related.map(t=>({teamId:t.id,record:structuredClone(records.find(r=>r.team.id===t.id)?.year||null),...(eventKey==='regular-wrap'?{previousStats:structuredClone(t.season?.find(r=>r.yr===year-1)?.seasonStats||null)}:{})})),
           featuredPlayer:featured?{id:featured.id,name:C.playerDisplay(featured),regularStats:stats(featured,league,year),playoffStats:stats(featured,league,year,'playoffs'),finalsStats:stats(featured,league,year,'finals'),awards:structuredClone(featured.awards||[])}:null,
@@ -615,7 +622,8 @@
         const star=p?`${C.playerDisplay(p.p)} led the team in scoring, averaging ${line(p.s)}.${second}`:'';
         add(`team-${r.team.id}-regular`,'Team season review',headline,
           [opener,[profile,shooting].filter(Boolean).join(' '),star],[r.team],
-          ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,90);
+          ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,90,
+          {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
       }
     }
     const allowedRank=t=>{const r=records.find(x=>x.team.id===t?.id)?.year?.seasonStats;return r?.GP>0?1+records.filter(x=>x.year?.seasonStats?.GP>0&&x.year.seasonStats.OPP/x.year.seasonStats.GP<r.OPP/r.GP).length:null;};

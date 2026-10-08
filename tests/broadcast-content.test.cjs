@@ -110,3 +110,15 @@ test('league leaders rank per-game production rather than total points and TV di
  assert.match(s.paragraphs[0],/Alex.*30\.0 points per game/);assert.doesNotMatch(s.paragraphs.join(' '),/total|50 points/);
  const facts=S.factsForStory(s);assert.deepEqual(facts.rows[0],['Points','Alex','30.0']);assert.ok(!facts.headers.includes('Total'));
 });
+test('team reviews lead with how the season ended, so a middling champion is celebrated',()=>{
+  const review=(postseason,seasonOutcome,W=17,L=15)=>({id:`review-${seasonOutcome}`,type:'Team season review',eventKey:'team-1-regular',headline:'Review',seasonOutcome,relatedTeams:[{id:1,name:'Kestrels'}],
+    seasonSnapshot:{leagueType:1,teamRecords:[{teamId:1,record:{seasonStats:{W,L,GP:W+L,PTS:(W+L)*80,OPP:(W+L)*81}}}],postseason}});
+  const champ=text(review({result:'champion',college:true,roundsWon:4,final:{round:'title game',opponent:'Bridgekeepers',wins:1,losses:0,firstTo:1}},'champion'));
+  assert.match(champ,/champion/i);assert.match(champ,/Bridgekeepers in the title game/);
+  assert.doesNotMatch(champ,/Too many losses|Good, not great|whole offseason|second option|Right in the middle/);
+  // Archived reviews without postseason detail still celebrate a recorded title.
+  assert.doesNotMatch(text(review(null,'champion')),/Too many losses|Good, not great|whole offseason/);
+  assert.match(text(review({result:'runnerup',college:false,roundsWon:3,final:{round:'Finals',opponent:'Breakers',wins:2,losses:4,firstTo:4}},'runnerup',55,27)),/one series from a title/);
+  assert.match(text(review({result:'eliminated',college:false,roundsWon:1,final:{round:'second round',opponent:'Colonials',wins:0,losses:4,firstTo:4}},'eliminated',61,21)),/that's short/);
+  assert.match(text(review({result:'missed',college:false,roundsWon:0,final:null},'missed',42,40)),/no postseason/);
+});
