@@ -92,7 +92,9 @@
     let result=scene.gameContext?.result;
     if(own&&other&&Number.isFinite(own.score)&&Number.isFinite(other.score))result=own.score===other.score?'tie':own.score>other.score?'win':'loss';
     let description;
-    if(scene.kind==='interview'){
+    if(scene.kind==='interview'&&scene.player?.isCoach){
+      description=`Coach ${name} speaks with reporters.`;
+    }else if(scene.kind==='interview'){
       const participants=[name];
       const variant=scene.interview?.variant||'group';
       if(variant==='group'){
@@ -114,7 +116,7 @@
     const matchup=teams.length===2?`${teams[0].name} vs ${teams[1].name}`:scene.team&&scene.opponent?`${C.teamDisplay(scene.team)} vs ${C.teamDisplay(scene.opponent)}`:null;
     const day=story.day??scene.gameContext?.day,year=story.season??scene.gameContext?.season;
     const date=[Number.isFinite(day)?`Day ${day}`:null,Number.isFinite(year)?String(year):null].filter(Boolean).join(', ');
-    return [description,story.kind==='season'?null:matchup,date||null].filter(Boolean).join(' | ');
+    return [description,story.kind==='season'||scene.player?.isCoach?null:matchup,date||null].filter(Boolean).join(' | ');
   }
   function player(ctx,data,team,uniform,x,y,size,pose='idle',frame=0,facing='left',ball={}) {
     if (!data) return;

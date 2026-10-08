@@ -395,9 +395,13 @@ branch.append(summary);
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
         story.broadcastAsOfDay=C.buildLookups(league).latestDay+1;
         const old=state.stories.get(story.id);
-        if(old){for(const key of ['day','createdAt','imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(old[key]!==undefined)story[key]=old[key];return story;}
+        // Coach stories show the coach at the podium; an archived action image is redrawn.
+        const redraw=context.coach&&!old?.sceneInputs?.player?.isCoach;
+        if(old&&!redraw){for(const key of ['day','createdAt','imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(old[key]!==undefined)story[key]=old[key];return story;}
+        if(old)for(const key of ['day','createdAt'])if(old[key]!==undefined)story[key]=old[key];
         const scene=window.HoopWireScenes.inputs(context,story.id,league);
         if(context.potg)scene.kind='interview';
+        if(context.coach)Object.assign(scene,{kind:'interview',player:context.coach,coach:null,teammates:[],interview:{variant:window.HoopWireCore.choose(story.id,['player-close-up','player-profile'],'coach-framing')}});
         Object.assign(story,await window.HoopWireScenes.render(scene));return story;
       })));
     }
