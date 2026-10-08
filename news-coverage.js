@@ -495,7 +495,7 @@
     const bundled = new Set(
       [...grouped.values()].filter(list => list.length >= roundupSize || list[0].type === 2).flat()
     );
-    for (const [k, list] of grouped)
+    for (const [, list] of grouped)
       if (bundled.has(list[0]))
         roundup(list, { league, lookup, players, coaches, year, fp, result, day: dayOf(list[0]) });
     const inRoundup = new Map();
@@ -1418,5 +1418,5 @@
     }
     return result;
   }
-  return { candidates, offseason, calendar, types };
+  return { candidates, offseason, calendar };
 });

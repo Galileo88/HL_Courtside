@@ -129,5 +129,5 @@
       context.average = structuredClone(dated);
     return context;
   }
-  return { buildContext, enrichResult, teamHistory, record };
+  return { buildContext, enrichResult, record };
 });

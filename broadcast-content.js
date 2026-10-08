@@ -444,11 +444,10 @@
     }
     return { clinch, series };
   }
-  function seriesDebates(e, n) {
+  function seriesDebates(e) {
     const S = e.series;
     if (!S) return {};
     const { W, L } = e,
-      [M, J, A, N] = n,
       rec = t => {
         const r = e.facts?.records?.[t.id]?.post;
         return record(r) ? `${r[0]}-${r[1]}` : '';
@@ -610,11 +609,10 @@
     return { clinch, series };
   }
   // The argument that follows the opening. Each variant is one coherent exchange.
-  function angleDebate(story, e, angle, n) {
+  function angleDebate(story, e, angle) {
     const { W, L, margin: m } = e,
       ws = e.winner.score,
-      ls = e.loser.score,
-      [M, J, A, N] = n;
+      ls = e.loser.score;
     const lp = e.loserPre,
       wp = e.winnerPre,
       goodLoser = lp && lp[0] / (lp[0] + lp[1] || 1) >= 0.6,
@@ -872,7 +870,7 @@
           [3, `I've seen it, Jordan. It holds up.`],
         ],
       ],
-      ...seriesDebates(e, n),
+      ...seriesDebates(e),
       championship: [
         [
           [
@@ -913,7 +911,7 @@
     const s = e.s,
       p = e.player,
       threads = [],
-      [M, J, A, N] = n,
+      [, , A, N] = n,
       story = e.story || {};
     const say = (key, options) => pick(story, options, 'thread:' + key);
     if (e.streak && angle !== 'streak') {
@@ -1189,7 +1187,7 @@
       return `${cap(e.L.nick)} turned it over ${l.TO} times. ${cap(e.W.nick)}: ${w.TO}. That's free possessions.`;
     return null;
   }
-  function gameClosing(story, e, angle, n) {
+  function gameClosing(story, e, angle) {
     const { W, L } = e,
       p = e.player;
     const options = {
@@ -1263,7 +1261,7 @@
     const e = selectEvidence(story, context);
     if (!e) return genericScript(story, n);
     const angle = selectAngle(e),
-      turns = [turn(0, gameOpening(story, e, angle, n)), ...angleDebate(story, e, angle, n)];
+      turns = [turn(0, gameOpening(story, e, angle, n)), ...angleDebate(story, e, angle)];
     const threads = supportingThreads(e, angle, n);
     let introduced = angle === 'performance';
     for (const [index, thread] of threads.entries()) {
@@ -1309,7 +1307,7 @@
           `${pick(story, ['One more number for you.', "Here's the stat that tells the story.", 'And this is the number I keep coming back to.'], 'edge')} ${edge}`
         )
       );
-    turns.push(turn(0, gameClosing(story, e, angle, n)));
+    turns.push(turn(0, gameClosing(story, e, angle)));
     // Back-to-back lines from one host read as a single answer.
     const merged = [];
     for (const t of turns) {
@@ -1343,12 +1341,11 @@
       a = snap.award,
       p = snap.featuredPlayer,
       s = featuredStats(story),
-      [M, J, A, N] = n;
+      [, J, A] = n;
     const name = p.name,
       last = C.surname(name),
       r = k => rate(s, k),
-      rec = a.teamRecord ? `${a.teamRecord[0]}-${a.teamRecord[1]}` : null,
-      he = a.pronoun || last;
+      rec = a.teamRecord ? `${a.teamRecord[0]}-${a.teamRecord[1]}` : null;
     const T = a.teamName ? C.teamRef({ city: a.teamCity, name: a.teamNickname || a.teamName }) : null,
       body = [];
     const honors = Season.honorLines(story)
@@ -1795,9 +1792,7 @@
     if (!team) return seasonScript(story, n);
     const snap = story.seasonSnapshot?.postseason,
       result = snap?.result || story.seasonOutcome,
-      J = n[1],
-      A = n[2],
-      N = n[3];
+      J = n[1];
     const T = C.teamRef({ name: team.name }),
       rec = `${team.r.W}-${team.r.L}`,
       pct = team.r.W / Math.max(1, team.r.W + team.r.L);
@@ -2338,7 +2333,7 @@
     const T = x => C.teamRef({ city: x.teamCity, name: x.teamNickname || x.team }).nick,
       line = c => (c ? `${c.PTS} points${c.REB ? ` and ${c.REB} rebounds` : ''}` : ''),
       last = x => C.surname(x.name),
-      [M, J, A, N] = n;
+      [, J, A] = n;
     const body = [];
     let open, close;
     if (r.type === 2) {
@@ -2842,7 +2837,7 @@
     const ref = t => C.teamRef({ city: t.teamCity, name: t.teamNickname || t.team }),
       T = t => ref(t).nick,
       rec = t => `${t.W}-${t.L}`,
-      [M, J, A, N] = n;
+      [, J] = n;
     const body = [];
     const open = pick(
       story,
@@ -2912,7 +2907,7 @@
     );
     return [turn(0, open), ...body, turn(0, close)];
   }
-  function reportedReaction(story, n = first()) {
+  function reportedReaction(story) {
     if (!story.quotesEnabled || !story.templateVersion) return [];
     const quotes = (story.paragraphs || [])
       .flatMap(p =>
@@ -3004,7 +2999,7 @@
     context ||= Context.buildContext(story);
     const n = first(names),
       turns = baseScript(story, context, n),
-      reaction = reportedReaction(story, n),
+      reaction = reportedReaction(story),
       budget = turns.length <= 4 ? 4 : 14;
     if (reaction.length && turns.length + reaction.length <= budget) turns.splice(turns.length - 1, 0, ...reaction);
     // Back-to-back lines from one host read as a single answer.
@@ -3040,13 +3035,5 @@
     selectEvidence,
     selectAngle,
     supportingThreads,
-    policy,
-    awardScript,
-    playoffScript,
-    championshipScript,
-    gameScript,
-    genericScript,
-    seasonScript,
-    leadersScript,
   };
 });

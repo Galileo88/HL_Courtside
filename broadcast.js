@@ -3,7 +3,6 @@
   'use strict';
   const ids = [
     'tvMute',
-    'tvLinePrevious',
     'tvLineNext',
     'tvVoice',
     'tvDiscussionStatus',
@@ -423,7 +422,6 @@
       }
       el.tvDiscussionStatus.textContent = `Line ${line + 1} of ${turns.length}`;
     } else el.tvDiscussionStatus.textContent = 'Choose a story to start the discussion.';
-    el.tvLinePrevious.disabled = !turn || needsIntro || line === 0;
     el.tvLineNext.disabled = !turn || needsIntro || line === turns.length - 1;
     if (needsIntro && !el.tvIntro.hidden)
       el.tvDiscussionStatus.textContent = running
@@ -581,13 +579,6 @@
     togglePlayback();
   });
   el.tvStagePlay.addEventListener('click', startPlayback);
-  el.tvLinePrevious.addEventListener('click', () => {
-    stop();
-    completed = false;
-    needsIntro = false;
-    line = Math.max(0, line - 1);
-    show();
-  });
   el.tvLineNext.addEventListener('click', () => {
     stop();
     completed = false;
@@ -641,10 +632,7 @@
     mount,
     stop,
     discussion,
-    spoken,
     voiceSamples,
     voicePitches: [...pitches],
-    introSrc,
-    introLeadMs,
   };
 })();

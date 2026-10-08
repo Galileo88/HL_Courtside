@@ -550,28 +550,6 @@
     return Object.keys(statLabels).filter(k => Number.isInteger(stats?.[k]) && stats[k] >= 10);
   }
 
-  function formatStatLine(stats) {
-    if (!stats) return '';
-    const parts = ['PTS', 'REB', 'AST'].map((k, i) => {
-      const label = ['point', 'rebound', 'assist'][i];
-      return `${stats[k]} ${label}${stats[k] === 1 ? '' : 's'}`;
-    });
-    for (const [k, label] of [
-      ['STL', 'steal'],
-      ['BLK', 'block'],
-    ]) {
-      if (Number.isInteger(stats[k]) && stats[k] > 0) parts.push(`${stats[k]} ${label}${stats[k] === 1 ? '' : 's'}`);
-    }
-    for (const [made, attempted, label] of [
-      ['FGM', 'FGA', 'from the field'],
-      ['TPM', 'TPA', 'from three'],
-      ['FTM', 'FTA', 'at the line'],
-    ]) {
-      if (shotPair(stats, made, attempted)) parts.push(`${stats[made]}-for-${stats[attempted]} ${label}`);
-    }
-    return listJoin(parts);
-  }
-
   function gameType(ctx) {
     if (ctx.series?.title) return ctx.college ? 'National championship' : 'Championship';
     if (ctx.series?.clinched) return 'Series clincher';
@@ -1381,11 +1359,9 @@
     validStats,
     gameContext,
     candidates,
-    formatStatLine,
     generateArticle,
     shouldGenerate,
     coachForTeam,
-    coachParagraph,
     num,
     plural,
     capitalize,
@@ -1395,7 +1371,6 @@
     pronoun,
     teamRef,
     verb,
-    shotPair,
     quoteParagraph,
     gamesBetter,
     teamTotals,

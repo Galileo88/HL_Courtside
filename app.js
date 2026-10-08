@@ -35,7 +35,6 @@
       'newsroomLeagueLabel',
       'archiveTeam',
       'newsroomDay',
-      'tvHosts',
       'tvStorySelect',
       'tvPrevious',
       'tvNext',
@@ -1630,7 +1629,6 @@
     el.tvStudio.hidden = !studio?.imageBlob;
     el.tvDeskForeground.hidden = !studio?.backdropBlob;
     el.tvDeskForeground.removeAttribute('src');
-    el.tvHosts.replaceChildren();
     if (studio?.imageBlob) {
       const url = imageURL(studio.backdropBlob || studio.imageBlob);
       el.tvStudio.src = url;
@@ -1638,11 +1636,6 @@
       // The archived desk must cover animated hosts, just as in the still composition.
       if (studio.backdropBlob) el.tvDeskForeground.src = url;
       el.tvStudioCaption.textContent = `Illustrated broadcast with exclusive HoopWire hosts${studio.adsStatus === 'loaded' ? ' and league advertisement artwork' : studio.adsStatus === 'unavailable' ? '; league ads could not load' : ''}.`;
-      for (const person of studio.inputs.announcers) {
-        const span = document.createElement('span');
-        span.textContent = C.playerDisplay(person);
-        el.tvHosts.appendChild(span);
-      }
     } else {
       el.tvStudio.removeAttribute('src');
       el.tvStudioCaption.textContent = 'Load a league save to create the HoopWire studio for this season.';

@@ -110,8 +110,7 @@
     if (!a || !p) return null;
     const name = p.name,
       last = C.surname(name),
-      he = a.pronoun ? C.capitalize(a.pronoun) : last,
-      league = story.leagueName || 'the league';
+      he = a.pronoun ? C.capitalize(a.pronoun) : last;
     const T = a.teamName ? C.teamRef({ city: a.teamCity, name: a.teamNickname || a.teamName }) : null,
       team = T ? ` of ${T.full}` : '';
     const rec = a.teamRecord ? `${a.teamRecord[0]}-${a.teamRecord[1]}` : '',
@@ -1740,9 +1739,6 @@
           !(p.awards || []).some(a => a.id === award.id && a.league === league.leagueType && a.yearsWon?.includes(year))
         )
           continue;
-        const s =
-          stats(p, league, year, award.phase === 3 ? 'finals' : 'season') ||
-          stats(p, league, year, award.phase === 3 ? 'playoffs' : 'season');
         const team = lookup.teams.get(p.tid),
           rec = records.find(x => x.team.id === team?.id)?.year?.seasonStats;
         const alsoWon = (league.awards || [])
@@ -1909,8 +1905,7 @@
         if (played) {
           // Mid-round, the useful story is where every series stands.
           const R = id => C.teamRef(lookup.teams.get(id)),
-            label = roundLabel(bracket, index, league.leagueType === 1),
-            cap = C.capitalize;
+            label = roundLabel(bracket, index, league.leagueType === 1);
           const done = scores.filter(x => x.s.winner),
             live = scores.filter(x => !x.s.winner);
           const status = x => {
@@ -2174,7 +2169,6 @@
     stats,
     outcome,
     quoteLines,
-    awardQuoteLines,
     playoffPreviewParagraphs,
     postseasonOutcome,
     factsForStory,

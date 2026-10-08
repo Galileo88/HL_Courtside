@@ -107,8 +107,7 @@
       snap = d.snapshots.find(s => s.pid === story.playerId && s.gid === story.gid);
     const facts = snap && contextFor(d, snap);
     if (!facts) return story;
-    const { player, season, career, period } = facts,
-      stage = period === 'season' ? 'regular season' : 'playoffs';
+    const { player, season, career, period } = facts;
     const last = player.ln || C.surname(C.playerDisplay(player)),
       avg = k => (season[k] / season.GP).toFixed(1),
       game = story.playerStats || facts.gameStats;
@@ -552,9 +551,5 @@
     }
     return result;
   }
-  function eligibleGames(league) {
-    const d = data(league);
-    return new Set(d.snapshots.filter(s => contextFor(d, s)).map(s => `${s.pid}:${s.gid}`));
-  }
-  return { history, enrich, candidates, eligibleGames, stature, tier };
+  return { history, enrich, candidates, stature, tier };
 });

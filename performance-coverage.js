@@ -110,9 +110,6 @@
     const fg = ['FGM', 'FGA'].every(k => valid(box[k])) && box.FGA > 0 && box.FGM <= box.FGA ? box.FGM / box.FGA : null;
     return { cold: r.scorerRank <= 2 && fg !== null && box.FGA >= Math.max(8, 15 * scale) && fg <= 0.3, fg };
   }
-  function comparisonLine(c) {
-    return `${c.actual} ${c.label}, compared with a season average of ${average(c.expected)}`;
-  }
   const count = (n, key) => C.plural(n, unit[key][0], unit[key][1]);
   function size(c) {
     if (c.actual === 0) return 'none';
@@ -674,5 +671,5 @@
       }),
     };
   }
-  return { categories, bars, average, compare, judge, leagueScale, comparisonLine, candidates, script, rejudge };
+  return { categories, average, compare, judge, leagueScale, candidates, script, rejudge };
 });

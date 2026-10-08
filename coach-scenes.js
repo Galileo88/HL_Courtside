@@ -853,8 +853,7 @@
     // inductees on their own pedestals either side, in the hall's shade.
     async hof(scene, rand) {
       const camera = [64, 24, 256, 144],
-        { canvas, ctx, world, screen } = stage(camera),
-        team = scene.team;
+        { canvas, ctx, world, screen } = stage(camera);
       ctx.fillStyle = '#20140d';
       ctx.fillRect(0, 0, 384, 216);
       for (let x = 0; x < 384; x += 32) {
@@ -1723,19 +1722,5 @@
     draw,
     caption,
     inputs,
-    kinds: [
-      'coach-hire',
-      'coach-fire',
-      'coach-poor',
-      'coach-strong',
-      'coach-good',
-      'coach-draft',
-      'coach-award',
-      'coach-hof',
-      'coach-signing',
-      'coach-farewell',
-      'coach-rafters',
-      'coach-commit',
-    ],
   };
 })();
