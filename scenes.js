@@ -4,7 +4,7 @@
   const art = {};
   let ready;
   function load() {
-    ready ||= Promise.all([window.HoopWirePlayer.ready(), ...['press-background','press-table'].map(async name => {
+    ready ||= Promise.all([window.HoopWirePlayer.ready(), ...['press-background','press-table','press-table_2p'].map(async name => {
       const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name] = image;
     })]);
     return ready;
@@ -161,14 +161,18 @@
         player(press,right,scene.team,scene.uniformIndex,520,104,192);
       }else if(variant==='player-coach'&&(scene.coach||left)){
         player(press,scene.player,scene.team,scene.uniformIndex,152,104,192);
-        player(press,scene.coach||left,scene.team,scene.uniformIndex,424,104,192);
+        player(press,scene.coach||left,scene.team,scene.uniformIndex,416,104,192);
       }else{
         player(press,scene.player,scene.team,scene.uniformIndex,288,104,192,'idle',variant==='player-profile'?1:0,variant==='player-profile'?'right':'left');
       }
       // Build every participant and prop at the same scale, then move the camera.
       // This keeps the desk, microphones and backdrop in proportion to the player.
-      press.drawImage(art['press-table'],0,218,768,192);
-      press.drawImage(art['press-table'],0,31,128,1,0,410,768,22);
+      // Two at the table use the two-microphone desk, shifted so each mic sits
+      // just to the right of its speaker, as on the three-seat desk.
+      const pair=variant==='player-coach'&&(scene.coach||left),desk=pair?art['press-table_2p']:art['press-table'],shift=pair?104:0;
+      press.drawImage(desk,shift,218,768,192);
+      if(shift)press.drawImage(desk,0,0,1,32,0,218,shift,192);
+      press.drawImage(desk,0,31,128,1,0,410,768,22);
       ctx.drawImage(stage,...design.camera,0,0,768,432);
     } else {
       const floor=await window.HoopWireCourt.render(scene.home || scene.team,{includeHoops:false});
