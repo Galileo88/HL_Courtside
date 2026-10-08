@@ -640,7 +640,7 @@
           ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,reviewValue,
           {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
         // Some reviews show the coach: celebrating a big year, or alone on the sideline in a bad one.
-        const mood=title||place<=Math.ceil(teamCount/4)?'good':place>=Math.floor(teamCount*.85)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
+        const mood=title||winPct>=.62?'good':winPct<=.38?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
         if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene'))
           Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p)});
       }
