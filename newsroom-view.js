@@ -29,7 +29,7 @@
     }
     const header=element('header','wire-heading');header.append(element('span','landing-kicker','HOOPWIRE NEWS'),element('h1','',edition.title));
     const dates=edition.editions.map(e=>`${e.league.shortName||e.league.name} · ${e.season} · Day ${e.day}`);header.append(element('p','muted',dates.join('  /  ')));
-    const update=element('a','text-action','Update coverage');update.href='#welcome';header.append(update);target.append(header);
+    target.append(header);
     if(!edition.lead){target.append(element('div','panel muted',busy?'Preparing the latest coverage…':'No saved stories for this league yet. Load a save to create coverage.'));return;}
     const opening=element('div','wire-opening'),main=element('div','wire-main'),lead=card(edition.lead,true);
     let sidebar=null;
@@ -40,9 +40,12 @@
     }
     main.append(lead);opening.append(main);
     if(sidebar)opening.append(sidebar);
-    if(edition.supporting.length){const supporting=element('section','wire-supporting');supporting.setAttribute('aria-label','More featured stories');for(const story of edition.supporting)supporting.append(card(story));main.append(supporting);}
+    const feedStudio=edition.tvStory?leagueFor(edition.tvStory).studios[edition.tvStory.season]:null;
+    // Each grid ends with a sponsor tile that CSS shows only to fill an empty last-row cell.
+    const sponsor=index=>window.HoopWireNewsroomPromos.feedCard({studio:feedStudio,index});
+    if(edition.supporting.length){const supporting=element('section','wire-supporting');supporting.setAttribute('aria-label','More featured stories');for(const story of edition.supporting)supporting.append(card(story));supporting.append(sponsor(0));main.append(supporting);}
     target.append(opening);
-    for(const section of edition.sections){const node=element('section','wire-section');node.append(element('h2','',section.label));const grid=element('div','wire-story-grid');for(const story of section.items)grid.append(card(story));node.append(grid);target.append(node);}
+    for(const section of edition.sections){const node=element('section','wire-section');node.append(element('h2','',section.label));const grid=element('div','wire-story-grid');for(const story of section.items)grid.append(card(story));grid.append(sponsor(edition.sections.indexOf(section)+1));node.append(grid);target.append(node);}
     if(edition.tvStory){
       const story=edition.tvStory,studio=leagueFor(story).studios[story.season],feature=element('section','wire-tv');
       const poster=element('img','wire-tv-poster');poster.src=imageURL(studio.imageBlob);poster.alt='HoopWire TV studio';poster.width=960;poster.height=540;

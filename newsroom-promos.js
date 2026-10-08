@@ -75,23 +75,38 @@
     },rotateMs);
     return slot;
   }
+  const catalog={
+    suit:{bg:'#171d20',title:'Hartley',logo:'brand7.png',subtitle:'THE TAILORED COLLECTION',tagline:'Dress for the moment.',alt:'Three tailored suits illustrated with Hoop Land character sprites',cls:'wire-suit-ad'},
+    drink:{bg:'#0b3245',title:'Zero-G',logo:'brand.png',colors:['#79fff4','#26c6e8'],subtitle:'FUEL YOUR NEXT QUARTER',tagline:'Stay in the game.',alt:'Blue, citrus and lime bottles made from the Hoop Land bottle sprite',cls:'wire-drink-ad'},
+    'movie-drama':{bg:'#351925',title:'LAST POSSESSION',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'One shot. Everything on the line.',alt:'Sprite actors on a floodlit basketball court in the fictional Last Possession movie poster',cls:'wire-movie-ad wire-movie-drama'},
+    'movie-thriller':{bg:'#080f22',title:'MIDNIGHT TRANSFER',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'Every deal has a dark side.',alt:'Suited sprite actors against a city skyline in the fictional Midnight Transfer movie poster',cls:'wire-movie-ad wire-movie-thriller'},
+    shoes:{bg:'#0a1823',title:'Stride',logo:'brand3.png',colors:['#7fd9ff','#f7fbff'],subtitle:'COURT 01 · BASKETBALL FOOTWEAR',tagline:'Own your next step.',alt:'Supplied blue shoe artwork centered on a spotlighted display platform',cls:'wire-shoe-ad'},
+    airways:{bg:'#235275',title:'Horizon Airways',logo:'brand2.png',subtitle:'THE AWAY GAME COLLECTION',tagline:'Your next destination awaits.',alt:'Suited sprite traveler against a sunset skyline',cls:'wire-airways-ad'},
+    streaming:{bg:'#091423',title:'LifeStream',logo:'brand4.png',subtitle:'YOUR WORLD. ON SCREEN.',tagline:'Every story deserves a stage.',alt:'Sprite presenters framed inside a broadcast studio screen',cls:'wire-streaming-ad'},
+    food:{bg:'#70252a',title:'Monarch’s',logo:'brand5.png',subtitle:'THE POSTGAME STOP',tagline:'Bring a royal appetite.',alt:'Sprite basketball players gathering after the final buzzer',cls:'wire-food-ad'},
+    apparel:{bg:'#101a17',title:'Trufit',logo:'brand6.png',colors:['#ceff69','#79db86'],subtitle:'BUILT FOR YOUR GAME',tagline:'Work in. Stand out.',alt:'Sprite basketball player shooting in athletic apparel',cls:'wire-apparel-ad'},
+    automotive:{bg:'#08101d',title:'Kiyota',logo:'brand8.png',colors:['#dce5ee','#a6b6c5'],subtitle:'BUILT FOR WHAT COMES NEXT',tagline:'Take the long way home.',alt:'Kiyota pickup truck on a night road under arena lights',cls:'wire-auto-ad'},
+    beer:{bg:'#291811',title:'American Heritage',logo:'brand9.png',subtitle:'A CLASSIC FINISH',tagline:'Here’s to the final buzzer.',alt:'Amber bottles composed from the supplied bottle sprite on a warm copper background',cls:'wire-beer-ad'}
+  };
+  const artFor=(selected,hosts)=>selected==='drink'?drinkArt():selected==='suit'?suitArt(hosts):HoopWireAdArt.render(selected,hosts);
+  const hostsFor=studio=>studio?.inputs?.announcers||window.HoopWireTV.inputs({teams:[]}).announcers;
+  // An in-feed sponsor tile, shaped like a story card, for grids whose last
+  // row would otherwise have an empty cell.
+  function feedCard({studio,index=0}={}){
+    const products=Object.keys(catalog),selected=products[(index*5+3)%products.length],creative=catalog[selected];
+    const tile=node('aside','wire-feed-ad');tile.dataset.ad=selected;tile.setAttribute('aria-label',creative.title+' advertisement');
+    const frame=node('div','wire-feed-art');frame.style.background=creative.bg;
+    const art=node('img','');art.alt=creative.alt;art.width=300;art.height=selected==='drink'?156:selected==='automotive'?285:180;
+    artFor(selected,hostsFor(studio)).then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
+    frame.append(art);
+    const body=node('div','wire-feed-body');
+    body.append(node('span','wire-feed-label','Sponsored · '+creative.title),node('h3','',creative.tagline),node('span','wire-feed-sub',creative.subtitle));
+    tile.append(frame,body);return tile;
+  }
   function render({studio,story,onWatch,product}){
     const promos=node('section','wire-promos');promos.setAttribute('aria-label','In-world advertisements');
     const seed=Array.from(story?.id||'hoopwire').reduce((sum,c)=>sum+c.charCodeAt(0),0);
-    const catalog={
-      suit:{title:'Hartley',logo:'brand7.png',subtitle:'THE TAILORED COLLECTION',tagline:'Dress for the moment.',alt:'Three tailored suits illustrated with Hoop Land character sprites',cls:'wire-suit-ad'},
-      drink:{title:'Zero-G',logo:'brand.png',colors:['#79fff4','#26c6e8'],subtitle:'FUEL YOUR NEXT QUARTER',tagline:'Stay in the game.',alt:'Blue, citrus and lime bottles made from the Hoop Land bottle sprite',cls:'wire-drink-ad'},
-      'movie-drama':{title:'LAST POSSESSION',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'One shot. Everything on the line.',alt:'Sprite actors on a floodlit basketball court in the fictional Last Possession movie poster',cls:'wire-movie-ad wire-movie-drama'},
-      'movie-thriller':{title:'MIDNIGHT TRANSFER',subtitle:'A HOOPWIRE PICTURES FILM',tagline:'Every deal has a dark side.',alt:'Suited sprite actors against a city skyline in the fictional Midnight Transfer movie poster',cls:'wire-movie-ad wire-movie-thriller'},
-      shoes:{title:'Stride',logo:'brand3.png',colors:['#7fd9ff','#f7fbff'],subtitle:'COURT 01 · BASKETBALL FOOTWEAR',tagline:'Own your next step.',alt:'Supplied blue shoe artwork centered on a spotlighted display platform',cls:'wire-shoe-ad'},
-      airways:{title:'Horizon Airways',logo:'brand2.png',subtitle:'THE AWAY GAME COLLECTION',tagline:'Your next destination awaits.',alt:'Suited sprite traveler against a sunset skyline',cls:'wire-airways-ad'},
-      streaming:{title:'LifeStream',logo:'brand4.png',subtitle:'YOUR WORLD. ON SCREEN.',tagline:'Every story deserves a stage.',alt:'Sprite presenters framed inside a broadcast studio screen',cls:'wire-streaming-ad'},
-      food:{title:'Monarch’s',logo:'brand5.png',subtitle:'THE POSTGAME STOP',tagline:'Bring a royal appetite.',alt:'Sprite basketball players gathering after the final buzzer',cls:'wire-food-ad'},
-      apparel:{title:'Trufit',logo:'brand6.png',colors:['#ceff69','#79db86'],subtitle:'BUILT FOR YOUR GAME',tagline:'Work in. Stand out.',alt:'Sprite basketball player shooting in athletic apparel',cls:'wire-apparel-ad'},
-      automotive:{title:'Kiyota',logo:'brand8.png',colors:['#dce5ee','#a6b6c5'],subtitle:'BUILT FOR WHAT COMES NEXT',tagline:'Take the long way home.',alt:'Kiyota pickup truck on a night road under arena lights',cls:'wire-auto-ad'},
-      beer:{title:'American Heritage',logo:'brand9.png',subtitle:'A CLASSIC FINISH',tagline:'Here’s to the final buzzer.',alt:'Amber bottles composed from the supplied bottle sprite on a warm copper background',cls:'wire-beer-ad'}
-    };
-    const hosts=studio?.inputs?.announcers||window.HoopWireTV.inputs({teams:[]}).announcers;
+    const hosts=hostsFor(studio);
     function creativeFor(selected){
       const creative=catalog[selected];
       const ad=node('section',creative.cls);ad.dataset.ad=selected;ad.setAttribute('aria-label',creative.title+' advertisement');
@@ -101,7 +116,7 @@
       const body=node('div','wire-ad-body');
       body.append(brand,node('span','wire-suit-collection',creative.subtitle));
       const art=node('img','wire-product-art');art.width=300;art.height=selected==='drink'?156:selected==='automotive'?285:180;art.alt=creative.alt;
-      const artwork=selected==='drink'?drinkArt():selected==='suit'?suitArt(hosts):HoopWireAdArt.render(selected,hosts);
+      const artwork=artFor(selected,hosts);
       artwork.then(src=>{art.src=src;art.dataset.ready='true';}).catch(()=>art.remove());
       body.append(art,node('p','wire-suit-tagline',creative.tagline));
       if(selected==='beer')body.append(node('span','wire-ad-responsibility','Drink responsibly.'));
@@ -119,5 +134,5 @@
     }
     return promos;
   }
-  window.HoopWireNewsroomPromos={render};
+  window.HoopWireNewsroomPromos={render,feedCard};
 })();
