@@ -706,26 +706,31 @@ branch.append(summary);
     }
     return board;
   }
+  // Two columns: the champion and the MVP on the left, the road through the
+  // bracket on the right; they stack on a narrow screen.
   function titleCard(story){
     const snap=story.seasonSnapshot,[champion,runnerUp,year]=snap.rows[0];
     const box=document.createElement('div');box.className='tv-callout tv-title-card';
+    const main=document.createElement('div');main.className='tv-title-card-main';
     const label=document.createElement('span');label.className='tv-callout-label';label.textContent=`${year} champions`;
     const value=document.createElement('strong');value.className='tv-title-card-team';value.textContent=champion;
-    box.append(label,value);
-    const run=snap.run||[];
-    if(run.length){
-      const list=document.createElement('ol');list.className='tv-title-card-run';
-      run.forEach((r,i)=>{
-        const item=document.createElement('li'),round=document.createElement('span'),result=document.createElement('span');
-        round.className='tv-title-card-round';round.textContent=r.label.replace(/^\w/,c=>c.toUpperCase());
-        const last=i===run.length-1,score=r.firstTo>1?`${r.wins}-${r.losses}`:last&&snap.finalScore?snap.finalScore:'';
-        result.textContent=`Beat ${r.opponent}${score?`, ${score}`:''}`;item.append(round,result);list.append(item);
-      });
-      box.append(list);
-    }else if(runnerUp&&runnerUp!=='Not available'){const context=document.createElement('span');context.className='tv-callout-context';context.textContent=`Beat ${runnerUp}${snap.finalScore?`, ${snap.finalScore}`:''}`;box.append(context);}
+    main.append(label,value);
     const mvp=snap.finalsMvp;
-    if(mvp){const line=document.createElement('span');line.className='tv-callout-context';
-      line.textContent=`${mvp.award}: ${mvp.name}, ${mvp.GP>1?`${(mvp.PTS/mvp.GP).toFixed(1)} PPG, ${(mvp.REB/mvp.GP).toFixed(1)} RPG, ${(mvp.AST/mvp.GP).toFixed(1)} APG`:`${mvp.PTS} PTS, ${mvp.REB} REB, ${mvp.AST} AST`}`;box.append(line);}
+    if(mvp){const award=document.createElement('span');award.className='tv-title-card-award';award.textContent=mvp.award;
+      const line=document.createElement('span');line.className='tv-callout-context';
+      line.textContent=`${mvp.name}: ${mvp.GP>1?`${(mvp.PTS/mvp.GP).toFixed(1)} PPG, ${(mvp.REB/mvp.GP).toFixed(1)} RPG, ${(mvp.AST/mvp.GP).toFixed(1)} APG`:`${mvp.PTS} PTS, ${mvp.REB} REB, ${mvp.AST} AST`}`;main.append(award,line);}
+    box.append(main);
+    const run=snap.run||[],road=document.createElement('div');road.className='tv-title-card-road';
+    const heading=document.createElement('span');heading.className='tv-title-card-award';heading.textContent='Road to the title';road.append(heading);
+    const list=document.createElement('ol');list.className='tv-title-card-run';
+    const rounds=run.length?run:runnerUp&&runnerUp!=='Not available'?[{label:'Final',opponent:runnerUp,firstTo:1}]:[];
+    rounds.forEach((r,i)=>{
+      const item=document.createElement('li'),round=document.createElement('span'),result=document.createElement('span');
+      round.className='tv-title-card-round';round.textContent=r.label.replace(/^\w/,c=>c.toUpperCase());
+      const score=r.firstTo>1?`${r.wins}-${r.losses}`:i===rounds.length-1&&snap.finalScore?snap.finalScore:'';
+      result.textContent=`Beat ${r.opponent}${score?`, ${score}`:''}`;item.append(round,result);list.append(item);
+    });
+    if(rounds.length){road.append(list);box.append(road);}
     return box;
   }
   function tvCallout(headers,row){
