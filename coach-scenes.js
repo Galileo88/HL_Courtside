@@ -497,7 +497,17 @@
       } else {
         const photo = ctx.createLinearGradient(0, py0, 0, py0 + ph); photo.addColorStop(0, `rgb(${shade(primary, 1.1)})`); photo.addColorStop(1, `rgb(${shade(primary, .7)})`);
         ctx.fillStyle = photo; ctx.fillRect(px0, py0, pw, ph);
-        if (logo?.image) { const [im, w, h] = fit(logo.image, 200); ctx.globalAlpha = .28; ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, px0 + (pw - w) / 2, py0 + 12, w, h); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false; }
+        // The faint logo is a two-tone white watermark: the logo's dark parts in
+        // strong white and its light parts in faint white, so its detail reads
+        // and it shows whatever the school's colors are.
+        if (logo?.image) {
+          const [im, w, h] = fit(logo.image, 200), mark = document.createElement('canvas'); mark.width = im.width; mark.height = im.height;
+          const mc = mark.getContext('2d', { willReadFrequently: true }); mc.drawImage(im, 0, 0);
+          const d = mc.getImageData(0, 0, mark.width, mark.height);
+          for (let i = 0; i < d.data.length; i += 4) { const l = .299 * d.data[i] + .587 * d.data[i + 1] + .114 * d.data[i + 2]; d.data[i] = d.data[i + 1] = d.data[i + 2] = 255; d.data[i + 3] = Math.round(d.data[i + 3] * (l < 128 ? 1 : .4)); }
+          mc.putImageData(d, 0, 0);
+          ctx.globalAlpha = .3; ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(mark, px0 + (pw - w) / 2, py0 + 12, w, h); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false;
+        }
         if (p) { const c = document.createElement('canvas'); c.width = 32 * 7; c.height = 28 * 7; window.HoopWirePlayer.portrait(c, { ...p, wearsSuit: false, isCoach: false }, team, 0); ctx.drawImage(c, px0 + (pw - c.width) / 2, py0 + ph - c.height); }
         ctx.fillStyle = secondary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
       }
