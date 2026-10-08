@@ -707,7 +707,8 @@
       const teams=r.teams||[],first=teams[0];if(!first)return genericScript(story,n);
       const ref=x=>C.teamRef({city:x.teamCity,name:x.teamNickname||x.team}),TT=x=>ref(x).nick,rank=r.championRank;
       open=pick(story,[`Way-too-early top 10. We've got ${TT(first)} at No. 1. ${J}, agree?`,`It's never too early. ${cap(TT(first))} ${C.verb(ref(first),'open')} next season at No. 1 on our list. ${J}?`,`Our early top 10 is out, and ${TT(first)} ${C.verb(ref(first),'are')} on top. ${J}, go.`],'early:open');
-      body.push(turn(1,`I'll take it. ${first.kept} percent of the scoring back, and ${first.star} at ${first.starPTS} a night. That's a real start.`));
+      const starters=first.starters>0?(first.startersBack===first.starters?`All ${C.num(first.starters)} starters back`:first.startersBack?`${cap(C.num(first.startersBack))} starters back`:`No starters back`):null;
+      body.push(turn(1,starters?`I'll take it. ${starters}, and ${first.star} at ${first.starPTS} a night. That's a real start.`:`I'll take it. ${first.star} at ${first.starPTS} a night is a real start.`));
       if(rank&&r.champion)body.push(turn(2,rank===1?`Hard to argue. The champs bring back enough to do it again.`:rank>10?`The defending champs aren't even in the top ten? I'd keep the champs higher until somebody knocks them off.`:`The defending champs at No. ${rank}? I'd keep the champs higher until somebody knocks them off.`));
       if(teams.length>1)body.push(turn(3,`Rounding out the top five: ${join(teams.slice(1,5).map(x=>ref(x).short))}.`));
       close=pick(story,["It's never too early.","Ask us again when the season opens.","Plenty of time for this list to look silly."],'early:close');

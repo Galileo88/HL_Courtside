@@ -228,7 +228,7 @@
     const push=(key,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
       const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:cal.day,type,headline,paragraphs,
-        importance:90,templateVersion:5,editorialVersion:3,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:90,templateVersion:5,editorialVersion:4,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
         seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
       result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
@@ -270,18 +270,26 @@
         const kept=pts>0?back.reduce((n,x)=>n+x.s.PTS,0)/pts:0,talent=back.map(x=>x.p.pot||0).sort((a,b)=>b-a).slice(0,7),record=(t.season||[]).find(r=>r.yr===year);
         const games=(record?.seasonStats?.W||0)+(record?.seasonStats?.L||0),win=games?record.seasonStats.W/games:0,ceiling=talent.length?talent.reduce((a,b)=>a+b,0)/talent.length:0;
         // Last season's results, scaled by how much of that team returns, plus the ceiling of who's back.
-        return {t,back,kept,score:win*kept+ceiling/20,record:record?.seasonStats,poll:record?.poll,star:back.sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0]};
+        // Writers count returning starters and scorers, so the story does too.
+        const starters=[...roster].filter(x=>x.s.GS>0).sort((a,b)=>b.s.GS-a.s.GS||(b.s.MIN||0)-(a.s.MIN||0)).slice(0,5),leader=[...roster].sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0];
+        return {t,back,kept,score:win*kept+ceiling/20,record:record?.seasonStats,poll:record?.poll,star:back.sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0],
+          starters:starters.length,startersBack:starters.filter(x=>back.includes(x)).length,leader,leaderBack:!!leader&&back.includes(leader)};
       }).filter(x=>x.back.length&&x.star).sort((a,b)=>b.score-a.score||a.t.id-b.t.id),teams=ranked.slice(0,10);
       if(teams.length>=5){
-        const top=teams[0],rec=x=>x.record?`${x.record.W}-${x.record.L}`:'—',pct=x=>Math.round(x.kept*100);
-        const paragraphs=[`It is never too early. HoopWire's first look at next season puts ${T(top.t).full} at No. 1. ${T(top.t).plural?'They bring':'It brings'} back ${pct(top)} percent of their scoring, led by ${name(top.star.p)} at ${perGame(top.star.s,'PTS')} points a game.`,
+        const top=teams[0],rec=x=>x.record?`${x.record.W}-${x.record.L}`:'—';
+        const startersText=x=>x.starters<1?null:x.startersBack===x.starters?`all ${C.num(x.starters)} starters`:x.startersBack===0?'no starters':`${C.num(x.startersBack)} of ${C.num(x.starters)} starters`;
+        const gone=p=>p.yrs>=3?'graduates':'is projected to turn pro';
+        const backLine=x=>{const st=startersText(x),who=`${name(x.star.p)} (${perGame(x.star.s,'PTS')} points a game)`;
+          const first=!st?`${C.capitalize(T(x.t).nick)} ${C.verb(T(x.t),'return')} ${who}`:x.startersBack===x.starters?`${C.capitalize(st)} are back`:x.startersBack===0?`None of last season's starters return`:`${C.capitalize(st)} return`;
+          return x.leaderBack?`${first}, including leading scorer ${who}.`:x.leader&&st?`${first}, though leading scorer ${name(x.leader.p)} ${gone(x.leader.p)}. ${name(x.star.p)}, at ${perGame(x.star.s,'PTS')} points a game, is the top returner.`:`${first}.`;};
+        const paragraphs=[`It is never too early. HoopWire's first look at next season puts ${T(top.t).full} at No. 1. ${backLine(top)}`,
           `Rounding out the top five: ${C.listJoin(teams.slice(1,5).map(x=>`${T(x.t).short} (${rec(x)})`))}.`,
-          ...ranked.filter(x=>x.t.id===champion?.id).map(x=>{const at=ranked.indexOf(x)+1;return at<=10?`The ${year} champions, ${T(champion).full}, open at No. ${at}.`:`The ${year} champions, ${T(champion).full}, come in at No. ${at}, with ${pct(x)} percent of their scoring back.`;}),
-          `The voters get their say when the new season opens. Until then, this is how we see it: last season's record, the scoring coming back and the talent left on the roster, with every underclassman on our big board already out the door.`].filter(Boolean);
+          ...ranked.filter(x=>x.t.id===champion?.id).map(x=>{const at=ranked.indexOf(x)+1;return at<=10?`The ${year} champions, ${T(champion).full}, open at No. ${at}${startersText(x)?` with ${startersText(x)} back`:''}.`:`The ${year} champions, ${T(champion).full} (${rec(x)} in the regular season), come in at No. ${at}${startersText(x)?`, with ${startersText(x)} back`:''}.`;}),
+          `The voters get their say when the new season opens. Until then, this is how we see it: last season's record, the starters and scorers coming back and the talent left on the roster, with every underclassman on our big board already out the door.`].filter(Boolean);
         const lead={p:top.star.p,t:top.t};
         push('offseason-early-top-ten',{type:'College offseason',kind:'early-top-ten',headline:`Way-too-early top 10: ${T(top.t).nickname} ${C.verb(T(top.t),'open')} next season at No. 1`,paragraphs,items:teams.map(x=>x.star),lead,
-          board:{kicker:'Next season',title:'HoopWire early top 10',headers:['School','Record','Final poll','Scoring back','Top returner'],rows:teams.map(x=>[C.teamDisplay(x.t),rec(x),x.poll>0?x.poll:'—',`${pct(x)}%`,name(x.star.p)]),ranked:true},
-          extra:{championRank:champion?ranked.findIndex(x=>x.t.id===champion.id)+1||null:null,teams:teams.map(x=>({team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,record:rec(x),poll:x.poll||null,kept:pct(x),star:name(x.star.p),starPTS:perGame(x.star.s,'PTS')})),champion:champion?C.teamDisplay(champion):null}});
+          board:{kicker:'Next season',title:'HoopWire early top 10',headers:['School','Record','Final poll','Starters back','Top returner'],rows:teams.map(x=>[C.teamDisplay(x.t),rec(x),x.poll>0?x.poll:'—',x.starters?x.startersBack:'—',name(x.star.p)]),ranked:true},
+          extra:{championRank:champion?ranked.findIndex(x=>x.t.id===champion.id)+1||null:null,teams:teams.map(x=>({team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,record:rec(x),poll:x.poll||null,starters:x.starters,startersBack:x.startersBack,leaderBack:x.leaderBack,star:name(x.star.p),starPTS:perGame(x.star.s,'PTS')})),champion:champion?C.teamDisplay(champion):null}});
       }
     }
     return result;
