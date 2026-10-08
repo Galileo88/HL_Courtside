@@ -225,7 +225,7 @@
     if (!samples)
       samples = new Promise((resolve, reject) => {
         let synth;
-        synth = new Animalese('vendor/animalese/animalese.wav', () => resolve(synth), reject);
+        synth = new Animalese('assets/voice/samples.wav', () => resolve(synth), reject);
       }).catch(error => {
         samples = null;
         throw error;
