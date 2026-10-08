@@ -1,10 +1,10 @@
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const { samplePath, launchBrowser } = require('./helpers.cjs');
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const f = path.resolve(root, '.' + new URL(req.url, 'http://localhost').pathname.replace(/^\/$/, '/index.html'));
   if (!f.startsWith(root + path.sep) || !fs.existsSync(f)) {
@@ -22,7 +22,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -79,7 +79,7 @@ const server = http.createServer((req, res) => {
     await page.screenshot({ path: path.join(root, 'artifacts/newsroom-home-desktop.png'), fullPage: true });
     assert.equal(await page.locator('.wire-tv-airtime').textContent(), 'Nightly · 10 PM');
     assert.equal(await page.locator('.wire-tv button').textContent(), 'Watch Now!');
-    assert.equal(await page.locator('.wire-tv-logo').getAttribute('src'), 'assets/hoopwire_logo.png');
+    assert.equal(await page.locator('.wire-tv-logo').getAttribute('src'), 'assets/brand/hoopwire_logo.png');
     await page.locator('.wire-tv').screenshot({ path: path.join(root, 'artifacts/tv-show-promo-desktop.png') });
     const spacing = await page.evaluate(() => {
       const lead = document.querySelector('.wire-lead').getBoundingClientRect(),

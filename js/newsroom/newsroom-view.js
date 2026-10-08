@@ -156,7 +156,7 @@
       poster.height = 540;
       const details = element('div', 'wire-tv-details');
       const logo = element('img', 'wire-tv-logo');
-      logo.src = 'assets/hoopwire_logo.png';
+      logo.src = 'assets/brand/hoopwire_logo.png';
       logo.alt = 'HoopWire TV';
       logo.width = 1336;
       logo.height = 366;

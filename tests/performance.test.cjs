@@ -1,8 +1,8 @@
 const test = require('node:test'),
   assert = require('node:assert/strict');
-const P = require('../performance-coverage'),
-  B = require('../broadcast-content'),
-  S = require('../season-coverage');
+const P = require('../js/coverage/performance-coverage.js'),
+  B = require('../js/broadcast/broadcast-content.js'),
+  S = require('../js/coverage/season-coverage.js');
 // A full-length game: 110-100. Season lines are ten games before tonight plus tonight.
 function fixture() {
   const box = (PTS, REB = 4, AST = 2, STL = 1, TO = 2, GS = 1) => ({

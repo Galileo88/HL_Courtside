@@ -1,8 +1,8 @@
 const test = require('node:test'),
   assert = require('node:assert/strict');
-const C = require('../core'),
-  S = require('../season-coverage'),
-  B = require('../broadcast-content');
+const C = require('../js/coverage/core.js'),
+  S = require('../js/coverage/season-coverage.js'),
+  B = require('../js/broadcast/broadcast-content.js');
 function fixture() {
   const league = {
     leagueName: 'Current League',

@@ -1,10 +1,10 @@
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 /* Run against the local preview server. Optionally pass a real custom-league save. */
-const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const sample = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+const sample = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
 async function ready(page) {
   await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
@@ -29,7 +29,7 @@ async function getStories(page) {
   });
 }
 (async () => {
-  const browser = await chromium.launch({ channel: process.env.HOOPWIRE_BROWSER || 'msedge', headless: true });
+  const browser = await launchBrowser();
   try {
     const context = await browser.newContext({ viewport: { width: 1100, height: 1000 } }),
       page = await context.newPage();

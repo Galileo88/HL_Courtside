@@ -1,6 +1,6 @@
 /* Draws Hoop Land player sprites with a player's appearance and team uniform. */
 (() => {
-  const root = './player-assets/';
+  const root = './assets/player/';
   const files = [
     'idle',
     'head',
@@ -36,7 +36,7 @@
   ];
   const images = {};
   const flightBall = new Image();
-  flightBall.src = './scene-assets/ball-seams.png';
+  flightBall.src = './assets/scene/ball-seams.png';
   images['flight-ball'] = flightBall;
   for (const file of files) {
     const image = new Image();
@@ -65,7 +65,7 @@
         'running',
         'running-arms',
       ].includes(file)
-        ? './scene-assets/'
+        ? './assets/scene/'
         : root) +
       file +
       '.png';

@@ -1,11 +1,11 @@
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 /* Native media completion, intro cancellation and responsive visual checks. */
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname,
     file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : decodeURIComponent(pathname)));
@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage({ viewport: { width: 1100, height: 1000 } }),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));

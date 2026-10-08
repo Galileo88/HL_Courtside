@@ -1,7 +1,7 @@
 const test = require('node:test'),
   assert = require('node:assert/strict');
-const C = require('../broadcast-context'),
-  B = require('../broadcast-content');
+const C = require('../js/broadcast/broadcast-context.js'),
+  B = require('../js/broadcast/broadcast-content.js');
 const game = (gid, day, won, homeRecord, awayRecord) => ({
   gid,
   day,

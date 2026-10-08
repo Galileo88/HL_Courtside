@@ -15,7 +15,7 @@
   ];
   const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
   const pitches = [1.25, 0.83, 0.65, 1.45];
-  const introSrc = 'assets/hoopwire-tv-intro.mp3',
+  const introSrc = 'assets/brand/hoopwire-tv-intro.mp3',
     introLeadMs = 8500;
   let turns = [],
     hosts = [],

@@ -1,7 +1,6 @@
 const test = require('node:test'),
   assert = require('node:assert/strict'),
-  R = require('../records-coverage'),
-  C = require('../core');
+  R = require('../js/coverage/records-coverage.js');
 function fixture() {
   const game = {
     league: 0,

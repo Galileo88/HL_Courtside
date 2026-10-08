@@ -2,10 +2,10 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
     module.exports = factory(
-      require('./core'),
-      require('./season-coverage'),
-      require('./broadcast-context'),
-      require('./performance-coverage')
+      require('../coverage/core.js'),
+      require('../coverage/season-coverage.js'),
+      require('./broadcast-context.js'),
+      require('../coverage/performance-coverage.js')
     );
   else
     root.HoopWireBroadcastContent = factory(

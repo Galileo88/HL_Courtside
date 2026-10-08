@@ -1,6 +1,7 @@
+const { samplePath } = require('./helpers.cjs');
 const test = require('node:test'),
   assert = require('node:assert/strict'),
-  S = require('../season-coverage');
+  S = require('../js/coverage/season-coverage.js');
 test('regular-season reviews list the top three team records and main rates', () => {
   const names = ['Pittsburgh Riveters', 'Los Angeles Breakers', 'Boston Colonials'],
     records = [
@@ -360,7 +361,7 @@ test('articles and broadcasts acknowledge repeated awards, leader titles and cha
     leaders.paragraphs.join(' '),
     /second time (?:Player )?1 has won the scoring title, making it back-to-back/
   );
-  const B = require('../broadcast-content');
+  const B = require('../js/broadcast/broadcast-content.js');
   assert.match(
     B.script(award)
       .map(t => t.text)
@@ -621,9 +622,7 @@ test('award stories stay focused on the winner and coach quotes discuss the winn
   assert.match(coachLine, /award|recognition|honor|recognized/i);
 });
 test('team review headlines add something the record does not already say', () => {
-  const save = JSON.parse(
-    require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'sample_save'), 'utf8')
-  );
+  const save = JSON.parse(require('node:fs').readFileSync(samplePath, 'utf8'));
   const headlines = save.seasonLeagues
     .flatMap(l => S.candidates(l, save.seasonLeagues))
     .filter(x => /^team-.*-regular$/.test(x.story.eventKey))

@@ -97,7 +97,7 @@
   async function logoFor(team, savedData) {
     const requested = savedData || team?.logoURL,
       native = nativeNames.has(requested);
-    const url = native ? 'team-logos/' + requested + '.png' : requested;
+    const url = native ? 'assets/team-logos/' + requested + '.png' : requested;
     if (!native && !window.HoopWireCourt.validURL(url)) return null;
     if (!logos.has(url))
       logos.set(
@@ -130,9 +130,9 @@
   // sheet's tones are palette slots (red 20 fill, 10 inner line, 5 outer
   // line) that take the team's primary, secondary and tertiary colors.
   const sheet = new Image();
-  sheet.src = 'player-assets/team-letters.png';
+  sheet.src = 'assets/player/team-letters.png';
   const defaultLeague = new Image();
-  defaultLeague.src = 'scene-assets/hoop-land-logo.png';
+  defaultLeague.src = 'assets/scene/hoop-land-logo.png';
   const ready = image =>
     image.complete && image.naturalWidth ? Promise.resolve(image) : image.decode().then(() => image);
   const color = (hex, fallback) => {

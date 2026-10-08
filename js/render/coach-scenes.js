@@ -36,13 +36,13 @@
     'hoopgram-like',
     'hoopgram-verified',
     ...AWARDS.map(a => `award-${a}`),
-    '../assets/draft_logo',
+    '../brand/draft_logo',
   ];
   function load() {
     ready ||= Promise.all(
       files.map(async name => {
         const image = new Image();
-        image.src = `scene-assets/${name}.png`;
+        image.src = `assets/scene/${name}.png`;
         await image.decode();
         art[name.replace(/^.*\//, '')] = image;
       })
@@ -541,7 +541,7 @@
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => resolve(null);
-      image.src = 'assets/hof_logo.png';
+      image.src = 'assets/brand/hof_logo.png';
     }));
   const BRONZE = {
     highlight: [191, 119, 28],

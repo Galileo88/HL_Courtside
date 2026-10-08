@@ -1,12 +1,12 @@
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 /* Browser checks for local host speech, animation, cancellation and backups. */
-const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const save = JSON.parse(fs.readFileSync(process.argv[2] || path.join(root, 'sample_save'), 'utf8'));
+const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
 (async () => {
-  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const browser = await launchBrowser();
   try {
     const context = await browser.newContext({ viewport: { width: 1100, height: 1000 } }),
       page = await context.newPage(),
@@ -117,13 +117,11 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || path.join(root, 'samp
       p = await other.newPage();
     await p.goto('http://127.0.0.1:8123');
     await p.waitForFunction(() => !document.getElementById('saveFile').disabled);
-    await p
-      .locator('#importFile')
-      .setInputFiles({
-        name: 'backup.json',
-        mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(backup)),
-      });
+    await p.locator('#importFile').setInputFiles({
+      name: 'backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(backup)),
+    });
     await p.waitForFunction(() => !document.getElementById('saveFile').disabled);
     await p.goto('http://127.0.0.1:8123/#archive');
     await p.waitForFunction(() => !document.getElementById('saveFile').disabled);

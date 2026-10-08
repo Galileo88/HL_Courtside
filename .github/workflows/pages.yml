@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: true
 
 jobs:
@@ -29,25 +29,24 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Check JavaScript syntax
-        run: |
-          for file in *.js; do
-            node --check "$file"
-          done
+        run: find js vendor -name '*.js' -print0 | xargs -0 -n1 node --check
 
       - name: Run unit tests
         run: node --test tests/*.test.cjs
 
-      - name: Stamp asset versions
+      - name: Build site
         # Browsers keep cached scripts across deploys; a version query forces fresh code.
         run: |
+          mkdir _site
+          cp -r index.html css js assets vendor _site/
           version="${GITHUB_SHA::8}"
-          sed -i -E "s#(src|href)=\"([A-Za-z0-9_./-]+\.(js|css))\"#\1=\"\2?v=${version}\"#g" index.html
-          grep -c "?v=${version}" index.html
+          sed -i -E "s#(src|href)=\"([A-Za-z0-9_./-]+\.(js|css))\"#\1=\"\2?v=${version}\"#g" _site/index.html
+          grep -c "?v=${version}" _site/index.html
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment

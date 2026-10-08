@@ -1,5 +1,5 @@
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const { launchBrowser } = require('./helpers.cjs');
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
@@ -67,7 +67,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } }),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));

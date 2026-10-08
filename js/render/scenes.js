@@ -8,7 +8,7 @@
       window.HoopWirePlayer.ready(),
       ...['press-background', 'press-table', 'press-table_2p'].map(async name => {
         const image = new Image();
-        image.src = `scene-assets/${name}.png`;
+        image.src = `assets/scene/${name}.png`;
         await image.decode();
         art[name] = image;
       }),

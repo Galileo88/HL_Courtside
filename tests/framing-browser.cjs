@@ -1,10 +1,10 @@
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const { samplePath, launchBrowser } = require('./helpers.cjs');
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const f = path.resolve(root, '.' + new URL(req.url, 'http://localhost').pathname.replace(/^\/$/, '/index.html'));
   if (!f.startsWith(root + path.sep) || !fs.existsSync(f)) {
@@ -22,7 +22,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage(),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -54,7 +54,7 @@ const server = http.createServer((req, res) => {
       .setInputFiles({ name: 'league.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(save)) });
     await ready();
     const logoChecks = await page.evaluate(async () => {
-      const background = await HoopWireCourt.loadImage('scene-assets/press-background.png'),
+      const background = await HoopWireCourt.loadImage('assets/scene/press-background.png'),
         mark = document.createElement('canvas');
       mark.width = 64;
       mark.height = 32;

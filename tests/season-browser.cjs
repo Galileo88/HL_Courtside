@@ -1,12 +1,12 @@
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const { samplePath, launchBrowser } = require('./helpers.cjs');
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   http = require('node:http'),
   path = require('node:path');
 const root = path.resolve(__dirname, '..'),
-  C = require('../core'),
-  S = require('../season-coverage');
-const save = JSON.parse(fs.readFileSync(process.argv[2] || path.join(root, 'sample_save'), 'utf8'));
+  C = require('../js/coverage/core.js'),
+  S = require('../js/coverage/season-coverage.js');
+const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
 if (process.env.HOOPWIRE_TEST_NEWS) {
   const l = save.seasonLeagues[0],
     p = l.teams[0].roster[0];
@@ -43,7 +43,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } }),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -52,13 +52,11 @@ const server = http.createServer((req, res) => {
       page.waitForFunction(() => !document.getElementById('saveFile').disabled, {}, { timeout: 180000 });
     await ready();
     async function upload() {
-      await page
-        .locator('#saveFile')
-        .setInputFiles({
-          name: 'playoff-save.json',
-          mimeType: 'application/json',
-          buffer: Buffer.from(JSON.stringify(save)),
-        });
+      await page.locator('#saveFile').setInputFiles({
+        name: 'playoff-save.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(save)),
+      });
       await ready();
       assert.match(await page.locator('#status').textContent(), /^Save loaded/);
     }
@@ -69,8 +67,8 @@ const server = http.createServer((req, res) => {
         new Set(
           [
             ...S.candidates(l),
-            ...require('../records-coverage').candidates(l),
-            ...require('../news-coverage').candidates(l),
+            ...require('../js/coverage/records-coverage.js').candidates(l),
+            ...require('../js/coverage/news-coverage.js').candidates(l),
           ].map(x => x.story.id)
         ).size +
         C.candidates(l, C.buildFingerprint(l), new Map(C.captureSnapshots(l).map(s => [s.id, s])), 'full').length,

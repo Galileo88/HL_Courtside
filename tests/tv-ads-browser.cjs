@@ -1,6 +1,6 @@
+const { launchBrowser } = require('./helpers.cjs');
 /* Verify sponsor atlas selection, fitted size and saved-studio upgrades. */
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage(),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));

@@ -68,8 +68,8 @@
   async function compose(input, withHosts = true) {
     const C = window.HoopWireCourt;
     const [table, graphic, ads] = await Promise.all([
-      C.loadImage('scene-assets/announce-table.png'),
-      C.loadImage('scene-assets/announce-table-graphic.png'),
+      C.loadImage('assets/scene/announce-table.png'),
+      C.loadImage('assets/scene/announce-table-graphic.png'),
       C.validURL(input.adsURL) ? C.loadImage(input.adsURL, true).catch(() => null) : null,
       window.HoopWirePlayer.ready(),
     ]);

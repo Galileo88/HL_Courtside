@@ -1,7 +1,7 @@
 /* Transaction, award and offseason stories from the save's news events. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
-    module.exports = factory(require('./core'), require('./records-coverage'), require('./season-coverage'));
+    module.exports = factory(require('./core.js'), require('./records-coverage.js'), require('./season-coverage.js'));
   else root.HoopWireNews = factory(root.HoopWireCore, root.HoopWireRecords, root.HoopWireSeason);
 })(globalThis, function (C, R, S) {
   'use strict';

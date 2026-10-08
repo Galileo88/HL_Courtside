@@ -1,7 +1,7 @@
 /* In-season context, milestones and record watches. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
-    module.exports = factory(require('./core'), require('./season-coverage'));
+    module.exports = factory(require('./core.js'), require('./season-coverage.js'));
   else root.HoopWireRecords = factory(root.HoopWireCore, root.HoopWireSeason);
 })(globalThis, function (C, S) {
   'use strict';

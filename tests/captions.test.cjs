@@ -3,8 +3,11 @@ const test = require('node:test'),
   vm = require('node:vm'),
   fs = require('node:fs'),
   path = require('node:path');
-const window = { HoopWireCore: require('../core') };
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../scenes.js'), 'utf8'), { window, structuredClone });
+const window = { HoopWireCore: require('../js/coverage/core.js') };
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/render/scenes.js'), 'utf8'), {
+  window,
+  structuredClone,
+});
 const caption = window.HoopWireScenes.caption;
 const scene = {
   kind: 'interview',

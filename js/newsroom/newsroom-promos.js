@@ -13,7 +13,7 @@
     if (!artCache.has(key))
       artCache.set(
         key,
-        HoopWireCourt.loadImage('scene-assets/' + file).then(source => {
+        HoopWireCourt.loadImage('assets/scene/' + file).then(source => {
           const canvas = document.createElement('canvas');
           canvas.width = source.width;
           canvas.height = source.height;
@@ -95,7 +95,7 @@
     if (!artCache.has('drink'))
       artCache.set(
         'drink',
-        window.HoopWireCourt.loadImage('scene-assets/bottle.png').then(source => {
+        window.HoopWireCourt.loadImage('assets/scene/bottle.png').then(source => {
           const canvas = document.createElement('canvas');
           canvas.width = 300;
           canvas.height = 156;
@@ -346,9 +346,9 @@
               logo.src = src;
             })
             .catch(() => {
-              logo.src = 'scene-assets/' + creative.logo;
+              logo.src = 'assets/scene/' + creative.logo;
             });
-        else logo.src = 'scene-assets/' + creative.logo;
+        else logo.src = 'assets/scene/' + creative.logo;
         logo.addEventListener(
           'error',
           () => {
@@ -384,7 +384,7 @@
       const tv = node('section', 'wire-tv-ad');
       tv.setAttribute('aria-label', 'HoopWire TV advertisement');
       const logo = node('img', '');
-      logo.src = 'assets/hoopwire_logo.png';
+      logo.src = 'assets/brand/hoopwire_logo.png';
       logo.alt = 'HoopWire TV';
       logo.width = 1336;
       logo.height = 366;

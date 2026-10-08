@@ -1,11 +1,11 @@
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 /* End-to-end performance story creation, replay, and qualitative reporting. */
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const league = save.seasonLeagues[0],
   year = league.season.currentYear;
 save.seasonLeagues = [league];
@@ -94,20 +94,18 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage(),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
     async function upload() {
-      await page
-        .locator('#saveFile')
-        .setInputFiles({
-          name: 'performance.json',
-          mimeType: 'application/json',
-          buffer: Buffer.from(JSON.stringify(save)),
-        });
+      await page.locator('#saveFile').setInputFiles({
+        name: 'performance.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(save)),
+      });
       await page.waitForFunction(() => !document.getElementById('saveFile').disabled, null, { timeout: 120000 });
     }
     async function archived() {

@@ -1,7 +1,7 @@
 const test = require('node:test'),
   assert = require('node:assert/strict');
-const B = require('../broadcast-content'),
-  S = require('../season-coverage');
+const B = require('../js/broadcast/broadcast-content.js'),
+  S = require('../js/coverage/season-coverage.js');
 const text = s =>
   B.script(s)
     .map(t => t.text)
@@ -173,7 +173,7 @@ test('postgame follow-ups connect efficiency, ball security and per-game context
     s = text(story);
   assert.ok(turns.length >= 6 && turns.length <= 14);
   assert.match(s, /4 of them against 11 assists/);
-  const e = B.selectEvidence(story, require('../broadcast-context').buildContext(story));
+  const e = B.selectEvidence(story, require('../js/broadcast/broadcast-context.js').buildContext(story));
   assert.equal(e.ppg, '20.0');
   assert.equal(B.supportingThreads(e, B.selectAngle(e)).length, 2);
   assert.doesNotMatch(s, /next matchup|Where do the .*turnovers/);

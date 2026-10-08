@@ -1,11 +1,11 @@
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 /* Isolated integration check for editorial content, not playback timing. */
-const { chromium } = require('playwright'),
-  assert = require('node:assert/strict'),
+const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname,
     file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : decodeURIComponent(pathname)));
@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage(),
       errors = [],
       blobFailures = [];
@@ -112,7 +112,7 @@ const server = http.createServer((req, res) => {
     // Live TV uses the loaded save; archive-only replay retains the saved totals.
     const nativeLeague = save.seasonLeagues.find(l => HoopWireFingerprint(l) === season.fingerprint);
     function HoopWireFingerprint(l) {
-      return require('../core').buildFingerprint(l);
+      return require('../js/coverage/core.js').buildFingerprint(l);
     }
     const player = nativeLeague.teams.flatMap(t => t.roster || [])[0],
       historical = {
@@ -151,18 +151,16 @@ const server = http.createServer((req, res) => {
           totals.GP += 1;
           totals.PTS += 500;
         }
-    const completed = require('../core').buildLookups(laterLeague).completed,
+    const completed = require('../js/coverage/core.js').buildLookups(laterLeague).completed,
       last = completed.at(-1).game;
     const nextGame = { ...last, gId: Math.max(...completed.map(x => x.game.gId)) + 100 };
     laterLeague.season.schedule.push({ results: [nextGame] });
     laterLeague.season.currentDay = laterLeague.season.schedule.length - 1;
-    await page
-      .locator('#saveFile')
-      .setInputFiles({
-        name: 'later-league.json',
-        mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(laterSave)),
-      });
+    await page.locator('#saveFile').setInputFiles({
+      name: 'later-league.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(laterSave)),
+    });
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
     await page.locator('.nav a[href="#tv"]').click();
     await page.locator('#archiveLeague').selectOption(season.fingerprint, { force: true });
@@ -173,7 +171,7 @@ const server = http.createServer((req, res) => {
       'Historical fixture survives loading a later save'
     );
     await page.locator('#tvStorySelect').selectOption({ label: historical.headline }, { force: true });
-    const liveTotals = require('../season-coverage').stats(laterPlayer, laterLeague, season.season),
+    const liveTotals = require('../js/coverage/season-coverage.js').stats(laterPlayer, laterLeague, season.season),
       livePPG = (liveTotals.PTS / liveTotals.GP).toFixed(1);
     assert.ok((await page.locator('#tvTranscript').textContent()).includes(livePPG + ' points'));
     assert.equal(

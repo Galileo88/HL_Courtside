@@ -147,7 +147,7 @@
     const [images, overlay, logo] = await Promise.all([
       Promise.all(
         ['outer-court', ...files, 'court-lines', college ? 'three-point-college' : 'three-point-pro', ...hoopFiles].map(
-          file => load(`court/${file}.png`)
+          file => load(`assets/court/${file}.png`)
         )
       ),
       overlayPromise,

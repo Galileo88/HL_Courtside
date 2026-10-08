@@ -1,6 +1,7 @@
+const { samplePath } = require('./helpers.cjs');
 const test = require('node:test'),
   assert = require('node:assert/strict'),
-  N = require('../news-coverage');
+  N = require('../js/coverage/news-coverage.js');
 function fixture() {
   return {
     leagueName: 'Test League',
@@ -117,7 +118,7 @@ test('injury disappointment overrides a winning season for coach and injured pla
   assert.doesNotMatch(text, /fictional interview|great season/);
 });
 test('a finished college season keeps its beat on the pro calendar with save-backed offseason features', () => {
-  const save = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'sample_save'), 'utf8')),
+  const save = JSON.parse(require('fs').readFileSync(samplePath, 'utf8')),
     [pro, college] = save.seasonLeagues;
   const champ = college.teams[0].id,
     full = college.season.schedule,
@@ -181,7 +182,7 @@ test('a finished college season keeps its beat on the pro calendar with save-bac
   assert.equal(N.offseason(college, [college]).length, 0);
 });
 test('the college offseason reports the real draft class, who is back and the official preseason poll', () => {
-  const save = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'sample_save'), 'utf8')),
+  const save = JSON.parse(require('fs').readFileSync(samplePath, 'utf8')),
     [pro, college] = save.seasonLeagues;
   const last = college.season.currentYear,
     next = last + 1;

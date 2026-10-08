@@ -28,7 +28,7 @@
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = reject;
-    image.src = 'scene-assets/burger.png';
+    image.src = 'assets/scene/burger.png';
   });
   async function compose(product, hosts) {
     await HoopWirePlayer.ready();
@@ -300,7 +300,7 @@
       ctx.fillStyle = '#8fc5dc';
       ctx.fillText('THE NIGHT', 18, 70);
       ctx.fillText('DOESN’T.', 18, 104);
-      const truck = await HoopWireCourt.loadImage('scene-assets/truck.png');
+      const truck = await HoopWireCourt.loadImage('assets/scene/truck.png');
       const width = 286,
         height = (width * truck.height) / truck.width;
       ctx.fillStyle = 'rgba(0,0,0,.5)';
@@ -326,7 +326,7 @@
       ctx.moveTo(0, 153);
       ctx.lineTo(300, 153);
       ctx.stroke();
-      const source = await HoopWireCourt.loadImage('scene-assets/bottle.png'),
+      const source = await HoopWireCourt.loadImage('assets/scene/bottle.png'),
         bottle = document.createElement('canvas');
       bottle.width = source.width;
       bottle.height = source.height;
@@ -362,7 +362,7 @@
       ctx.beginPath();
       ctx.ellipse(150, 151, 112, 14, 0, 0, Math.PI * 2);
       ctx.stroke();
-      const source = await HoopWireCourt.loadImage('scene-assets/shoes.png'),
+      const source = await HoopWireCourt.loadImage('assets/scene/shoes.png'),
         shoe = document.createElement('canvas');
       shoe.width = source.width;
       shoe.height = source.height;

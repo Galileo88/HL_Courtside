@@ -1,13 +1,12 @@
-/* Uses Playwright from NODE_PATH and an installed Edge browser. No user profile is touched. */
-const { chromium } = require('playwright');
+const { samplePath, launchBrowser } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const C = require('../core');
-const S = require('../season-coverage');
-const sample = JSON.parse(fs.readFileSync(path.join(root, 'sample_save'), 'utf8'));
+const C = require('../js/coverage/core.js');
+const S = require('../js/coverage/season-coverage.js');
+const sample = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const file = path.resolve(
     root,
@@ -72,7 +71,7 @@ async function openPage(browser, url, seed) {
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}`;
-  const browser = await chromium.launch({ channel: process.env.HOOPWIRE_BROWSER || 'msedge', headless: true });
+  const browser = await launchBrowser();
   try {
     const { page, context } = await openPage(browser, url),
       errors = [];
@@ -114,8 +113,8 @@ async function openPage(browser, url, seed) {
         new Set(
           [
             ...S.candidates(l),
-            ...require('../records-coverage').candidates(l),
-            ...require('../news-coverage').candidates(l),
+            ...require('../js/coverage/records-coverage.js').candidates(l),
+            ...require('../js/coverage/news-coverage.js').candidates(l),
           ].map(x => x.story.id)
         ).size,
       0
@@ -236,13 +235,11 @@ async function openPage(browser, url, seed) {
       }
     });
     const fresh = await openPage(browser, url);
-    await fresh.page
-      .locator('#importFile')
-      .setInputFiles({
-        name: 'backup.json',
-        mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(backup)),
-      });
+    await fresh.page.locator('#importFile').setInputFiles({
+      name: 'backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(backup)),
+    });
     await ready(fresh.page);
     await fresh.page.goto(url + '/#archive');
     await ready(fresh.page);

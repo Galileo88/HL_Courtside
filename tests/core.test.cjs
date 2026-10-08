@@ -1,7 +1,8 @@
+const { samplePath } = require('./helpers.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const C = require('../core');
+const C = require('../js/coverage/core.js');
 function league() {
   const stats = (PTS, REB = 0, AST = 0) => ({
     GP: 1,
@@ -167,7 +168,7 @@ test('identities separate seasons and leagues and upgrade only current template 
   assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient', () => {
-  const save = JSON.parse(fs.readFileSync(require('node:path').join(__dirname, '../sample_save'), 'utf8'));
+  const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
   const counts = [];
   for (const l of save.seasonLeagues) {
     const fp = C.buildFingerprint(l),

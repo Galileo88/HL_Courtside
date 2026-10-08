@@ -1,6 +1,6 @@
 const test = require('node:test'),
   assert = require('node:assert/strict'),
-  N = require('../newsroom');
+  N = require('../js/newsroom/newsroom.js');
 const league = (id, type) => ({ id, name: id, shortName: id.toUpperCase(), leagueType: type });
 const story = (id, fingerprint, day, importance = 10, season = 1967) => ({
   id,
