@@ -8,7 +8,7 @@
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'camera-flash', 'draft-podium', 'locker-room', 'podium-background', 'billboard-ads', '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'podium-background', 'billboard-ads', '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -133,24 +133,17 @@
     return swap(art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`], 3 + Math.floor(rand() * 3), map);
   }
   // Rows of people seen from behind, facing a stage or podium, drawn a little
-  // darker as the foreground. Camera flashes go off where someone in the rows
-  // is holding a camera up: above a raised pair of hands, or at a reporter's face.
-  function audience(ctx, rand, team, rows, { cheer = .35, flashes = 0 } = {}) {
+  // darker as the foreground.
+  function audience(ctx, rand, team, rows, { cheer = .35 } = {}) {
     const layer = document.createElement('canvas'); layer.width = ctx.canvas.width; layer.height = ctx.canvas.height;
     const c = layer.getContext('2d'); c.imageSmoothingEnabled = false; c.setTransform(ctx.getTransform());
-    const people = [];
     for (const [y, offset] of rows) for (let x = -8 + offset; x < 392; x += 16 + Math.floor(rand() * 3)) {
       if (rand() >= .92) continue;
       const up = rand() < cheer, dy = Math.floor(rand() * 2);
-      c.drawImage(fanBack(rand, team, up), x - 16, y - 16 + dy); people.push({ x, y: y + dy, up });
+      c.drawImage(fanBack(rand, team, up), x - 16, y - 16 + dy);
     }
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(4,6,16,.35)'; c.fillRect(0, 0, layer.width, layer.height);
     const transform = ctx.getTransform(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.setTransform(transform);
-    const visible = people.filter(p => p.x > 16 && p.x < 368), shots = [];
-    while (shots.length < flashes && visible.length) shots.push(...visible.splice(Math.floor(rand() * visible.length), 1));
-    ctx.globalCompositeOperation = 'lighter';
-    for (const p of shots) ctx.drawImage(art['camera-flash'], p.x - 14, p.y - (p.up ? 30 : 20), 28, 28);
-    ctx.globalCompositeOperation = 'source-over';
   }
   // The arena's ad strip: the home team's custom strip when the save names one,
   // otherwise the game's own. Either way it is eight bands stacked down a
@@ -204,7 +197,7 @@
   function depth(ctx, list) { list.filter(a => a.data).sort((a, b) => a.foot - b.foot).forEach(a => { shadow(ctx, a.x, a.foot); person(ctx, a.data, a.team, a.pose, a.frame, a.x, a.foot, a.facing, a.uniform || 0); }); }
 
   const scenes = {
-    // The introductory press conference: the wall, the podium, the cameras.
+    // The introductory press conference: the wall, the podium, the press.
     async hire(scene, rand, sceneArt) {
       const { canvas, ctx, world, screen } = stage([0, 0, 384, 216]);
       screen();
@@ -216,8 +209,8 @@
       const podium = [168, 134];
       depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 140, foot: 184, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: podium[1] + 36, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], podium[0], podium[1], 64, 64);
-      // The press in the front row, the flashes coming from their cameras.
-      audience(ctx, rand, null, [[204, 4], [216, 12]], { cheer: 0, flashes: 3 });
+      // The press in the front row.
+      audience(ctx, rand, null, [[204, 4], [216, 12]], { cheer: 0 });
       return { canvas, extra: { pressLogoData: wall.logoData, pressLeagueLogoData: wall.leagueLogoData } };
     },
     // After the firing: the empty locker room, the coach alone on a chair.
@@ -344,8 +337,8 @@
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
       // The commissioner beside the podium, turned toward the pick.
       shadow(ctx, 140, base - 13, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 14, 'right');
-      // Fans on the floor in front of the stage, backs to the camera; the flashes are their cameras.
-      audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]], { flashes: 3 });
+      // Fans on the floor in front of the stage, backs to the camera.
+      audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]]);
       return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
     }
   };
@@ -389,7 +382,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 11, seed: id, kind: `coach-${context.coachScene}`,
+      version: 12, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
