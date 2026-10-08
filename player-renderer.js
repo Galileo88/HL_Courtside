@@ -1,10 +1,10 @@
 /* Static player renderer adapted from HoopLeagueStudio's game-asset preview. */
 (()=>{
  const root='./player-assets/';
- const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers'];
+ const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff'];
  const images={};
  const flightBall=new Image();flightBall.src='./scene-assets/ball-seams.png';images['flight-ball']=flightBall;
- for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
+ for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
  const hex=(value,fallback)=>/^#?[\da-f]{6}$/i.test(String(value||''))?'#'+String(value).replace('#',''):fallback;
  const color=(value,team,fallback)=>{
   const slot={PRI:0,SEC:1,TER:2}[String(value||'').toUpperCase()];
@@ -39,7 +39,8 @@
  const shortsStarts=[21,22,23,22];
  function body(ctx,frame,player,team,uniformIndex,pose='idle',ball={}){
   const nativeSuit=(player.isCoach||player.wearsSuit)&&(pose==='idle'||pose==='suit-standing');
-  const image=nativeSuit?images['staff-idle-alt']:images[pose];if(!image.complete||!image.naturalWidth)return null;
+  // Staff sit in the game's own suited sitting sprite.
+  const image=nativeSuit?images['staff-idle-alt']:(player.isCoach||player.wearsSuit)&&pose==='sitting'?images['sitting-staff']:images[pose];if(!image?.complete||!image.naturalWidth)return null;
   const off=document.createElement('canvas');off.width=off.height=32;
   const columns=image.naturalWidth/32;
   const layer=off.getContext('2d',{willReadFrequently:true});layer.drawImage(image,(frame%columns)*32,Math.floor(frame/columns)*32,32,32,0,0,32,32);
@@ -141,7 +142,7 @@
   const offsetY=9;
   sceneCtx.save();sceneCtx.translate(0,offsetY);
   const bodyState=body(sceneCtx,frame,player,team,uniformIndex,pose,ball);sceneCtx.restore();
-  if((player.isCoach||player.wearsSuit)&&pose!=='idle'&&pose!=='suit-standing'){
+  if((player.isCoach||player.wearsSuit)&&pose!=='idle'&&pose!=='suit-standing'&&pose!=='sitting'){
    const suit=player.suits?.[0]||{};sceneCtx.save();sceneCtx.translate(0,offsetY);
    paint(sceneCtx,images['coach-jacket'],0,0,color(suit.jacketC,team,'#262539'));
    paint(sceneCtx,images['coach-undershirt'],0,0,color(suit.shirtC,team,'#ffffff'));
@@ -149,8 +150,9 @@
   }
   // The taller staging area adds eight logical pixels above the body. The
   // player stays at the original 2x preview scale instead of being shrunk.
-  sceneCtx.save();sceneCtx.translate(0,offsetY+(pose==='idle'?[-8,-7,-6,-7][frame]:-8));
-  const back=pose==='dunking'&&frame>=4,headX=back?32:0;
+  sceneCtx.save();sceneCtx.translate(0,offsetY+(pose==='idle'?[-8,-7,-6,-7][frame%4]:-8));
+  // Back views: the second and fourth rows of the four-column atlases, the second frame of a sitting strip.
+  const back=pose==='dunking'?frame>=4:pose==='sitting'?frame%2===1:['idle','celebrate','bench-idle','bench-celebrate','suit-standing'].includes(pose)&&Math.floor(frame/4)%2===1,headX=back?32:0;
   paint(sceneCtx,images.head,headX,0,hex(appearance.skinC,'#dc8158'));
   paint(sceneCtx,images['eye-white'],headX,0);
   paint(sceneCtx,images['eye-color'],headX,0,hex(appearance.eyeC,'#472d3c'));

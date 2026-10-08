@@ -85,6 +85,10 @@
   }
   function caption(scene,story={}){
     if(!scene)return null;
+    if(String(scene.kind).startsWith('coach-')){
+      const day=story.day,year=story.season??scene.season;
+      return [window.HoopWireCoachScenes.caption(scene),[Number.isFinite(day)?`Day ${day}`:null,Number.isFinite(Number(year))?String(year):null].filter(Boolean).join(', ')||null].filter(Boolean).join(' | ');
+    }
     const C=window.HoopWireCore,name=scene.player?C.playerDisplay(scene.player):C.teamDisplay(scene.team);
     const game=story.gameSummary,teams=game?[game.home,game.away].filter(Boolean):[];
     const own=teams.find(t=>t.id!=null&&t.id===scene.team?.id||t.name===C.teamDisplay(scene.team));
@@ -92,7 +96,9 @@
     let result=scene.gameContext?.result;
     if(own&&other&&Number.isFinite(own.score)&&Number.isFinite(other.score))result=own.score===other.score?'tie':own.score>other.score?'win':'loss';
     let description;
-    if(scene.kind==='interview'){
+    if(scene.kind==='interview'&&scene.player?.isCoach){
+      description=`Coach ${name} speaks with reporters.`;
+    }else if(scene.kind==='interview'){
       const participants=[name];
       const variant=scene.interview?.variant||'group';
       if(variant==='group'){
@@ -114,7 +120,7 @@
     const matchup=teams.length===2?`${teams[0].name} vs ${teams[1].name}`:scene.team&&scene.opponent?`${C.teamDisplay(scene.team)} vs ${C.teamDisplay(scene.opponent)}`:null;
     const day=story.day??scene.gameContext?.day,year=story.season??scene.gameContext?.season;
     const date=[Number.isFinite(day)?`Day ${day}`:null,Number.isFinite(year)?String(year):null].filter(Boolean).join(', ');
-    return [description,story.kind==='season'?null:matchup,date||null].filter(Boolean).join(' | ');
+    return [description,story.kind==='season'||scene.player?.isCoach?null:matchup,date||null].filter(Boolean).join(' | ');
   }
   function player(ctx,data,team,uniform,x,y,size,pose='idle',frame=0,facing='left',ball={}) {
     if (!data) return;
@@ -127,7 +133,13 @@
     const canvas=document.createElement('canvas');canvas.width=768;canvas.height=432;
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
     let customCourt=null,sceneInputs=scene;
-    if (scene.kind === 'interview') {
+    if (String(scene.kind).startsWith('coach-')) {
+      // Coach stories: hiring, firing, a rough season, a good one.
+      const drawn=await window.HoopWireCoachScenes.draw(scene,art),extra=drawn.extra||{};
+      ctx.drawImage(drawn.canvas,0,0);
+      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{})};
+      customCourt=extra.customCourt||null;
+    } else if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
       const press=stage.getContext('2d');press.imageSmoothingEnabled=false;
       const design=interviewDesign(scene.seed,scene.interview?.variant||'group'),variant=design.variant;

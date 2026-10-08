@@ -64,3 +64,12 @@ test('notable coaches get their own story ahead of unknowns, who stay in the car
  assert.match(big.paragraphs[0],/brings a 250-78 career record, 40 playoff wins and two championships/);
  assert.equal(rows.filter(s=>s.inRoundup).length,3);assert.match(rows.find(s=>s.seasonSnapshot?.roundup?.type===26).paragraphs[0],/Coach C1/);
 });
+test('option headlines name the move and coach stories carry the coach for a press-conference image',()=>{
+ const l=fixture();l.season.news=[event(20),event(19,{tid:1}),event(28,{pid:91})];
+ const rows=N.candidates(l);
+ assert.deepEqual(rows.slice(0,2).map(x=>x.story.headline),["Stars pick up Alex Star's option",'Alex Star opts out, heads to free agency']);
+ const coach=rows.find(x=>x.story.type==='Coaching change');assert.equal(coach.context.coach.ln,'Coach');assert.equal(coach.context.coach.isCoach,true);
+ assert.ok(rows.slice(0,2).every(x=>!x.context.coach));
+ assert.equal(coach.context.coachScene,'fire');
+ const hire=N.candidates({...l,season:{...l.season,news:[event(26,{pid:91})]}})[0];assert.equal(hire.context.coachScene,'hire');
+});

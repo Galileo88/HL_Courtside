@@ -24,6 +24,14 @@
   }
   // A coach's standing: career winning percentage, playoff wins, titles and the
   // game's own coach rating. Roughly: under 6 an unknown, 6 a solid name, 15 a big one.
+  // Option headlines name the move, the way a transactions wire does.
+  function optionHeadline(type,name,team){
+    const T=C.teamRef(team),accepted=type===18||type===20;
+    if(type>=20)return `${T.nickname} ${C.verb(T,accepted?'pick':'decline')}${accepted?' up':''} ${C.possessive(name)} option`;
+    return accepted?`${name} opts in with ${T.nickname}`:`${name} opts out, heads to free agency`;
+  }
+  // A coach for a press-conference image: the staff record's look, marked as a coach.
+  function coachSubject(c){return c?structuredClone({id:c.id,tid:c.tid,fn:c.fn,ln:c.ln,appearance:c.appearance,suits:c.suits,isCoach:true}):null;}
   function coachStature(c){
     const r=c?.career?.season||{},po=c?.career?.playoffs||{},games=(r.W||0)+(r.L||0);
     const titles=(c?.awards||[]).filter(a=>a.id===0).reduce((n,a)=>n+(a.yearsWon||[]).length,0);
@@ -96,7 +104,7 @@
       lead=rows[0];storyType='Contract options';
       const what=x=>owner(x)==='player'?`${name(x.p)} ${accepted(x)?'exercised':'declined'} a player option with ${T(x.t).full}`:`${cap(T(x.t).full)} ${accepted(x)?'picked up':'declined'} the team option on ${C.possessive(name(x.p))} contract`;
       const declined=rows.filter(x=>!accepted(x)).length;
-      headline=`${name(lead.p)} headlines ${C.plural(rows.length,'contract option')}${declined?`, ${C.num(declined)} declined`:''}`;
+      headline=optionHeadline(lead.n.type,name(lead.p),lead.t);
       paragraphs.push(`${what(lead)}, the biggest name among ${C.plural(rows.length,'option decision')} around the league.`);
       const rest=rows.slice(1).filter(x=>R.tier(R.stature(x.p,league))!=='role').slice(0,3);
       if(rest.length)paragraphs.push(`${rest.map(what).join('. ')}.`);
@@ -146,7 +154,7 @@
       importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:4,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
-    result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
+    result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p),coachScene:'hire'}:contextFor(lead.t,lookup,league,lead.p)});
   }
   function candidates(league,leagues=[]){
     const cal=calendar(league,leagues);
@@ -248,7 +256,7 @@
           case 15:headline=`${name} declares for the draft`;paragraphs=[`${name} has declared for the draft.`,season.replace(' is averaging ',' averaged ')].filter(Boolean);break;
           case 16:headline=`${name} announces plans to retire`;paragraphs=[`${name} has announced plans to retire, putting a ${league.shortName||league.leagueName} career on its final lap.`];break;
           case 17:headline=`${name} calls it a career`;paragraphs=[`${name} has retired from basketball.`];break;
-          case 18:case 19:case 20:case 21:{const accepted=[18,20].includes(event.type),owner=event.type<20?'player':'team';headline=`${name}: ${owner} option ${accepted?'accepted':'declined'}`;
+          case 18:case 19:case 20:case 21:{const accepted=[18,20].includes(event.type),owner=event.type<20?'player':'team';headline=optionHeadline(event.type,name,team);
             paragraphs=[owner==='player'?`${name} ${accepted?'exercised':'declined'} a player option with ${T.full}.`:`${Full} ${accepted?'picked up':'declined'} the team option on ${C.possessive(name)} contract.`,season].filter(Boolean);break;}
           case 22:headline=`${name} enters the Hall of Fame`;paragraphs=[`${name} has been inducted into the ${league.shortName||league.leagueName} Hall of Fame.`];break;
           case 25:if(!Number.isInteger(jersey?.num)||jersey.num<0)continue;headline=`${nick} ${C.verb(T,'retire')} ${C.possessive(name)} No. ${jersey.num}`;paragraphs=[`${Full} retired No. ${jersey.num} in honor of ${name}. Nobody will wear it for the franchise again.`];break;
@@ -285,7 +293,7 @@
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
-      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
+      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':null,potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
     }
     return result;
   }

@@ -612,7 +612,7 @@
         const ranking=league.leagueType===1?(poll&&poll<=25?`No. ${poll} in the poll`:poll?'unranked':null):`No. ${powerRank} in the power rankings`;
         const swing=change!==null&&Math.abs(change)>=8?`${[8,11,18].includes(Math.abs(change))||String(Math.abs(change)).startsWith('8')?'an':'a'} ${C.num(Math.abs(change))}-win ${change>0?'jump':'drop'} from last season`:null;
         const review=text=>`${T.nickname} review: ${text}`,finalRound=exit&&['Finals','title game'].includes(exit.label);
-        const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
+        const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&run.some(x=>x.won)&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
         const headline=title?review(record.W>record.L?`${mark} and a championship`:`${mark}, then a championship`):
           winPct>=.7?review(exit?`${a} ${mark} season that ended in the ${exit.label}`:`${a} ${mark} season that set the standard`):
           record.W>record.L?review(finalRound?`${mark} and a run to the ${exit.label}`:exit?`${mark}, then out in the ${exit.label}`:alive?`${mark} and still playing`:
@@ -639,6 +639,13 @@
           [opener,[profile,shooting].filter(Boolean).join(' '),star],[r.team],
           ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,reviewValue,
           {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
+        // Some reviews show the coach: celebrating a big year, or alone on the sideline in a bad one.
+        // The postseason has the last word: no confetti for a team left out, no gloom after a tournament run.
+        const mood=title||(winPct>=.62&&(playoff||!bracketSet))?'good':winPct<=.38&&!run.some(x=>x.won)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
+        if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene')){
+          const clincher=title&&lookup.completed.filter(x=>x.game.tRound===rounds.length&&x.game.winner===r.team.id).at(-1)?.game;
+          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p),venue:clincher&&(league.teams||[]).find(t=>t.id===clincher.homeTeam)||r.team});
+        }
       }
     }
     const allowedRank=t=>{const r=records.find(x=>x.team.id===t?.id)?.year?.seasonStats;return r?.GP>0?1+records.filter(x=>x.year?.seasonStats?.GP>0&&x.year.seasonStats.OPP/x.year.seasonStats.GP<r.OPP/r.GP).length:null;};
@@ -741,6 +748,14 @@
         ['Champion','Runner-up','Year'],[[C.teamDisplay(winner),opponent?C.teamDisplay(opponent):'Not available',year]],null,140,
         {run:run.map(r=>({label:r.label,opponent:C.teamDisplay(r.opponent),wins:r.wins,losses:r.losses,firstTo:r.firstTo,games:r.games})),
           finalsMvp:mvp&&fs?{name:C.playerDisplay(mvp),award:mvpAward.name,GP:fs.GP,PTS:fs.PTS,REB:fs.REB,AST:fs.AST}:null,finalScore:finalScore||null});
+      // The title story is the celebration: the coach with the trophy, the stars beside.
+      const titleCoach=C.coachForTeam(winner),titleStory=results.at(-1);
+      if(titleCoach&&titleStory?.story.eventKey==='championship'){
+        const stars=[...players.values()].map(p=>({p,s:stats(p,league,year,'playoffs',winner.id)})).filter(x=>x.s?.GP>0).sort((a,b)=>b.s.PTS-a.s.PTS).slice(0,2).map(x=>x.p);
+        // The celebration is on the floor where the title was clinched, the loser's when it was won on the road.
+        const venue=finalGame&&(league.teams||[]).find(t=>t.id===finalGame.homeTeam)||winner;
+        Object.assign(titleStory.context,{coach:titleCoach,coachScene:'good',record:row?.seasonStats?[row.seasonStats.W,row.seasonStats.L]:null,champion:true,celebrants:stars,venue});
+      }
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
