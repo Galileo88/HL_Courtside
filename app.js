@@ -253,29 +253,15 @@ branch.append(summary);
         const p=document.createElement('p');p.textContent=text;
         node.querySelector('.article-body').appendChild(p);
       }
+      // Articles carry the same stat boards as the TV desk.
+      const body=node.querySelector('.article-body');
+      if(story.kind==='season'&&story.type!=='Regular-season review'){const graphic=tvSeasonGraphic(story);if(graphic.childElementCount){graphic.classList.add('article-graphic');body.append(graphic);}}
+      else if(story.gameSummary||story.gid!=null){const extra=[performanceBoard(story),postgameBoard(story)].filter(Boolean);if(extra.length){const graphic=document.createElement('div');graphic.className='tv-season-graphic article-graphic';graphic.append(...extra);body.append(graphic);}}
       for(const group of reviewLists){
         const section=document.createElement('section');section.className='season-summary';
         const heading=document.createElement('h3');heading.textContent=group.label;
         if(Array.isArray(group.headers)&&group.headers.length&&Array.isArray(group.rows)&&group.rows.length){
-          const wrap=document.createElement('div');wrap.className='season-summary-table-wrap';
-          const table=document.createElement('table');table.className='season-summary-table';table.setAttribute('aria-label',group.label);
-          const thead=document.createElement('thead'),headRow=document.createElement('tr');
-          for(const label of group.headers){
-            const th=document.createElement('th');th.scope='col';th.textContent=label;headRow.append(th);
-          }
-          thead.append(headRow);
-          const tbody=document.createElement('tbody');
-          for(const row of group.rows){
-            const tr=document.createElement('tr');
-            row.forEach((value,index)=>{
-              const cell=document.createElement(index===0?'th':'td');
-              if(index===0)cell.scope='row';
-              else cell.dataset.label=group.headers[index]||'';
-              cell.textContent=value??'—';tr.append(cell);
-            });
-            tbody.append(tr);
-          }
-          table.append(thead,tbody);wrap.append(table);section.append(heading,wrap);
+          section.append(statBoard({kicker:`${story.season} season`,title:group.label,headers:group.headers,rows:group.rows}));
         }else{
           const list=document.createElement('ul');list.className='season-summary-list';
           for(const text of group.items){
@@ -447,18 +433,6 @@ branch.append(summary);
   }
   function boxScore(story) {
     const box=document.createElement('div');box.className='box-score';
-    if(story.kind==='season'){
-      const facts=window.HoopWireSeason.factsForStory(story);
-      const meta=document.createElement('div');meta.className='season-facts-meta';
-      const type=document.createElement('strong');type.textContent=story.type;
-      const year=document.createElement('span');year.textContent=String(story.season);
-      meta.append(type,year);box.append(meta);
-      const wrap=document.createElement('div');wrap.className='box-table-scroll season-facts-scroll';
-      const table=document.createElement('table');table.className='season-facts-table';
-      const head=document.createElement('thead'),hr=document.createElement('tr');
-      for(const text of facts.headers){const th=document.createElement('th');th.scope='col';th.textContent=text;hr.append(th);}head.append(hr);table.append(head);
-      const body=document.createElement('tbody');for(const values of facts.rows){const tr=document.createElement('tr');for(const [i,value] of values.entries()){const td=document.createElement('td');td.dataset.label=facts.headers[i];td.textContent=value;tr.append(td);}body.append(tr);}table.append(body);wrap.append(table);box.append(wrap);return box;
-    }
     const label=document.createElement('div');label.className='box-result';label.textContent=`Final · ${story.season} · Day ${story.day}`;box.append(label);
     const teams=storyTeams(story);
     const scoreRow=document.createElement('div');scoreRow.className='scoreboard';
@@ -471,44 +445,31 @@ branch.append(summary);
       const score=document.createElement('b');score.textContent=team.score ?? '—';side.append(name,score);scoreRow.append(side);
     }
     box.append(scoreRow);
-    if(story.performanceSnapshot){
-      const wrap=document.createElement('div');wrap.className='box-table-scroll';
-      const table=document.createElement('table'),caption=document.createElement('caption');
-      table.className='performance-comparison';
-      caption.textContent=`${story.playerName} · Game and season average entering the game`;table.append(caption);
-      const head=document.createElement('thead'),heading=document.createElement('tr');
-      for(const label of ['Statistic','This game','Season average']){const th=document.createElement('th');th.scope='col';th.textContent=label;heading.append(th);}head.append(heading);table.append(head);
-      const body=document.createElement('tbody'),baseline=story.performanceSnapshot.baseline;
-      for(const [key,label] of Object.entries(window.HoopWirePerformance.categories)){
-        if(!Number.isFinite(story.playerStats?.[key])||!Number.isFinite(baseline[key]))continue;
-        const row=document.createElement('tr');
-        for(const [i,value] of [label,story.playerStats[key],window.HoopWirePerformance.average(baseline[key]/baseline.GP)].entries()){
-          const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=value;row.append(cell);
-        }body.append(row);
-      }table.append(body);wrap.append(table);box.append(wrap);
-    }
+    const comparison=performanceBoard(story);if(comparison)box.append(comparison);
+    const performers=postgameBoard(story,teams);if(performers)box.append(performers);
+    return box;
+  }
+  function performanceBoard(story){
+    const baseline=story.performanceSnapshot?.baseline;if(!baseline)return null;
+    const rows=Object.entries(window.HoopWirePerformance.categories).filter(([key])=>Number.isFinite(story.playerStats?.[key])&&Number.isFinite(baseline[key]))
+      .map(([key,label])=>[C.capitalize(label),story.playerStats[key],(baseline[key]/baseline.GP).toFixed(1)]);
+    return rows.length?statBoard({kicker:'This game',title:`${story.playerName} vs season average`,headers:['Statistic','Game','Season avg'],rows,people:false,highlight:false}):null;
+  }
+  // Each team's player of the game (or scoring leader) on one board.
+  function postgameBoard(story,teams=storyTeams(story)){
     const liveSnaps=currentSaveSnapshots(story);
     const snaps=liveSnaps.length?liveSnaps:[...state.snapshots.values()].filter(s=>s.fingerprint===story.fingerprint&&String(s.season)===String(story.season)&&s.gid===story.gid);
-    const highlights=document.createElement('div');highlights.className='tv-postgame-highlights';
+    const rows=[],subs=[],tags=[];
     for(const team of teams){
-      const rows=snaps.filter(s=>s.team.id===team.id&&C.validStats(s.stats)).sort((a,b)=>b.stats.PTS-a.stats.PTS||a.pid-b.pid);
-      let snap=rows.find(s=>s.pid===story.playerId)||rows[0];
-      if(story.performanceSnapshot&&story.sceneInputs?.team?.id===team.id)
-        snap={pid:story.playerId,player:story.sceneInputs.player,stats:story.playerStats};
-      const card=document.createElement('section');card.className='tv-postgame-player';
-      const label=document.createElement('span');label.className='tv-postgame-label';label.textContent=`${team.name} · ${snap?.pid===story.playerId?(story.performanceSnapshot?'Featured player':'Player of the game'):'Scoring leader'}`;
-      card.append(label);
-      if(!snap){label.textContent=team.name;const note=document.createElement('p');note.className='muted';note.textContent='Player stats unavailable.';card.append(note);highlights.append(card);continue;}
-      const name=document.createElement('h3');name.textContent=C.playerDisplay(snap.player);card.append(name);
-      card.append(tvStatGrid(['Player','PTS','REB','AST','STL','BLK'],[name.textContent,snap.stats.PTS,snap.stats.REB,snap.stats.AST,snap.stats.STL,snap.stats.BLK]));
-      const shooting=[];
-      for(const [m,a,label] of [['FGM','FGA','FG'],['TPM','TPA','3PT']])if(Number.isInteger(snap.stats[m])&&Number.isInteger(snap.stats[a])&&snap.stats[a]>0&&snap.stats[m]>=0&&snap.stats[m]<=snap.stats[a])shooting.push(`${snap.stats[m]}–${snap.stats[a]} ${label}`);
-      if(Number.isInteger(snap.stats.TO)&&snap.stats.TO>=0)shooting.push(`${snap.stats.TO} TO`);
-      if(shooting.length){const line=document.createElement('p');line.className='tv-postgame-shooting';line.textContent=shooting.join(' · ');card.append(line);}
-      highlights.append(card);
+      const list=snaps.filter(s=>s.team.id===team.id&&C.validStats(s.stats)).sort((a,b)=>b.stats.PTS-a.stats.PTS||a.pid-b.pid);
+      let snap=list.find(s=>s.pid===story.playerId)||list[0];
+      if(story.performanceSnapshot&&story.sceneInputs?.team?.id===team.id)snap={pid:story.playerId,player:story.sceneInputs.player,stats:story.playerStats};
+      if(!snap)continue;
+      const st=snap.stats,shot=(m,a)=>Number.isInteger(st[m])&&Number.isInteger(st[a])&&st[a]>0&&st[m]<=st[a]?`${st[m]}-${st[a]}`:'—';
+      rows.push([C.playerDisplay(snap.player),st.PTS,st.REB,st.AST,st.STL,st.BLK,shot('FGM','FGA'),shot('TPM','TPA')]);
+      subs.push(team.name);tags.push(snap.pid===story.playerId?(story.performanceSnapshot?'Featured':'POTG'):'');
     }
-    box.append(highlights);
-    return box;
+    return rows.length?statBoard({kicker:'Postgame',title:'Top performers',headers:['Player','PTS','REB','AST','STL','BLK','FG','3PT'],rows,subs,tags,optional:['STL','BLK']}):null;
   }
   function tvStoryKicker(story) {
     if(story.eventKey?.startsWith('award-')||story.type==='Award announcement')return 'AWARD SPOTLIGHT';
@@ -518,25 +479,15 @@ branch.append(summary);
     if(story.gameSummary)return 'POSTGAME';
     return 'HOOPWIRE DESK';
   }
-  function tvStatGrid(headers,row,preferred=null) {
-    const grid=document.createElement('div');grid.className='tv-stat-grid';
-    const choices=(preferred||headers.map((_,i)=>i)).filter(i=>i>0&&i<headers.length&&row[i]!=null&&row[i]!=='—').slice(0,6);
-    for(const i of choices){
-      const card=document.createElement('div');card.className='tv-stat-card';
-      const value=document.createElement('strong');value.textContent=row[i];
-      const label=document.createElement('span');label.textContent=headers[i];
-      card.append(value,label);grid.append(card);
-    }
-    return grid;
-  }
   function tvSeasonGraphic(story) {
     const shell=document.createElement('div');shell.className='tv-season-graphic';
     const facts=window.HoopWireSeason.factsForStory(story),headers=facts.headers||[],rows=facts.rows||[];
     if(story.eventKey?.startsWith('award-')&&rows[0]){
-      const featured=story.seasonSnapshot?.featuredPlayer?.name||rows[0][0];
-      const name=document.createElement('div');name.className='tv-feature-name';name.textContent=featured;shell.append(name);
-      const preferred=['GP','PPG','RPG','APG','FG%','3P%'].map(label=>headers.indexOf(label)).filter(i=>i>0);
-      shell.append(tvStatGrid(headers,rows[0],preferred));
+      // A one-game line (a title game) shows totals; there is no "1 GP".
+      const wanted=headers.includes('GP')?['Player','GP','PPG','RPG','APG','FG%','3P%']:['Player','PTS','REB','AST','STL','BLK','FG%','3P%'];
+      const cols=wanted.map(h=>headers.indexOf(h)).filter(i=>i>=0),row=rows[0];row[0]=story.seasonSnapshot?.featuredPlayer?.name||row[0];
+      const kicker=facts.single?'Title game':/postseason/i.test(facts.label||'')?'Postseason':'Regular season';
+      shell.append(statBoard({kicker,title:'Stat line',headers:cols.map(i=>headers[i]),rows:[cols.map(i=>row[i])]}));
       return shell;
     }
     if(story.eventKey?.startsWith('playoff-round-')){
@@ -568,21 +519,29 @@ branch.append(summary);
     return ['By the numbers',headers[0]||''];
   }
   function tvBoard(story,headers,rows){
+    const [kicker,title]=tvBoardCaption(story,headers);
+    return statBoard({kicker,title,headers,rows,ranked:story.type==='Regular-season review'});
+  }
+  // The one stat-table style for TV and articles. subs puts a small line
+  // (a team) under each name; tags marks a row (player of the game).
+  function statBoard({kicker,title,headers,rows,ranked=false,people=/^player$/i.test(headers[0]||''),subs=null,tags=null,highlight=true,optional=[]}){
     const board=document.createElement('figure');board.className='tv-board';
-    const [kicker,title]=tvBoardCaption(story,headers),caption=document.createElement('figcaption');caption.className='tv-board-head';
+    const caption=document.createElement('figcaption');caption.className='tv-board-head';
     const k=document.createElement('span');k.className='tv-board-kicker';k.textContent=kicker;
     const t=document.createElement('span');t.className='tv-board-title';t.textContent=title;caption.append(k,t);board.append(caption);
-    const ranked=story.type==='Regular-season review',people=/^player$/i.test(headers[0]);
     // Drop columns with nothing in them (seeds before the bracket is set).
     const keep=headers.map((_,i)=>i===0||rows.some(r=>r[i]!=null&&r[i]!==''&&r[i]!=='—'));
     headers=headers.filter((_,i)=>keep[i]);rows=rows.map(r=>r.filter((_,i)=>keep[i]));
-    const numeric=headers.map((_,i)=>i>0&&rows.every(r=>r[i]==null||r[i]==='—'||tvNumber(r[i])!==null)&&rows.some(r=>tvNumber(r[i])!==null));
+    const madeAttempt=v=>/^\d+[–-]\d+$/.test(String(v??'').trim());
+    const numeric=headers.map((_,i)=>i>0&&rows.every(r=>r[i]==null||r[i]==='—'||tvNumber(r[i])!==null||madeAttempt(r[i]))&&rows.some(r=>tvNumber(r[i])!==null||madeAttempt(r[i])));
     // Light the best mark in each stat column; games played and seeds aren't contests.
-    const lead=headers.map((h,i)=>{if(!people||!numeric[i]||rows.length<2||/^(GP|GS|MIN)$/i.test(h))return null;const vals=rows.map(r=>tvNumber(r[i])).filter(v=>v!==null);return vals.length?Math.max(...vals):null;});
+    const lead=headers.map((h,i)=>{if(!highlight||!people||!numeric[i]||rows.length<2||/^(GP|GS|MIN)$/i.test(h))return null;const vals=rows.map(r=>tvNumber(r[i])).filter(v=>v!==null),top=Math.max(...vals);
+      // Nothing to light when everyone is level or the best mark is zero.
+      return vals.length&&top>0&&vals.some(v=>v!==top)?top:null;});
     const table=document.createElement('table');table.className='tv-board-table';
     const head=document.createElement('tr');
     if(ranked){const th=document.createElement('th');th.className='is-rank';th.textContent='#';th.scope='col';head.append(th);}
-    headers.forEach((h,i)=>{const th=document.createElement('th');th.scope='col';th.textContent=h;th.className=numeric[i]?'is-num':'is-text';head.append(th);});
+    headers.forEach((h,i)=>{const th=document.createElement('th');th.scope='col';th.textContent=h;th.className=numeric[i]?'is-num':'is-text';if(optional.includes(h))th.classList.add('is-optional');head.append(th);});
     const thead=document.createElement('thead');thead.append(head);
     const tbody=document.createElement('tbody');
     rows.forEach((row,r)=>{
@@ -595,8 +554,10 @@ branch.append(summary);
           const full=document.createElement('span');full.className='tv-name-full';full.textContent=value??'';cell.append(full);
           const parts=String(value??'').trim().split(/\s+/);
           if(people&&parts.length>1){const short=document.createElement('span');short.className='tv-name-short';short.textContent=`${parts[0][0]}.\u00a0${parts.slice(1).join('\u00a0')}`;cell.append(short);}
+          if(tags?.[r]){const tag=document.createElement('span');tag.className='tv-name-tag';tag.textContent=tags[r];cell.append(tag);}
+          if(subs?.[r]){const sub=document.createElement('small');sub.className='tv-name-sub';sub.textContent=subs[r];cell.append(sub);}
         }else{
-          cell.className=numeric[i]?'is-num':'is-text';
+          cell.className=numeric[i]?'is-num':'is-text';if(optional.includes(headers[i]))cell.classList.add('is-optional');
           if(value==null||value==='—'){cell.textContent='—';cell.classList.add('is-empty');}
           else{cell.textContent=tvFormat(value);if(lead[i]!==null&&tvNumber(value)===lead[i])cell.classList.add('is-lead');}
         }

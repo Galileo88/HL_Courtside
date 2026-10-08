@@ -44,7 +44,6 @@
 @media(max-width:1279px) { .wire-opening { grid-template-columns:1fr; }.wire-main { display:contents; }.wire-lead { grid-row:1; }.wire-headlines { grid-row:2; }.wire-supporting { grid-row:3; }.wire-supporting,.wire-story-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.wire-headlines { margin-top:0; }.wire-opening > :is(.wire-main,.wire-sidebar,.wire-supporting) { grid-column:auto; } }
 @media(max-width:699px) { .wire-supporting,.wire-story-grid,.wire-tv { grid-template-columns:1fr; }.wire-heading { padding-right:0; }.wire-heading > a { position:static; display:inline-block; margin-top:10px; }.wire-heading h1 { font-size:28px; }.wire-card h2 { font-size:26px; }.wire-card-body { padding:16px; }.wire-tv { padding:16px; } }
 
-
 /* Phone editions: a full-width feature followed by headlines and compact stories. */
 @media(max-width:699px) {
   body:not(.entry-screen) .topbar { min-height:60px; padding:0 16px; }
