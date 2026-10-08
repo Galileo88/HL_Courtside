@@ -154,7 +154,7 @@
       importance:type===2?120:type===16||type===17?60:optionTypes.has(type)?Math.round(Math.min(75,40+2*R.stature(lead.p,league))):type===26?75:95,templateVersion:5,editorialVersion:4,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
-    result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p)}:contextFor(lead.t,lookup,league,lead.p)});
+    result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p),coachScene:'hire'}:contextFor(lead.t,lookup,league,lead.p)});
   }
   function candidates(league,leagues=[]){
     const cal=calendar(league,leagues);
@@ -293,7 +293,7 @@
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
-      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
+      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':null,potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
     }
     return result;
   }

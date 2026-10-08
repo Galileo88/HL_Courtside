@@ -70,4 +70,6 @@ test('option headlines name the move and coach stories carry the coach for a pre
  assert.deepEqual(rows.slice(0,2).map(x=>x.story.headline),["Stars pick up Alex Star's option",'Alex Star opts out, heads to free agency']);
  const coach=rows.find(x=>x.story.type==='Coaching change');assert.equal(coach.context.coach.ln,'Coach');assert.equal(coach.context.coach.isCoach,true);
  assert.ok(rows.slice(0,2).every(x=>!x.context.coach));
+ assert.equal(coach.context.coachScene,'fire');
+ const hire=N.candidates({...l,season:{...l.season,news:[event(26,{pid:91})]}})[0];assert.equal(hire.context.coachScene,'hire');
 });

@@ -85,6 +85,10 @@
   }
   function caption(scene,story={}){
     if(!scene)return null;
+    if(String(scene.kind).startsWith('coach-')){
+      const day=story.day,year=story.season??scene.season;
+      return [window.HoopWireCoachScenes.caption(scene),[Number.isFinite(day)?`Day ${day}`:null,Number.isFinite(Number(year))?String(year):null].filter(Boolean).join(', ')||null].filter(Boolean).join(' | ');
+    }
     const C=window.HoopWireCore,name=scene.player?C.playerDisplay(scene.player):C.teamDisplay(scene.team);
     const game=story.gameSummary,teams=game?[game.home,game.away].filter(Boolean):[];
     const own=teams.find(t=>t.id!=null&&t.id===scene.team?.id||t.name===C.teamDisplay(scene.team));
@@ -129,7 +133,12 @@
     const canvas=document.createElement('canvas');canvas.width=768;canvas.height=432;
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
     let customCourt=null,sceneInputs=scene;
-    if (scene.kind === 'interview') {
+    if (String(scene.kind).startsWith('coach-')) {
+      // Coach stories: hiring, firing, a rough season, a good one.
+      const drawn=await window.HoopWireCoachScenes.draw(ctx,scene,art);
+      sceneInputs={...scene,...(drawn.pressLogoData!==undefined?{pressLogoData:drawn.pressLogoData,pressLeagueLogoData:drawn.pressLeagueLogoData}:{})};
+      customCourt=drawn.customCourt||null;
+    } else if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
       const press=stage.getContext('2d');press.imageSmoothingEnabled=false;
       const design=interviewDesign(scene.seed,scene.interview?.variant||'group'),variant=design.variant;

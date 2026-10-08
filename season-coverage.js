@@ -639,6 +639,10 @@
           [opener,[profile,shooting].filter(Boolean).join(' '),star],[r.team],
           ['Player','GP','PTS','REB','AST','STL','BLK'],leaders.slice(0,5).map(x=>[C.playerDisplay(x.p),...['GP','PTS','REB','AST','STL','BLK'].map(k=>x.s[k]??'—')]),leaders.find(x=>x.p.tid===r.team.id)?.p,reviewValue,
           {postseason:postseasonFacts(run,exit,title,alive,playoff,bracketSet,league.leagueType===1)});
+        // Some reviews show the coach: celebrating a big year, or alone on the sideline in a bad one.
+        const mood=title||place<=Math.ceil(teamCount/4)?'good':place>=Math.floor(teamCount*.85)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
+        if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene'))
+          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p)});
       }
     }
     const allowedRank=t=>{const r=records.find(x=>x.team.id===t?.id)?.year?.seasonStats;return r?.GP>0?1+records.filter(x=>x.year?.seasonStats?.GP>0&&x.year.seasonStats.OPP/x.year.seasonStats.GP<r.OPP/r.GP).length:null;};
@@ -741,6 +745,12 @@
         ['Champion','Runner-up','Year'],[[C.teamDisplay(winner),opponent?C.teamDisplay(opponent):'Not available',year]],null,140,
         {run:run.map(r=>({label:r.label,opponent:C.teamDisplay(r.opponent),wins:r.wins,losses:r.losses,firstTo:r.firstTo,games:r.games})),
           finalsMvp:mvp&&fs?{name:C.playerDisplay(mvp),award:mvpAward.name,GP:fs.GP,PTS:fs.PTS,REB:fs.REB,AST:fs.AST}:null,finalScore:finalScore||null});
+      // The title story is the celebration: the coach with the trophy, the stars beside.
+      const titleCoach=C.coachForTeam(winner),titleStory=results.at(-1);
+      if(titleCoach&&titleStory?.story.eventKey==='championship'){
+        const stars=[...players.values()].map(p=>({p,s:stats(p,league,year,'playoffs',winner.id)})).filter(x=>x.s?.GP>0).sort((a,b)=>b.s.PTS-a.s.PTS).slice(0,2).map(x=>x.p);
+        Object.assign(titleStory.context,{coach:titleCoach,coachScene:'good',record:row?.seasonStats?[row.seasonStats.W,row.seasonStats.L]:null,champion:true,celebrants:stars});
+      }
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
     for(const {story} of results)if(story.eventKey==='leaders'){
