@@ -558,7 +558,10 @@
       if(leaderRows.length)add('leaders','Season leaders',`${year} ${league.shortName||'league'} statistical leaders`,
         leadersArticle({season:year,leagueName:league.shortName||league.leagueName,seasonSnapshot:{rows:leaderRows}}),teams,['Category','Player','Total','GP'],leaderRows);
       // Hoop Land ranks pro standings by wins, then fewer games played, then
-      // head-to-head wins, then whole points of differential per game.
+      // this season's head-to-head wins, then point differential per game in
+      // whole points (truncated). Teams still level stay in league order; the
+      // game's own sort leaves them unordered. The save's team "rnk" is that
+      // rank taken just before each team's latest game, so it can lag.
       let ordered=null;
       const standingsOrder=()=>ordered||=(()=>{
         const regular=lookup.completed.filter(x=>x.game.tRound===0&&x.game.gameType===0).map(x=>x.game);
