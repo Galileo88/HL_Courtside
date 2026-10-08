@@ -12,10 +12,13 @@
   }
   function ordinal(n){return ['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'][n]||`${n}${n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`;}
   const article=word=>/^(?:[aeiou]|8|1[18](?!\d))/i.test(word)?'an':'a';
-  function honorLine(h){
+  // name overrides the subject once a story has introduced it ("Wyatt").
+  function honorLine(h,name=null){
     if(!h||h.count<1)return '';
-    const team=h.label==='the championship',who=team?C.teamRef({name:h.name}).full:h.name;
-    if(!h.current)return `${C.capitalize(who)} had already won ${h.label} ${h.count===1?'once':h.count===2?'twice':`${h.count} times`} before this season.`;
+    const team=h.label==='the championship',who=team?C.teamRef({name:h.name}).full:name||h.name;
+    // Past titles only: this season's honor may not be official yet, so the
+    // line names the years instead of counting this one.
+    if(!h.current)return `${C.capitalize(who)} also won ${h.label} in ${C.listJoin(h.years.map(String))}.`;
     if(h.count<2)return '';
     const run=h.streak>1?`, ${h.streak===2?'making it back-to-back':`and the ${ordinal(h.streak)} in a row`}`:'';
     return team?`It's the ${ordinal(h.count)} championship for ${who}${run}.`:`It's the ${ordinal(h.count)} time ${who} has won ${h.label}${run}.`;
@@ -119,7 +122,7 @@
     return players.filter(p=>{
       const s=p.s;if(!(s?.GP>0)||s.GP/games*100<(award.minGames||0))return false;
       const position=['pg','sg','sf','pf','c'][p.position];if(position&&award[position]===false)return false;
-      if(award.yearsPro>0&&p.yearsPro!==award.yearsPro)return false;
+      if(award.yearsPro>0&&(p.yearsPro??0)+1!==award.yearsPro)return false;
       if((award.minStarted>0||award.maxStarted<100)&&(!Number.isFinite(s.GS)||s.GS/s.GP*100<(award.minStarted||0)||s.GS/s.GP*100>(award.maxStarted??100)))return false;
       if(award.minMinutes>0&&(!Number.isFinite(s.MIN)||!(snapshot.gameMinutes>0)||s.MIN/s.GP/snapshot.gameMinutes*100<award.minMinutes))return false;
       return weighted.every(k=>value(p,k)!==null);
@@ -243,7 +246,10 @@
   function playerBackground(player,league,leagues=[league]){
     const bio={};
     if(Number.isInteger(player.age)&&player.age>=15&&player.age<=80)bio.age=player.age;
-    if(league.leagueType===0&&Number.isInteger(player.yrs)&&player.yrs>0)bio.yearsPro=player.yrs;
+    // Hoop Land's yrs counts completed seasons (0 in a rookie year), so the
+    // season a player is in is yrs + 1, which is how the game's own award
+    // settings count "years pro".
+    if(league.leagueType===0&&Number.isInteger(player.yrs)&&player.yrs>=0)bio.proSeason=player.yrs+1;
     if(league.leagueType===0){
       const id=player.history?.coll>0?player.history.coll:player.history?.collegeStats?.season?.GP>0?player.history.collegeStats.season.tid:null;
       const college=leagues.filter(l=>l.leagueType===1).flatMap(l=>l.teams||[]).find(t=>t.id===id);
@@ -261,7 +267,7 @@
     }
     if(!Object.keys(groups).length)return story.paragraphs||[];
     const g=groups,paragraphs=[],profiles=story.seasonSnapshot?.leaderProfiles||[];
-    const history=(...categories)=>[...new Set((story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(honorLine).filter(Boolean))];
+    const history=(...categories)=>[...new Set((story.seasonSnapshot?.leaderHonors||[]).filter(h=>categories.includes(h.category)).map(h=>honorLine(h,C.surname(h.name))).filter(Boolean))];
     const profile=name=>profiles.find(p=>p.name===name);
     const positionName=value=>{
       if(Number.isInteger(value))return ['point guard','shooting guard','small forward','power forward','center'][value]||'';
@@ -272,12 +278,13 @@
     const subject=(group,preferAge=false)=>{
       if(group.tied)return group.name;
       const person=profile(group.names[0]),bio=person?.bio;if(!bio)return group.name;
-      const n=bio.yearsPro,leadWithAge=!!bio.age&&(preferAge||!(n>0));
+      // Archived bios stored the raw completed-season count as yearsPro.
+      const n=bio.proSeason??(Number.isInteger(bio.yearsPro)?bio.yearsPro+1:null),leadWithAge=!!bio.age&&(preferAge||!(n>0));
       if(leadWithAge){
         const position=positionName(person.position);
         return position?`${group.name}, ${article(String(bio.age))} ${bio.age}-year-old ${position},`:`${group.name}, ${bio.age},`;
       }
-      if(n>0){const detail=`${ordinal(n)}-year pro${bio.college?` out of ${bio.college}`:''}`;return `${group.name}, ${article(detail)} ${detail},`;}
+      if(n>0){const detail=`${n===1?'rookie':`${ordinal(n)}-year pro`}${bio.college?` out of ${bio.college}`:''}`;return `${group.name}, ${article(detail)} ${detail},`;}
       return bio.college?`${group.name}, a product of ${bio.college},`:group.name;
     };
     const sameLeaders=(a,b)=>a&&b&&a.names.length===b.names.length&&a.names.every(n=>b.names.includes(n));
@@ -298,10 +305,10 @@
       interior.push('Owning both categories is the kind of two-way season that changes how a player is remembered.');
       const p=!g.REB.tied?profile(g.REB.names[0]):null;if(p?.s?.GP>0&&p.s.PTS/p.s.GP>=10&&Number(g.REB.rate)>=10)interior.push(`With ${(p.s.PTS/p.s.GP).toFixed(1)} points a game as well, ${g.REB.last} averaged a double-double for the season.`);
     }else{
-      if(g.REB)interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`);
-      if(g.BLK)interior.push(`${g.REB?'Inside, ':''}${subject(g.BLK)} ${g.BLK.tied?'shared the league lead in':'led the league in'} shot blocking with ${g.BLK.rate} blocks a night.`.replace(/^Inside, (.)/,(m,c)=>`Inside, ${c}`));
+      if(g.REB)interior.push(`${subject(g.REB,true)} ${g.REB.tied?'shared the rebounding title':'claimed the rebounding title'} at ${g.REB.rate} rebounds per game.`,...history('REB'));
+      if(g.BLK)interior.push(`${g.REB?'Inside, ':''}${subject(g.BLK)} ${g.BLK.tied?'shared the league lead in':'led the league in'} shot blocking with ${g.BLK.rate} blocks a night.`.replace(/^Inside, (.)/,(m,c)=>`Inside, ${c}`),...history('BLK'));
     }
-    interior.push(...history('REB','BLK'));if(interior.length)paragraphs.push(interior.join(' '));
+    if(double)interior.push(...history('REB','BLK'));if(interior.length)paragraphs.push(interior.join(' '));
     const perimeter=[];
     if(g.AST){
       perimeter.push(`${subject(g.AST)} ${g.AST.tied?'shared the lead':'led the league in assists'} with ${g.AST.rate} assists per game.`);
@@ -310,9 +317,10 @@
         perimeter.push(s.AST>s.TO*2?`${g.AST.last} did it while committing just ${avg(s,'TO')} turnovers a game, a clean ratio for a lead playmaker.`:
           s.TO>s.AST?`The ${avg(s,'TO')} turnovers a game are the one blemish on the passing title.`:`${g.AST.last} also turned it over ${avg(s,'TO')} times a game, a manageable cost for that much playmaking.`);
       }
+      perimeter.push(...history('AST'));
     }
-    if(g.STL)perimeter.push(`${subject(g.STL,true)} ${g.STL.tied?'shared the steals title':'led the league in steals'} at ${g.STL.rate} steals per game.`);
-    perimeter.push(...history('AST','STL'));if(perimeter.length)paragraphs.push(perimeter.join(' '));
+    if(g.STL)perimeter.push(`${subject(g.STL,true)} ${g.STL.tied?'shared the steals title':'led the league in steals'} at ${g.STL.rate} steals per game.`,...history('STL'));
+    if(perimeter.length)paragraphs.push(perimeter.join(' '));
     return paragraphs;
   }
 

@@ -10,7 +10,7 @@ test('a proven consecutive record chain identifies a winning run and its end',()
   const games=[game(1,1,false,[0,1],[1,0]),game(2,2,true,[1,1],[1,1]),game(3,3,true,[2,1],[1,2]),game(4,4,true,[3,1],[1,3])];
   const s=story(games[3]),context=C.buildContext(s,{league:source(games)});
   assert.equal(context.teams[1].streak.length,3);assert.equal(angle(s,context),'streak');
-  assert.match(B.script(s,context)[0].text,/3 straight (?:wins|losses)/);
+  assert.match(B.script(s,context)[0].text,/three straight (?:wins|losses)/);
   games.push(game(5,5,false,[3,2],[2,3]));
   const ended=C.buildContext(story(games[4]),{league:source(games)});
   assert.deepEqual(ended.teams[1].streak.ended,{won:true,length:3});
@@ -19,7 +19,7 @@ test('a proven consecutive record chain identifies a winning run and its end',()
 test('losing runs and a breakthrough win are distinct supported stories',()=>{
   const games=[game(1,1,true,[1,0],[0,1]),game(2,2,false,[1,1],[1,1]),game(3,3,false,[1,2],[2,1]),game(4,4,false,[1,3],[3,1]),game(5,5,true,[2,3],[3,2])];
   const lost=story(games[3]),ended=story(games[4]);
-  assert.match(B.script(lost,C.buildContext(lost,{league:source(games)}))[0].text,/3 straight losses/);
+  assert.match(B.script(lost,C.buildContext(lost,{league:source(games)}))[0].text,/three straight losses/);
   assert.match(B.script(ended,C.buildContext(ended,{league:source(games)}))[0].text,/3-game losing streak is over/);
 });
 test('missing history, unbounded archives and ambiguous same-day order suppress exact streaks',()=>{

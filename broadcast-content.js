@@ -311,7 +311,7 @@
       threads.push({key:'contribution',player:true,priority:angle==='performance'?110:75,speaker:2,
         question:say('contrib-q',[`${A}, what jumped out at you from ${p.last}?`,`${A}, what did you like from ${p.last}?`,`${A}, give me the full picture on ${p.last}.`]),
         detail:angle==='performance'&&e.doubles.length>=3?`Forget the points for a second. ${join(e.doubles.filter(k=>k!=='PTS').map(k=>count(s[k],labels[k])))}. ${e.doubles.includes('AST')?"I love the passing. That's somebody making the whole offense better.":"That's somebody doing everything."}`:
-          `${p.full} finished with ${join(stats)}. ${contribution==='AST'?"I love the passing. That's somebody making the whole offense better.":contribution==='REB'?"And don't skip past the rebounds. That's work.":contribution?"That's real impact on the defensive end, too.":s.PTS===0?"Couldn't buy a bucket.":share?`That's ${share} of ${possessive(e.W.nick)} points.`:"That's where I start."}`,
+          `${p.last} finished with ${join(stats)}. ${contribution==='AST'?"I love the passing. That's somebody making the whole offense better.":contribution==='REB'?"And don't skip past the rebounds. That's work.":contribution?"That's real impact on the defensive end, too.":s.PTS===0?"Couldn't buy a bucket.":share?`That's ${share} of ${possessive(e.W.nick)} points.`:"That's where I start."}`,
         response:e.doubles.length>=2?`That's a ${kinds[e.doubles.length]}. ${e.doubles.includes('AST')?"And those assists mean other guys are eating, too.":"That's more than just getting buckets."}`:contribution==='AST'?"Right, and that's the part people miss. The assists make everybody better.":contribution==='REB'?`${s.REB} boards. Doing the dirty work and still scoring. Give me that.`:contribution?`${count(s[contribution],labels[contribution])}. That's a two-way night.`:s.PTS===0?"You've got to find a way to help somewhere else on a night like that.":share?`That's carrying the load. They needed every one of them.`:shotPair(s,'FGM','FGA')?"How many shots did it take, though? That's my next question.":"Without the shooting numbers, I'll just say it's a solid night."});
     }
     const helper=e.side==='winner'?e.box.filter(r=>r.tid===e.winner.id&&r.pid!==story.playerId&&r.stats.PTS>=Math.max(3,.2*e.winner.score)).sort((a,b)=>b.stats.PTS-a.stats.PTS||a.pid-b.pid)[0]:null;
@@ -415,7 +415,7 @@
     if(s?.GP>0){
       const evidence={
         mvp:`${r('PTS')} points, ${r('REB')} rebounds and ${r('AST')} assists a game${rec?`, for a team that went ${rec}`:''}.`,
-        finals:s.GP===1?`In the title game: ${s.PTS} points, ${s.REB} rebounds, ${s.AST} assists.`:`${r('PTS')} points and ${r('REB')} rebounds a game over ${C.plural(s.GP,'Finals game')}.`,
+        finals:s.GP===1?`${C.plural(s.PTS,'point')}, ${C.plural(s.REB,'rebound')} and ${C.plural(s.AST,'assist')} in the title game.`:`${r('PTS')} points and ${r('REB')} rebounds a game over ${C.plural(s.GP,'Finals game')}.`,
         dpoy:`${r('BLK')} blocks and ${r('STL')} steals a game${a.allowedRank?`, and that defense ranked ${a.allowedRank===1?'first':`No. ${a.allowedRank}`} in points allowed`:''}.`,
         roy:`${r('PTS')} points and ${r('REB')} rebounds a game as a rookie${Number.isFinite(s.GS)?`, with ${s.GS} starts in ${s.GP} games`:''}.`,
         sixth:Number.isFinite(s.GS)?`${r('PTS')} points a game, and ${s.GP-s.GS} of ${s.GP} games off the bench.`:`${r('PTS')} points a game.`,
@@ -623,14 +623,16 @@
     for(const [i,k] of categories.entries()){
       const tied=rows.filter(r=>r[0]===k),names=join(tied.map(r=>r[1])),value=(tied[0][2]/tied[0][3]).toFixed(1);
       if(i)body.push(turn(0,`${n[2]}, who else stood out?`));
-      body.push(turn(i?2:1,`${names} ${tied.length===1?'leads':'share the lead'} in ${labels[k]} at ${value} a game. ${k==='PTS'?"Bucket-getter. That's an average, not one big night.":k==='REB'?"Somebody has to do the dirty work on the glass.":"There's more to this game than scoring."}`));
+      // The opening already named the first leader; after that it's the last name.
+      const who=!i&&tied.length===1?C.surname(tied[0][1]):names;
+      body.push(turn(i?2:1,`${who} ${tied.length===1?'led':'shared the lead'} in ${labels[k]} at ${value} a game. ${k==='PTS'?"Bucket-getter. That's an average, not one big night.":k==='REB'?"Somebody has to do the dirty work on the glass.":"There's more to this game than scoring."}`));
       const honor=(story.seasonSnapshot.leaderHonors||[]).find(h=>h.category===k&&tied.some(r=>h.name===r[1]));
-      if(honor)for(const line of Season.honorLines({...story,seasonSnapshot:{...story.seasonSnapshot,honorHistory:honor}}).slice(0,1))body.push(turn(3,line));
+      if(honor)for(const line of Season.honorLines({...story,seasonSnapshot:{...story.seasonSnapshot,honorHistory:honor}}).slice(0,1))body.push(turn(3,line.split(honor.name).join(C.surname(honor.name))));
       body.push(turn(3,i?`${tied.length>1?"They split that one.":"Strong season in that category."} ${k==='REB'?"Rebounding wins you possessions.":"Different players bring different things. You need all of it."}`:
         `${tied.length>1?"Can't leave either name out. They split it.":`And that's over ${tied[0][3]} games, Jordan. Not a hot streak.`}`));
     }
     const lead=join(rows.filter(r=>r[0]===categories[0]).map(r=>r[1])),category=labels[categories[0]],shared=rows.filter(r=>r[0]===categories[0]).length>1;
-    return frame(story,'leaders',[`${lead} ${shared?'share the lead':'is the leader'} in ${category}. ${n[1]}, start us off.`,`Let's talk league leaders. ${cap(category)} first: ${lead}. ${n[1]}?`,`The stat sheet's final. ${lead} on top in ${category}. ${n[1]}?`,`${lead} ${shared?'finish together at':'finishes at'} the top in ${category}. ${n[1]}, is that the best player in the league?`],
+    return frame(story,'leaders',[`${lead} ${shared?'shared the lead':'finished on top'} in ${category}. ${n[1]}, start us off.`,`Let's talk league leaders. ${cap(category)} first: ${lead}. ${n[1]}?`,`The stat sheet's final. ${lead} on top in ${category}. ${n[1]}?`,`${lead} ${shared?'finish together at':'finishes at'} the top in ${category}. ${n[1]}, is that the best player in the league?`],
       ["Those are the names at the top.","More than one way to leave a mark on a season.","Good seasons from the leaders.","That's your leaderboard. Argue amongst yourselves."],body);
   }
   function genericScript(story,n=first()){
@@ -729,6 +731,14 @@
     if(story.type==='Regular-season review')return seasonScript(story,n);
     return genericScript(story,n);
   }
+  // AP style, as in the articles: a lone count of one to nine is spelled out
+  // ("six straight", "three steals"). Scores, records, splits ("7 for 10"),
+  // decimals, ranks and game numbers stay as figures.
+  const countNouns='straight|in a row|wins?|losses|loss|games?|points?|rebounds?|assists?|steals?|blocks?|turnovers?|threes?|times|rounds?|seasons?|years?|titles?|players?|teams?|more|shots?|series';
+  const countPattern=new RegExp(`(^|[^\\w.,#/–-])([1-9])(?=\\s+(?:${countNouns})\\b)`,'g');
+  function apCounts(text){
+    return String(text).replace(countPattern,(m,before,d,offset,whole)=>/(?:No\.|Game|Day|Week|Round|Season)\s*$/.test(whole.slice(Math.max(0,offset-8),offset+before.length))?m:before+C.num(Number(d)));
+  }
   function script(story,context,names){
     if(!story)return [];
     context||=Context.buildContext(story);
@@ -737,7 +747,7 @@
     // Back-to-back lines from one host read as a single answer.
     const merged=[];
     for(const t of turns){const last=merged.at(-1);if(last&&last.speaker===t.speaker)last.text+=' '+t.text;else merged.push({...t});}
-    return merged;
+    return merged.map(t=>({...t,text:apCounts(t.text)}));
   }
   function episode(story,names=defaultNames,context){
     if(!story)return [];
