@@ -220,11 +220,11 @@
   // over: the face, head and the whites of the eyes take the primary bronze,
   // lit with highlights from the upper left; hair and beard sit a step darker
   // in the shading; brows, irises and the mouth line fall into the shadow;
-  // the outline stays black.
+  // the outline is a deep bronze.
   // The Hall of Fame mark, when the app ships one; the scene letters its own title otherwise.
   let hofLogo;
   const loadHofLogo = () => hofLogo ||= new Promise(resolve => { const image = new Image(); image.onload = () => resolve(image); image.onerror = () => resolve(null); image.src = 'assets/hof_logo.png'; });
-  const BRONZE = { highlight: [191, 119, 28], primary: [172, 107, 25], shading: [156, 97, 23], shadow: [130, 81, 19], outline: [0, 0, 0] };
+  const BRONZE = { highlight: [191, 119, 28], primary: [172, 107, 25], shading: [156, 97, 23], shadow: [130, 81, 19], outline: [104, 62, 9] };
   function bronze(player, scale = 2) {
     const c = document.createElement('canvas'); c.width = 32; c.height = 28;
     const a = player.appearance || {};
@@ -377,7 +377,9 @@
       if (logo) {
         const w = 300, h = Math.round(w * logo.height / logo.width);
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(logo, Math.round(cx - w / 2), 30, w, h); ctx.imageSmoothingEnabled = false;
-        ctx.fillStyle = '#d9cfbd'; ctx.font = '700 24px "Arial Narrow", "Roboto Condensed", Arial, sans-serif'; ctx.fillText(`CLASS OF ${scene.season}`, cx, 30 + h + 30);
+        // The class year in the mark's color, condensed and spaced out to sit with its lettering.
+        ctx.save(); ctx.fillStyle = '#cbbca9'; ctx.font = '700 26px Arial, sans-serif'; ctx.letterSpacing = '3px';
+        ctx.translate(cx, 30 + h + 32); ctx.scale(.78, 1); ctx.fillText(`CLASS OF ${scene.season}`, 0, 0); ctx.restore();
       } else {
         ctx.fillStyle = '#e6cd8e'; ctx.font = '700 26px Georgia'; ctx.fillText('HALL OF FAME', cx, (40 - camera[1]) * k);
         ctx.fillStyle = '#c4a45e'; ctx.font = '700 15px Georgia'; ctx.fillText(`CLASS OF ${scene.season}`, cx, (48 - camera[1]) * k);
@@ -556,7 +558,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 24, seed: id, kind: `coach-${context.coachScene}`,
+      version: 25, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
