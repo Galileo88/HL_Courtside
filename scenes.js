@@ -26,7 +26,7 @@
   const interviewVariants=['group','player-close-up','player-profile','player-coach'];
   function interviewDesign(seed,variant){
     variant=interviewVariants.includes(variant)?variant:window.HoopWireCore.choose(seed,interviewVariants,'interview-framing');
-    const cameras={group:[0,0,768,432],'player-close-up':[224,126,320,180],'player-profile':[260,126,320,180],'player-coach':[128,104,576,324]};
+    const cameras={group:[0,0,768,432],'player-close-up':[224,126,320,180],'player-profile':[260,126,320,180],'player-coach':[100,104,576,324]};
     return {variant,camera:[...cameras[variant]]};
   }
   function actionDesign(seed, variant, side) {
