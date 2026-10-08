@@ -228,35 +228,37 @@
     const push=(key,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
       const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
       const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:cal.day,type,headline,paragraphs,
-        importance:90,templateVersion:5,editorialVersion:1,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        importance:90,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
         seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
       result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
     };
     const subs=list=>list.map(x=>C.teamDisplay(x.t));
     // 1. The big board: ceiling first, production as the tiebreaker.
-    const all=x=>pg(x,'PTS')+pg(x,'REB')+pg(x,'AST');
-    // Pro teams draft on potential first, so the board does too.
-    const board=[...rows].sort((a,b)=>(b.p.pot||0)-(a.p.pot||0)||all(b)-all(a)||a.p.id-b.p.id).slice(0,10);
+    // Pro teams draft on potential, so it leads the grade; what a player
+    // actually produced in college moves him up or down from there.
+    const grade=x=>(x.p.pot||0)+(pg(x,'PTS')+pg(x,'REB')/2+pg(x,'AST')*.7)/8;
+    const board=[...rows].sort((a,b)=>grade(b)-grade(a)||a.p.id-b.p.id).slice(0,10),onBoard=new Set(board.map(x=>x.p.id));
     {
       const top=board[0],seniors=board.filter(x=>x.p.yrs>=3).length,he=C.pronoun(top.p);
       const paragraphs=[`With the ${year} ${short} season in the books, the draft conversation starts now. ${name(top.p)}, a ${({'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'})[classOf(top.p)]} at ${T(top.t).short}, tops HoopWire's big board after averaging ${line(top)}.`,
         top.p.yrs>=3?`${cap(last(top.p))} is out of college eligibility, so the pros are next.`:`${cap(last(top.p))} has college eligibility left, so the question is whether ${he||last(top.p)} leaves early.`,
         `Next on the board: ${C.listJoin(board.slice(1,4).map(x=>`${name(x.p)} (${T(x.t).short}, ${classOf(x.p)})`))}.`,
         ...board.slice(0,4).filter(x=>pg(x,'PTS')<8).slice(0,1).map(x=>`${name(x.p)} scored only ${perGame(x.s,'PTS')} points a game. The board is betting on ${C.possessive(last(x.p))} ceiling, not the box score.`),
-        seniors===board.length?`All ten are seniors on their way out.`:seniors?`${cap(C.num(seniors))} of the top ten are seniors on their way out; the other ${C.num(board.length-seniors)} would have to declare early.`:`None of the top ten are seniors. Every one of them would have to declare early.`];
+        seniors===board.length?`All ten are seniors on their way out.`:seniors===1?`Only one of the top ten is a senior on the way out; the other nine would have to declare early.`:seniors?`${cap(C.num(seniors))} of the top ten are seniors on their way out; the other ${C.num(board.length-seniors)} would have to declare early.`:`None of the top ten are seniors. Every one of them would have to declare early.`];
       push('offseason-draft-watch',{type:'Draft watch',kind:'draft-watch',headline:`Draft watch: ${name(top.p)} tops HoopWire's big board`,paragraphs,items:board,lead:top,
         board:{kicker:'Draft watch',title:'Big board',headers:['Player','Class','PPG','RPG','APG'],rows:board.map(statRow),subs:subs(board),ranked:true},extra:{seniors}});
     }
     // 2. Who's back: the best underclassmen not on the big board's way out.
     if(cal.elapsed>=7){
-      const back=rows.filter(x=>x.p.yrs<3&&x.s.GP>=Math.max(1,Math.floor(Math.max(...rows.map(r=>r.s.GP))/2))).sort((a,b)=>pg(b,'PTS')-pg(a,'PTS')||a.p.id-b.p.id).slice(0,8);
+      const back=rows.filter(x=>x.p.yrs<3&&!onBoard.has(x.p.id)&&x.s.GP>=Math.max(1,Math.floor(Math.max(...rows.map(r=>r.s.GP))/2))).sort((a,b)=>pg(b,'PTS')-pg(a,'PTS')||a.p.id-b.p.id).slice(0,8);
       if(back.length>=3){
         const top=back[0],next=back.slice(1,4),fromChamp=champion&&back.find(x=>x.t.id===champion.id);
         const paragraphs=[`The best scorer coming back next season is ${name(top.p)} of ${T(top.t).full}. The ${classOf(top.p)==='Fr.'?'freshman':classOf(top.p)==='So.'?'sophomore':'junior'} averaged ${line(top)}.`,
           `Also returning: ${C.listJoin(next.map(x=>`${name(x.p)} (${T(x.t).short}, ${perGame(x.s,'PTS')} points)`))}.`,
           fromChamp?`${cap(T(champion).full)} ${C.verb(T(champion),'bring')} back ${name(fromChamp.p)}, who averaged ${perGame(fromChamp.s,'PTS')} points for the ${year} champions.`:'',
-          `That list can still change. Any of them could declare for the draft before next season.`].filter(Boolean);
+          board.some(x=>x.p.yrs<3)?`That list leaves out the underclassmen on HoopWire's big board, who could turn pro early: ${C.listJoin([...board.filter(x=>x.p.yrs<3).slice(0,3).map(x=>name(x.p)),...(board.filter(x=>x.p.yrs<3).length>3?['others']:[])])}.`:'',
+          `Declarations could still change this list before next season.`].filter(Boolean);
         push('offseason-returning',{type:'College offseason',kind:'returning',headline:`${name(top.p)} leads the stars returning next season`,paragraphs,items:back,lead:top,
           board:{kicker:'Next season',title:'Top returning scorers',headers:['Player','Class','PPG','RPG','APG'],rows:back.map(statRow),subs:subs(back),ranked:true}});
       }
@@ -264,7 +266,7 @@
     // 3. An early top ten, built only from who is back and how much they scored.
     if(cal.elapsed>=14){
       const ranked=[...lookup.teams.values()].map(t=>{
-        const roster=rows.filter(x=>x.t.id===t.id),pts=roster.reduce((n,x)=>n+x.s.PTS,0),back=roster.filter(x=>x.p.yrs<3);
+        const roster=rows.filter(x=>x.t.id===t.id),pts=roster.reduce((n,x)=>n+x.s.PTS,0),back=roster.filter(x=>x.p.yrs<3&&!onBoard.has(x.p.id));
         const kept=pts>0?back.reduce((n,x)=>n+x.s.PTS,0)/pts:0,talent=back.map(x=>x.p.pot||0).sort((a,b)=>b-a).slice(0,7),record=(t.season||[]).find(r=>r.yr===year);
         const games=(record?.seasonStats?.W||0)+(record?.seasonStats?.L||0),win=games?record.seasonStats.W/games:0,ceiling=talent.length?talent.reduce((a,b)=>a+b,0)/talent.length:0;
         // Last season's results, scaled by how much of that team returns, plus the ceiling of who's back.
@@ -275,7 +277,7 @@
         const paragraphs=[`It is never too early. HoopWire's first look at next season puts ${T(top.t).full} at No. 1. ${T(top.t).plural?'They bring':'It brings'} back ${pct(top)} percent of their scoring, led by ${name(top.star.p)} at ${perGame(top.star.s,'PTS')} points a game.`,
           `Rounding out the top five: ${C.listJoin(teams.slice(1,5).map(x=>`${T(x.t).short} (${rec(x)})`))}.`,
           ...ranked.filter(x=>x.t.id===champion?.id).map(x=>{const at=ranked.indexOf(x)+1;return at<=10?`The ${year} champions, ${T(champion).full}, open at No. ${at}.`:`The ${year} champions, ${T(champion).full}, come in at No. ${at}, with ${pct(x)} percent of their scoring back.`;}),
-          `This is HoopWire's projection, not the official poll, which comes out when the new season opens. It weighs last season's record, how much of the scoring returns and the talent level of who is back.`].filter(Boolean);
+          `This is HoopWire's projection, not the official poll, which comes out when the new season opens. It weighs last season's record, how much of the scoring returns and the talent level of who is back, and it counts the big board's underclassmen as gone.`].filter(Boolean);
         const lead={p:top.star.p,t:top.t};
         push('offseason-early-top-ten',{type:'College offseason',kind:'early-top-ten',headline:`Way-too-early top 10: ${T(top.t).nickname} ${C.verb(T(top.t),'open')} next season at No. 1`,paragraphs,items:teams.map(x=>x.star),lead,
           board:{kicker:'Next season',title:'HoopWire early top 10',headers:['School','Record','Final poll','Scoring back','Top returner'],rows:teams.map(x=>[C.teamDisplay(x.t),rec(x),x.poll>0?x.poll:'—',`${pct(x)}%`,name(x.star.p)]),ranked:true},
