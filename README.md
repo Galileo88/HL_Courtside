@@ -1,40 +1,41 @@
 # HoopWire
 
-An offline newsroom and TV show for Hoop Land leagues. Load a save and HoopWire writes the day's stories, draws their
-scenes and builds a HoopWire TV episode, all in the browser. Stories are kept in a local archive (IndexedDB).
+HoopWire turns your **Hoop Land** league into a sports news website and a TV show.
 
-## Run locally
+You play the games. HoopWire tells the stories.
 
-```sh
-node scripts/serve.cjs   # http://127.0.0.1:8123
-```
+## What it does
 
-## Layout
+**📰 The Newsroom**
+HoopWire reads your save file and writes news stories about your league, just like a real sports website.
+It covers big wins, close games, amazing player nights, awards, trades, the draft, new records and championships.
+Every story gets its own pixel-art picture.
 
-```
-index.html
-css/                 styles.css, newsroom.css, theme.css (design tokens, loaded last)
-js/coverage/         story generation from the save: games, season, records, news, performances
-js/render/           canvas art: players, courts, press wall, story scenes, TV studio
-js/broadcast/        HoopWire TV: evidence, desk scripts, playback and voices
-js/newsroom/         front-page edition selection, layout and ads
-js/app/              archive storage and the app controller
-assets/              brand, court, player, scene and team-logo art
-vendor/animalese/    host voice synthesis
-tests/               unit tests (*.test.cjs) and Playwright browser scripts (*-browser.cjs, browser.cjs, ...)
-```
+**📺 HoopWire TV**
+Press play to watch a show about your league. Four hosts sit at the desk and talk about the day's biggest stories:
 
-## Tests
+- **Maya** runs the show.
+- **Jordan** has the loud, bold opinions.
+- **Andre** notices the whole team, not just the stars.
+- **Nina** loves the numbers.
 
-```sh
-node --test tests/*.test.cjs
-```
+They don't always agree, and that's half the fun!
 
-The browser scripts need Playwright on `NODE_PATH` and, for most of them, the local server running. They launch Edge
-by default; set `HOOPWIRE_BROWSER=chromium` to use Chromium instead.
+**🗂️ The Archive**
+Every story is saved, so you can go back and find old ones by team, by year or by day.
+You can also back up your archive to a file and load it again later.
 
-```sh
-node tests/browser.cjs
-```
+## How to use it
 
-Pushing to `main` runs the unit tests and deploys the site to GitHub Pages.
+1. Open HoopWire.
+2. Click **Choose save** and pick your Hoop Land save file.
+3. Read the news, watch HoopWire TV, and explore the archive.
+
+Keep playing your league and load your new save whenever you want fresh stories.
+
+## Good to know
+
+- Everything stays on your own computer. Your save file is never uploaded anywhere.
+- Your stories are kept in your web browser. If you clear your browser data, they will be gone, so use **Export
+  archive** to make a backup.
+- HoopWire works with both pro and college leagues.
