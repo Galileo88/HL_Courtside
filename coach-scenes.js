@@ -585,6 +585,15 @@
       ctx.fillStyle = light; ctx.fillRect(...camera);
       return { canvas, extra: { customCourt, adsData } };
     },
+    // A strong season without a postseason win: the same sideline, but the home
+    // crowd full and on its feet and the bench celebrating behind the coach.
+    async strong(scene, rand) {
+      const camera = [1060, 166, 384, 216], seats = seatsOf(BENCH.home), players = scene.players || [];
+      const bench = [3, 6, 8, 11, 14].map((s, i) => ({ seat: seats[s], data: players[i], frame: i % 4 })).filter(b => b.data);
+      const { canvas, ctx, customCourt, adsData } = await arena(scene, 'crowd-100', camera, rand, { fill: .9, cheer: true, bench, benchPose: 'bench-celebrate' });
+      depth(ctx, [{ data: scene.coach, team: scene.team, pose: 'idle', frame: 0, x: 1250, foot: 356, facing: 'left' }]);
+      return { canvas, extra: { customCourt, adsData } };
+    },
     // A good season: the coach and the stars just above the center circle, the
     // scorer's table and the far stands behind them, under the confetti.
     async good(scene, rand) {
@@ -717,7 +726,8 @@
       'coach-hire': `${name} is introduced as head coach of the ${team}.`,
       'coach-fire': `${name} sits alone in the ${team} locker room.`,
       'coach-poor': `${name} on the sideline during a ${record}season for the ${team}.`,
-      'coach-good': scene.champion ? `${name} and the ${team} celebrate the ${scene.season} championship${scene.venue?.city ? ` in ${scene.venue.city}` : ''}.` : `${name} and the ${team} celebrate a ${record}season.`
+      'coach-strong': `${name} on the sideline during a ${record}season for the ${team}.`,
+      'coach-good': scene.champion ? `${name} and the ${team} celebrate the ${scene.season} championship${scene.venue?.city ? ` in ${scene.venue.city}` : ''}.` : scene.advanced ? `${name} and the ${team} celebrate a ${String(scene.advanced).toLowerCase()} win.` : `${name} and the ${team} celebrate a ${record}season.`
     })[scene.kind] || `${name} of the ${team}.`;
   }
   const snap = person => person ? structuredClone({ id: person.id, tid: person.tid, fn: person.fn, ln: person.ln, num: person.num, appearance: person.appearance, accessories: person.accessories, suits: person.suits, isCoach: !!person.isCoach }) : null;
@@ -756,8 +766,8 @@
       retired: context.retired ? { player: snap(context.retired.player), num: context.retired.num, years: context.retired.years || null } : null,
       retiredNumbers: (team?.retiredNumbers || []).map(n => typeof n === 'object' ? n?.num ?? n?.number ?? n?.jersey : n).filter(n => n != null),
       award: context.award ? { name: context.award.name, sprite: context.award.spriteName, primary: context.award.primaryC, secondary: context.award.secondaryC, base: context.award.baseC, plate: context.award.plateC } : null,
-      players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, season
+      players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, advanced: context.advanced || null, season
     };
   }
-  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft', 'coach-award', 'coach-hof', 'coach-signing', 'coach-farewell', 'coach-rafters', 'coach-commit'] };
+  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-strong', 'coach-good', 'coach-draft', 'coach-award', 'coach-hof', 'coach-signing', 'coach-farewell', 'coach-rafters', 'coach-commit'] };
 })();
