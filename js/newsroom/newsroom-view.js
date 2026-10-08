@@ -7,6 +7,22 @@
     if (text != null) node.textContent = text;
     return node;
   }
+  // Scrolls the scores as a looping ticker tape. The group repeats until one pass is wider than any screen,
+  // then the track holds two passes and slides by one, so the loop has no seam.
+  function runTicker(strip, track, group) {
+    if (!strip.isConnected || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const width = group.getBoundingClientRect().width;
+    if (!width) return;
+    const perPass = Math.ceil(Math.max(strip.clientWidth, screen.width) / width);
+    for (let i = 1; i < perPass * 2; i++) {
+      const copy = group.cloneNode(true);
+      copy.setAttribute('aria-hidden', 'true');
+      for (const link of copy.querySelectorAll('a')) link.tabIndex = -1;
+      track.append(copy);
+    }
+    strip.style.setProperty('--ticker-duration', `${Math.round((perPass * width) / 50)}s`);
+    strip.classList.add('is-ticking');
+  }
   function render(target, edition, { imageURL, caption, paragraphs, storyHref, onWatch, busy = false }) {
     const N = window.HoopWireNewsroom;
     const leagueFor = story => edition.leagues.find(l => l.id === story.fingerprint);
@@ -26,8 +42,12 @@
         });
         return img;
       }
-      const placeholder = element('div', `${className} wire-placeholder`, 'HOOPWIRE');
+      const placeholder = element('div', `${className} wire-placeholder`),
+        logo = element('img');
+      logo.src = 'assets/brand/hoopwire_banner.png';
+      logo.alt = '';
       placeholder.setAttribute('aria-hidden', 'true');
+      placeholder.append(logo);
       return placeholder;
     };
     const card = (story, lead = false) => {
@@ -49,12 +69,15 @@
     };
     const scores = edition.editions.filter(e => e.games.length && !e.scoresStale);
     if (scores.length) {
-      const strip = element('section', 'wire-scores');
+      const strip = element('section', 'wire-scores'),
+        track = element('div', 'wire-ticker-track'),
+        group = element('div', 'wire-ticker-group');
       strip.setAttribute('aria-label', 'Latest final scores');
       strip.tabIndex = 0;
       for (const e of scores)
         for (const game of e.games) {
-          const result = element('div', 'wire-score');
+          const result = element(game.storyId ? 'a' : 'div', 'wire-score');
+          if (game.storyId) result.href = storyHref(game.storyId);
           result.append(
             element('div', 'wire-meta', `${e.league.shortName || e.league.name} · ${e.season} · Day ${e.scoreDay}`),
             element('strong', 'wire-final', 'FINAL')
@@ -64,9 +87,12 @@
             row.append(element('span', '', team.name), element('strong', '', String(team.score)));
             result.append(row);
           }
-          strip.append(result);
+          group.append(result);
         }
+      track.append(group);
+      strip.append(track);
       target.append(strip);
+      requestAnimationFrame(() => runTicker(strip, track, group));
     }
     const header = element('header', 'wire-heading');
     header.append(element('span', 'landing-kicker', 'HOOPWIRE NEWS'), element('h1', '', edition.title));

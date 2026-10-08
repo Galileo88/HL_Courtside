@@ -135,11 +135,12 @@ const server = http.createServer((req, res) => {
           behind,
           status: studio.adsStatus,
           version: studio.inputs.version,
+          currentVersion: HoopWireTV.version,
           random: HoopWireTV.inputs({ teams: [] }).adSlots,
         };
       }, layout);
       assert.equal(result.status, 'loaded');
-      assert.equal(result.version, 6);
+      assert.equal(result.version, result.currentVersion);
       assert.equal(result.random.length, 4);
       assert.ok(result.random.every(n => Number.isInteger(n) && n >= 0 && n < 7));
       const colors = [
@@ -156,7 +157,7 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(async () => {
       const a = await new HoopWireArchive().open();
       try {
-        return (await a.get('leagues', 'sponsor-upgrade'))?.studios?.[1]?.inputs?.version === 6;
+        return (await a.get('leagues', 'sponsor-upgrade'))?.studios?.[1]?.inputs?.version === HoopWireTV.version;
       } finally {
         a.db.close();
       }
