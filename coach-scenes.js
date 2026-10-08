@@ -8,7 +8,7 @@
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'camera-flash', 'draft-podium', 'locker-room', 'podium-background', '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'camera-flash', 'draft-podium', 'locker-room', 'podium-background', 'billboard-ads', '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -111,6 +111,9 @@
     const sheet = art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`];
     return { body: swap(art['spectator-body'], 0, body), head: swap(sheet, cheer ? Math.floor(rand() * 3) : 0, head) };
   }
+  // A generic league commissioner: gray hair, navy suit, white shirt, red tie.
+  const COMMISSIONER = { id: -1, fn: 'League', ln: 'Commissioner', isCoach: true, appearance: { skinC: 'F4CCA1', eyeC: '141020', unibrow: false, browC: 'A3ACBD', hair: '0138', hairC: 'A3ACBD', fHair: '0000', fHairC: 'A3ACBD' },
+    suits: [{ headAcc: '0000', headAccC: '000000', jacketC: '262539', shirtC: 'F2F2F2', tieC: 'C22E3A', pantC: '262539', shoeC: '000000', laceC: '', soleC: '000000' }], accessories: [] };
   // An image cropped to its visible pixels, so a padded logo fills its box.
   function trim(image) {
     const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
@@ -124,10 +127,30 @@
   // A fan seen from behind, facing the stage: the second row of the head sheets.
   function fanBack(rand, team, cheer) {
     const pick = list => list[Math.floor(rand() * list.length)], skin = pick(SKIN), hair = pick(HAIR);
-    const r = rand(), shirt = r < .5 ? teamColor(team, 0, '#147dff') : r < .8 ? teamColor(team, 1, '#ffffff') : pick(['#f2f2f2', '#2e3a59', '#8a7a5c']);
+    const r = rand(), shirt = !team ? pick(['#2e3a59', '#555a66', '#22222a', '#8a7a5c', '#f2f2f2', '#6b6761']) : r < .5 ? teamColor(team, 0, '#147dff') : r < .8 ? teamColor(team, 1, '#ffffff') : pick(['#f2f2f2', '#2e3a59', '#8a7a5c']);
     const map = { '220,129,88': shade(skin, 1), '215,85,66': shade(skin, .82), '225,174,120': shade(skin, 1.12), '50,175,0': shade(skin, 1), '45,60,90': shade(hair, 1),
       '20,125,255': shade(shirt, 1), '10,175,255': shade(shirt, 1.15), '5,200,255': shade(shirt, 1.3) };
     return swap(art[`spectator-${cheer ? 'cheer' : 'head'}-${rand() < .5 ? 'm' : 'f'}`], 3 + Math.floor(rand() * 3), map);
+  }
+  // Rows of people seen from behind, facing a stage or podium, drawn a little
+  // darker as the foreground. Camera flashes go off where someone in the rows
+  // is holding a camera up: above a raised pair of hands, or at a reporter's face.
+  function audience(ctx, rand, team, rows, { cheer = .35, flashes = 0 } = {}) {
+    const layer = document.createElement('canvas'); layer.width = ctx.canvas.width; layer.height = ctx.canvas.height;
+    const c = layer.getContext('2d'); c.imageSmoothingEnabled = false; c.setTransform(ctx.getTransform());
+    const people = [];
+    for (const [y, offset] of rows) for (let x = -8 + offset; x < 392; x += 16 + Math.floor(rand() * 3)) {
+      if (rand() >= .92) continue;
+      const up = rand() < cheer, dy = Math.floor(rand() * 2);
+      c.drawImage(fanBack(rand, team, up), x - 16, y - 16 + dy); people.push({ x, y: y + dy, up });
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(4,6,16,.35)'; c.fillRect(0, 0, layer.width, layer.height);
+    const transform = ctx.getTransform(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.setTransform(transform);
+    const visible = people.filter(p => p.x > 16 && p.x < 368), shots = [];
+    while (shots.length < flashes && visible.length) shots.push(...visible.splice(Math.floor(rand() * visible.length), 1));
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of shots) ctx.drawImage(art['camera-flash'], p.x - 14, p.y - (p.up ? 30 : 20), 28, 28);
+    ctx.globalCompositeOperation = 'source-over';
   }
   async function arena(scene, crowd, camera, rand, { fill = 1, cheer = false, bench = [], benchPose = 'bench-idle', announcers = [] } = {}) {
     // The floor, the crowd and the fans belong to the home team of the arena.
@@ -138,13 +161,17 @@
     ctx.drawImage(art.stairs, 0, 0);
     ctx.drawImage(tinted(art[crowd], teamColor(team, 0, '#147dff')), 0, 0);
     ctx.drawImage(art['guard-rails'], 512, px(0, 6.78)[1] - 12);
-    // Chairs for both benches and the announcers, then the table.
+    // Chairs for both benches and the announcers. The announcers sit behind the
+    // table: its open front is filled, as in the game, by one 16-pixel band of
+    // the billboard ad strip that scrolls behind it, and the frame goes on top.
     for (const x of [...seatsOf(BENCH.home), ...seatsOf(BENCH.road)]) { const [cx, cy] = px(x, 6.25); cell(ctx, art.chair, 0, cx - 16, cy - 16); }
     for (const x of ANNOUNCERS) { const [cx, cy] = px(x, 6.42); cell(ctx, art.chair, 0, cx - 16, cy - 16); }
-    ctx.drawImage(art['announce-table'], px(0, 5.72)[0] - 64, px(0, 5.72)[1] - 32);
-    // Seated bench players and announcers: feet at the sitting sprite's bottom pivot.
-    for (const b of bench) { const [x, y] = px(b.seat, 5.75); person(ctx, b.data, scene.team, benchPose, b.frame || 0, x, y + 1, 'left'); }
     announcers.forEach((a, i) => { if (!a) return; const [x, y] = px(ANNOUNCERS[i], 5.92); person(ctx, a, team, 'sitting', 0, x, y + 1, 'left'); const [hx, hy] = px(ANNOUNCERS[i], 6.67); cell(ctx, art.headset, 0, hx - 16, hy - 16, 32, 2); });
+    const [tx, ty] = [px(0, 5.72)[0] - 64, px(0, 5.72)[1] - 32], band = Math.floor(rand() * 8);
+    ctx.drawImage(art['billboard-ads'], 1, band * 16 + 1, 126, 14, tx + 1, ty + 17, 126, 14);
+    ctx.drawImage(art['announce-table'], tx, ty);
+    // Seated bench players: feet at the sitting sprite's bottom pivot.
+    for (const b of bench) { const [x, y] = px(b.seat, 5.75); person(ctx, b.data, scene.team, benchPose, b.frame || 0, x, y + 1, 'left'); }
     // The live fans in the front rows of each far section, back row first.
     const seats = [];
     for (const y of FAN_ROWS) for (const block of FAN_BLOCKS) for (const x of seatsOf(block)) seats.push([x, y]);
@@ -169,9 +196,8 @@
       const podium = [168, 134];
       depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 140, foot: 184, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: podium[1] + 36, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], podium[0], podium[1], 64, 64);
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 4; i++) ctx.drawImage(art['camera-flash'], 20 + rand() * 330, 20 + rand() * 120, 48, 48);
-      ctx.globalCompositeOperation = 'source-over';
+      // The press in the front row, the flashes coming from their cameras.
+      audience(ctx, rand, null, [[204, 4], [216, 12]], { cheer: 0, flashes: 3 });
       return { canvas, extra: { pressLogoData: wall.logoData, pressLeagueLogoData: wall.leagueLogoData } };
     },
     // After the firing: the empty locker room, the coach alone on a chair.
@@ -259,14 +285,15 @@
       ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = '900 30px Arial';
       ctx.fillText(String(scene.season || ''), 384, 182);
       world();
-      // Side screens: the pick's portrait in the team's colors, the pick number beneath.
+      // Side screens: the pick's portrait in the team's colors, the round and pick beneath.
       for (const x of [22, 278]) {
         panel(x, 18, 84, 78);
         ctx.fillStyle = primary; ctx.fillRect(x + 6, 24, 72, 54);
         ctx.fillStyle = secondary; ctx.fillRect(x + 6, 76, 72, 2);
         if (player) { const p = document.createElement('canvas'); p.width = 128; p.height = 112; window.HoopWirePlayer.portrait(p, player, team, 0); ctx.drawImage(p, x + 10, 22, 64, 56); }
         screen(); ctx.fillStyle = '#ffffff'; ctx.font = '900 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText(scene.pick?.pk ? `NO. ${scene.pick.pk} PICK` : 'DRAFT PICK', 2 * (x + 42), 2 * 92); world();
+        ctx.font = '900 14px Arial';
+        ctx.fillText(scene.pick?.pk ? `${scene.pick.rd ? `ROUND ${scene.pick.rd} · ` : ''}PICK ${scene.pick.pk}` : 'DRAFT PICK', 2 * (x + 42), 2 * 92); world();
       }
       // Spotlight on the podium.
       ctx.globalCompositeOperation = 'lighter';
@@ -279,15 +306,10 @@
       const base = 172, podium = [160, base - 64];
       if (player) { shadow(ctx, 192, base - 26, 10); person(ctx, player, team, 'suit-standing', 0, 192, base - 27, 'left'); }
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 3; i++) ctx.drawImage(art['camera-flash'], 20 + rand() * 320, 90 + rand() * 60, 40, 40);
-      ctx.globalCompositeOperation = 'source-over';
-      // Fans on the floor in front of the stage, backs to the camera, the near row lower and darker.
-      const crowd = document.createElement('canvas'); crowd.width = 384; crowd.height = 216;
-      const c = crowd.getContext('2d'); c.imageSmoothingEnabled = false;
-      for (const [y, offset] of [[180, 0], [194, 8], [208, 4]]) for (let x = -8 + offset; x < 392; x += 16 + Math.floor(rand() * 3)) if (rand() < .92) c.drawImage(fanBack(rand, team, rand() < .35), x - 16, y - 16 + Math.floor(rand() * 2));
-      c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(4,6,16,.35)'; c.fillRect(0, 0, 384, 216);
-      ctx.drawImage(crowd, 0, 0);
+      // The commissioner beside the podium, turned toward the pick.
+      shadow(ctx, 140, base - 13, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 14, 'right');
+      // Fans on the floor in front of the stage, backs to the camera; the flashes are their cameras.
+      audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]], { flashes: 3 });
       return { canvas, extra: { pressLogoData: scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
     }
   };
@@ -300,7 +322,8 @@
   function caption(scene) {
     if (scene.kind === 'coach-draft') {
       const C = window.HoopWireCore, who = scene.draftee ? C.playerDisplay(scene.draftee) : 'The pick';
-      return `${who} at the podium after going No. ${scene.pick?.pk || 1} to the ${C.teamDisplay(scene.team)} in the ${scene.season} draft.`;
+      const round = scene.pick?.rd ? ` in round ${scene.pick.rd}` : '';
+      return `${who} at the podium with the commissioner after going No. ${scene.pick?.pk || 1}${round} to the ${C.teamDisplay(scene.team)} in the ${scene.season} draft.`;
     }
     const C = window.HoopWireCore, name = scene.coach ? C.playerDisplay(scene.coach) : 'The coach', team = C.teamDisplay(scene.team);
     const record = scene.record ? `${scene.record[0]}-${scene.record[1]} ` : '';
@@ -325,7 +348,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 9, seed: id, kind: `coach-${context.coachScene}`,
+      version: 10, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
