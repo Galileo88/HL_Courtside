@@ -156,7 +156,12 @@
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
     // Draft stories show the top pick on the draft stage.
     result.push({story,context:type===26?{...contextFor(lead.t,lookup,league,null),coach:coachSubject(lead.p),coachScene:'hire'}
-      :type===2?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'draft',draftee:lead.p,pick:lead.n.data?.draftPick||null}:contextFor(lead.t,lookup,league,lead.p)});
+      :type===2?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'draft',draftee:lead.p,pick:lead.n.data?.draftPick||null}
+      // Signings show the lead player holding up the new jersey; retirements, the lead player's farewell at the podium.
+      :type===3?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'signing',signee:lead.p}
+      // A recruiting day shows the headliner's commitment post on Hoop Gram.
+      :type===14?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'commit',recruit:lead.p}
+      :type===16||type===17?{...contextFor(lead.t,lookup,league,lead.p),coachScene:'farewell',retiree:lead.p}:contextFor(lead.t,lookup,league,lead.p)});
   }
   function candidates(league,leagues=[]){
     const cal=calendar(league,leagues);
@@ -206,6 +211,8 @@
       const info=event.data||{},jersey=info.retiredNumber;
       // An award story's award: the league's entry, with its trophy sprite and colors.
       const awardOf=data=>(league.awards||[]).find(a=>a.id===data.awardId)||null;
+      // A player's span in this league, first season to last, for a retired jersey's banner.
+      const careerYears=p=>{const yrs=(p?.stats||[]).filter(x=>x.league===league.leagueType&&(x.season||[]).length).map(x=>x.yr);return yrs.length?`${Math.min(...yrs)}–${Math.max(...yrs)}`:null;};
       let coachEvent=[26,27,28,29].includes(event.type);
       const personId=event.type===25&&jersey?.pid>0?jersey.pid:event.pid;
       const player=(coachEvent?coaches:players).get(personId)||([22,25].includes(event.type)?coaches.get(personId):null);
@@ -297,7 +304,7 @@
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
-      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':event.type===12&&featured&&awardOf(info)?'award':null,...(event.type===12&&featured&&awardOf(info)?{awardee:featured,award:awardOf(info)}:{}),...(event.type===22&&player?{coachScene:'hof',inductee:player,hall:(league.hallOfFame||[]).filter(p=>p&&p.id!==player.id&&p.appearance).slice(-2)}:{}),potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
+      result.push({story,context:{winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:featured||team.roster?.[0],potg:featured,coach:coachEvent?coachSubject(player):null,coachScene:event.type===26&&(team?.frontOffice?.staff||[]).find(c=>c.id===player?.id)?.pos===1?'hire':[27,28].includes(event.type)?'fire':event.type===12&&featured&&awardOf(info)?'award':null,...(event.type===12&&featured&&awardOf(info)?{awardee:featured,award:awardOf(info)}:{}),...(event.type===10&&featured?{injury:true}:{}),...([3,7,30].includes(event.type)&&featured?{coachScene:'signing',signee:featured}:{}),...([16,17].includes(event.type)&&player?{coachScene:'farewell',retiree:player}:{}),...(event.type===14&&featured?{coachScene:'commit',recruit:featured}:{}),...(event.type===25&&player&&jersey!=null?{coachScene:'rafters',retired:{player,num:jersey,years:careerYears(player)}}:{}),...(event.type===22&&player?{coachScene:'hof',inductee:player,hall:(league.hallOfFame||[]).filter(p=>p&&p.id!==player.id&&p.appearance).slice(-2)}:{}),potgStatsTrusted:!!featured,gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}}});
     }
     return result;
   }

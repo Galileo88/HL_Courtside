@@ -9,7 +9,7 @@
   // The game's award statuettes, by the spriteName the league's awards name.
   const AWARDS = ['mvp', 'fmvp', 'dpoy', 'roty', '6moty', 'mip', 'asmvp', 'trophy', 'poty', 'mop', 'all_star'];
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', 'cameraman-body', 'cameraman-head', ...AWARDS.map(a => `award-${a}`), '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', 'cameraman-body', 'cameraman-head', 'jersey-hanger', 'banner-blank', 'banner-frame', 'banner-spotlight', 'hoopgram', 'hoopgram-text', 'hoopgram-like', 'hoopgram-verified', ...AWARDS.map(a => `award-${a}`), '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -86,6 +86,9 @@
     }
     g.putImageData(d, 0, 0); return c;
   }
+  // A color's brightness, 0 to 1; a near-black team color gives way to the team's second color.
+  const lightness = color => { const [r, g, b] = rgb(color); return (.299 * r + .587 * g + .114 * b) / 255; };
+  const field = team => { const a = teamColor(team, 0, '#1d428a'), b = teamColor(team, 1, '#ffffff'); return lightness(a) < .15 && lightness(b) > lightness(a) ? b : a; };
   const shade = (color, k) => rgb(color).map(v => Math.max(0, Math.min(255, Math.round(v * k))));
   // The game's UpdateAwardColors: the trophy's ColorSwap keys on each pixel's
   // red channel. Primary (the column) takes 237, 231 at 1.3x and 229 at 0.7x;
@@ -253,6 +256,30 @@
     const o = document.createElement('canvas'); o.width = 32 * scale; o.height = 28 * scale;
     const og = o.getContext('2d'); og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, o.width, o.height); return o;
   }
+  // A team's color token from its uniform (PRI, SEC, TER or a hex value).
+  const token = (team, value, fallback) => ({ PRI: teamColor(team, 0, fallback), SEC: teamColor(team, 1, fallback), TER: teamColor(team, 2, fallback) })[String(value || '').toUpperCase()] || hex(value) || fallback;
+  // The game's hanger jersey in the team's home uniform, off its hanger, colored
+  // the way the player renderer colors a uniform from the same blue masks: the
+  // body (20,125,255) the jersey color, shaded as on the players; the side
+  // stripes and straps (10,175,255) the stripe color; the collar (5,200,255)
+  // the collar color; the hem (30,50,255) a shadow of the jersey color. The
+  // hanger's steel pixels are cleared and a dark outline runs round it like
+  // every other sprite. The number is drawn on separately, at screen scale.
+  function jersey(team) {
+    const u = team?.uniforms?.[0] || {}, body = token(team, u.jersey, teamColor(team, 0, '#147dff'));
+    const stripe = token(team, u.jerseyStripe, body), collar = token(team, u.jerseyCollar, stripe);
+    const map = { '20,125,255': shade(body, 125 / 150), '10,175,255': rgb(stripe), '5,200,255': rgb(collar), '30,50,255': shade(body, .55) };
+    const shirt = swap(art['jersey-hanger'], 0, map), g = shirt.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 32);
+    for (let i = 0; i < d.data.length; i += 4) if (d.data[i] === 163 && d.data[i + 1] === 172 && d.data[i + 2] === 190) d.data[i + 3] = 0;
+    g.putImageData(d, 0, 0);
+    // The jersey sits two pixels in, so its pixels (and the number's two-pixel
+    // strokes) start on even columns and rows and scale evenly at half size.
+    const out = document.createElement('canvas'); out.width = out.height = 36;
+    const o = out.getContext('2d'), dark = recolor(shirt, '#14101e');
+    for (const [dx, dy] of [[1, 2], [3, 2], [2, 1], [2, 3]]) o.drawImage(dark, dx, dy);
+    o.drawImage(shirt, 2, 2);
+    return { image: out, number: token(team, u.jerseyNumber, stripe) };
+  }
   // Blue stage curtains in pixel art: a fold every 16 pixels, lit across each
   // fold, darkening toward the floor, under a scalloped valance.
   function curtains(ctx, bottom) {
@@ -320,10 +347,29 @@
       // An award puts the player at the podium in a suit, the commissioner
       // beside them presenting, and the award's statuette, in the award's own
       // colors, on a pedestal across the stage.
-      const award = scene.kind === 'coach-award';
-      depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
-      ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
-      if (award) {
+      // A signing has no podium: the player and the executive stand together,
+      // the player holding up the new jersey. A retirement farewell is the
+      // player alone at the podium.
+      const award = scene.kind === 'coach-award', signing = scene.kind === 'coach-signing', farewell = scene.kind === 'coach-farewell';
+      if (signing) {
+        // Close enough that the jersey's edges cover a hand of each.
+        depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 172, foot: base - 4, facing: 'right' }, { data: scene.signee, team, pose: 'suit-standing', frame: 0, x: 196, foot: base - 4, facing: 'left' }]);
+        // The jersey held up between them at chest height, at half the player's
+        // pixel scale, as the game hangs jerseys beside players in its locker room.
+        const shirt = jersey(team), u = 1 / 2, cut = 6, [jx, jy] = [184 - 18 * u, base - 4 - 17];
+        ctx.drawImage(shirt.image, 0, cut, 36, 36 - cut, jx, jy, 36 * u, (36 - cut) * u);
+        // The number in the game's digits at two screen pixels per digit pixel,
+        // the same size for every number: two digits fit inside the stripes.
+        if (scene.signee?.num != null) {
+          const tile = window.HoopWirePlayer.numberTile(scene.signee.num, shirt.number), box = trim(tile), k = canvas.width / camera[2];
+          const [cx, cy] = [(jx + 9 - camera[0]) * k, (jy + 6.5 - camera[1]) * k];
+          screen(); ctx.imageSmoothingEnabled = false; ctx.drawImage(box, Math.round(cx - box.width), Math.round(cy - box.height), box.width * 2, box.height * 2); world();
+        }
+      } else {
+        depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : farewell ? { data: scene.retiree, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
+        ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
+      }
+      if (signing || farewell) {} else if (award) {
         shadow(ctx, 140, base - 5, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 6, 'right');
         const [px0, top] = [236, base - 22];
         ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(px0 + 2, top + 2, 20, 22);
@@ -387,8 +433,127 @@
       world();
       return { canvas };
     },
+    // A jersey retirement: up in the rafters over the home crowd, the player's
+    // banner raised among the team's championship banners and earlier
+    // retired numbers. Each is the game's blank banner in the team's primary
+    // color with its frame in the secondary, under the game's banner shading.
+    async rafters(scene, rand) {
+      const { canvas, ctx, world, screen } = stage([0, 0, 384, 216]), team = scene.team, k = canvas.width / 384;
+      const primary = teamColor(team, 0, '#1d428a'), secondary = teamColor(team, 1, '#ffffff');
+      const sky = ctx.createLinearGradient(0, 0, 0, 160); sky.addColorStop(0, '#07090f'); sky.addColorStop(1, '#141a2b');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, 384, 216);
+      // Steel trusses across the roof.
+      ctx.fillStyle = '#262c3c'; ctx.fillRect(0, 10, 384, 2); ctx.fillRect(0, 22, 384, 2);
+      ctx.fillStyle = '#1d2230'; for (let x = 0; x < 384; x += 16) { for (let y = 12; y < 22; y++) { ctx.fillRect(x + (y - 12) * 1.6, y, 1, 1); ctx.fillRect(x + 16 - (y - 12) * 1.6, y, 1, 1); } }
+      // The top of the far stands below, from the game's own arena art.
+      ctx.save(); ctx.translate(0, 150);
+      ctx.drawImage(art.stairs, 832, 0, 384, 66, 0, 0, 384, 66); ctx.drawImage(tinted(art['crowd-100'], primary), 832, 0, 384, 66, 0, 0, 384, 66);
+      ctx.fillStyle = 'rgba(4,6,12,.45)'; ctx.fillRect(0, 0, 384, 66); ctx.restore();
+      const banner = (x, top, lines, dim) => {
+        ctx.fillStyle = '#5b6274'; ctx.fillRect(x + 8, 24, 1, top - 24); ctx.fillRect(x + 39, 24, 1, top - 24);
+        ctx.drawImage(recolor(art['banner-blank'], primary), x, top); ctx.drawImage(recolor(art['banner-frame'], secondary), x, top);
+        screen(); ctx.fillStyle = secondary; ctx.textAlign = 'center';
+        for (const [text, size, y] of lines) { ctx.font = `900 ${size}px Arial`; ctx.fillText(text, (x + 24) * k, (top + y) * k, 40 * k); }
+        world(); ctx.globalAlpha = .6; ctx.drawImage(art['banner-spotlight'], x, top); ctx.globalAlpha = 1;
+        if (dim) { ctx.fillStyle = 'rgba(4,6,14,.25)'; ctx.fillRect(x, top, 48, 64); }
+      };
+      const titles = (team?.championships?.yearsWon || []).slice(-2), others = (scene.retiredNumbers || []).filter(n => n !== scene.retired?.num).slice(-2);
+      const sides = [...titles.map(y => [[String(y), 14, 28], ['CHAMPIONS', 8, 40]]), ...others.map(n => [[String(n), 26, 38]])].slice(0, 4);
+      // Earlier banners fill the slots nearest the new one first, alternating sides.
+      [112, 224, 56, 280].forEach((x, i) => { if (sides[i]) banner(x, 36, sides[i], true); });
+      ctx.globalCompositeOperation = 'lighter';
+      const spot = ctx.createRadialGradient(192, 70, 4, 192, 70, 80); spot.addColorStop(0, 'rgba(255,236,190,.3)'); spot.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
+      const p = scene.retired?.player, name = p ? (p.ln || window.HoopWireCore.playerDisplay(p)).toUpperCase() : '';
+      banner(168, 44, [[name, 10, 14], [String(scene.retired?.num ?? ''), 30, 42], [scene.retired?.years || '', 7, 56]], false);
+      return { canvas };
+    },
+    // A college commitment: the recruit's Hoop Gram post, built from the game's
+    // own Hoop Gram art (its logo and wordmark, the like heart, the verified
+    // badge), with the recruit's portrait in the school's uniform over the
+    // school's colors and logo.
+    async commit(scene, rand) {
+      const { canvas, ctx, screen } = stage([0, 0, 384, 216]), team = scene.team, C = window.HoopWireCore, p = scene.recruit;
+      const primary = field(team), secondary = primary === teamColor(team, 0, '#1d428a') ? teamColor(team, 1, '#ffffff') : teamColor(team, 0, '#1d428a');
+      screen(); ctx.imageSmoothingEnabled = false;
+      const bg = ctx.createLinearGradient(0, 0, 768, 432); bg.addColorStop(0, `rgb(${shade(primary, .55)})`); bg.addColorStop(1, `rgb(${shade(primary, .25)})`);
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, 768, 432);
+      const sprite = (image, x, y, k, color) => { const src = color ? recolor(image, color) : image, b = trim(src); ctx.drawImage(b, x, y, b.width * k, b.height * k); return [b.width * k, b.height * k]; };
+      // The post card.
+      const [cx, cy, cw, ch] = [234, 10, 300, 412];
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(cx + 6, cy + 6, cw, ch);
+      ctx.fillStyle = '#0f1118'; ctx.fillRect(cx, cy, cw, ch); ctx.fillStyle = '#262a36'; ctx.fillRect(cx, cy + 46, cw, 2);
+      sprite(art.hoopgram, cx + 12, cy + 10, 1.5);
+      sprite(art['hoopgram-text'], cx + 46, cy + 17, 2);
+      // The recruit's handle, with the verified badge.
+      const handle = p ? `@${String(p.fn || '').toLowerCase()}${String(p.ln || '').toLowerCase()}`.replace(/[^@a-z0-9._]/g, '') : '@recruit';
+      ctx.fillStyle = '#ffffff'; ctx.font = '700 15px Arial'; ctx.textAlign = 'left'; ctx.fillText(handle, cx + 14, cy + 70);
+      const hw = ctx.measureText(handle).width; sprite(art['hoopgram-verified'], cx + 20 + hw, cy + 58, 1.25);
+      // The photo, in one of two designs picked per story: the recruit's
+      // portrait over the school's colors and a faint logo, or the recruit
+      // standing with a ball beside the school's logo on a dark field cut by
+      // the school's color at two corners.
+      const [px0, py0, pw, ph] = [cx + 12, cy + 82, cw - 24, 236];
+      const logo = await window.HoopWirePressBackdrop.teamLogo(team, scene.pressLogoData);
+      const fit = (image, box) => { const im = trim(image), k = Math.min(box / im.width, box / im.height); return [im, im.width * k, im.height * k]; };
+      if (C.choose(String(scene.seed), ['portrait', 'standing'], 'hoopgram-design') === 'standing') {
+        ctx.fillStyle = '#171717'; ctx.fillRect(px0, py0, pw, ph);
+        ctx.save(); ctx.beginPath(); ctx.rect(px0, py0, pw, ph); ctx.clip();
+        ctx.fillStyle = `rgb(${shade(primary, .58)})`;
+        ctx.beginPath(); ctx.moveTo(px0 + pw * .58, py0); ctx.lineTo(px0 + pw, py0); ctx.lineTo(px0 + pw, py0 + ph * .5); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px0, py0 + ph * .48); ctx.lineTo(px0, py0 + ph); ctx.lineTo(px0 + pw * .34, py0 + ph); ctx.fill();
+        ctx.restore();
+        if (logo?.image) {
+          const [im, w, h] = fit(logo.image, 112), [lx, ly] = [px0 + pw - 70, py0 + 86];
+          // A mostly dark logo would vanish on the dark field, so it sits on a white disc ringed in the school's color.
+          const g = document.createElement('canvas'); g.width = g.height = 24; const gc = g.getContext('2d', { willReadFrequently: true }); gc.drawImage(im, 0, 0, 24, 24);
+          const px = gc.getImageData(0, 0, 24, 24).data; let sum = 0, n = 0; for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { sum += .299 * px[i] + .587 * px[i + 1] + .114 * px[i + 2]; n++; }
+          if (n && sum / n / 255 < .45) { ctx.fillStyle = primary; ctx.beginPath(); ctx.arc(lx, ly, 64, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.arc(lx, ly, 60, 0, Math.PI * 2); ctx.fill(); }
+          const k = n && sum / n / 255 < .45 ? .82 : 1;
+          ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, lx - w * k / 2, ly - h * k / 2, w * k, h * k); ctx.imageSmoothingEnabled = false;
+        }
+        // The recruit at five times the sprite's size, holding the ball low, in the school's uniform.
+        if (p) { const c = document.createElement('canvas'); c.width = 32 * 5; c.height = 42 * 5; window.HoopWirePlayer.draw(c, { ...p, wearsSuit: false, isCoach: false }, team, 0, 1, 'dribbling', 'right', {}); ctx.drawImage(c, px0 - 6, py0 + ph - c.height + 6); }
+        ctx.fillStyle = primary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
+      } else {
+        const photo = ctx.createLinearGradient(0, py0, 0, py0 + ph); photo.addColorStop(0, `rgb(${shade(primary, 1.1)})`); photo.addColorStop(1, `rgb(${shade(primary, .7)})`);
+        ctx.fillStyle = photo; ctx.fillRect(px0, py0, pw, ph);
+        // The faint logo is a two-tone white watermark: the logo's dark parts in
+        // strong white and its light parts in faint white, so its detail reads
+        // and it shows whatever the school's colors are.
+        if (logo?.image) {
+          const [im, w, h] = fit(logo.image, 200), mark = document.createElement('canvas'); mark.width = im.width; mark.height = im.height;
+          const mc = mark.getContext('2d', { willReadFrequently: true }); mc.drawImage(im, 0, 0);
+          const d = mc.getImageData(0, 0, mark.width, mark.height);
+          for (let i = 0; i < d.data.length; i += 4) { const l = .299 * d.data[i] + .587 * d.data[i + 1] + .114 * d.data[i + 2]; d.data[i] = d.data[i + 1] = d.data[i + 2] = 255; d.data[i + 3] = Math.round(d.data[i + 3] * (l < 128 ? 1 : .4)); }
+          mc.putImageData(d, 0, 0);
+          ctx.globalAlpha = .3; ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(mark, px0 + (pw - w) / 2, py0 + 12, w, h); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false;
+        }
+        if (p) { const c = document.createElement('canvas'); c.width = 32 * 7; c.height = 28 * 7; window.HoopWirePlayer.portrait(c, { ...p, wearsSuit: false, isCoach: false }, team, 0); ctx.drawImage(c, px0 + (pw - c.width) / 2, py0 + ph - c.height); }
+        ctx.fillStyle = secondary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
+      }
+      // Likes and the caption.
+      const likes = Math.round((2 + rand() * 18) * 10) / 10;
+      sprite(art['hoopgram-like'], cx + 14, py0 + ph + 12, 1.75, '#e5484d');
+      ctx.fillStyle = '#ffffff'; ctx.font = '700 14px Arial'; ctx.fillText(`${likes}K likes`, cx + 42, py0 + ph + 27);
+      // The caption, the handle in bold, wrapped to the card.
+      ctx.font = '700 13px Arial'; ctx.fillText(handle.slice(1), cx + 14, py0 + ph + 52);
+      let x = cx + 14 + ctx.measureText(handle.slice(1)).width + 6, y = py0 + ph + 52;
+      ctx.fillStyle = '#c9cfdb'; ctx.font = '400 13px Arial';
+      for (const word of `Committed. ${C.teamDisplay(team)}, let's work.`.split(' ')) {
+        const w = ctx.measureText(word + ' ').width;
+        if (x + w > cx + cw - 12) { x = cx + 14; y += 18; }
+        ctx.fillText(word, x, y); x += w;
+      }
+      ctx.fillStyle = '#7d8aa6'; ctx.fillText(`#${String(team?.name || 'Committed').replace(/\s+/g, '')}`, cx + 14, y + 20);
+      return { canvas, extra: { pressLogoData: logo?.data || scene.pressLogoData || null, pressLeagueLogoData: scene.pressLeagueLogoData || null } };
+    },
     // A player award: the press conference stage, the player at the podium.
     award(scene, rand) { return scenes.hire(scene, rand); },
+    // A signing, trade or extension: the player holding up the team's jersey beside the executive.
+    signing(scene, rand) { return scenes.hire(scene, rand); },
+    // A retirement: the player's farewell at the podium.
+    farewell(scene, rand) { return scenes.hire(scene, rand); },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
       // A tight 3x shot on the coach and the lockers either side, like the press conference.
@@ -521,6 +686,22 @@
       const C = window.HoopWireCore;
       return `${scene.inductee ? C.playerDisplay(scene.inductee) : 'The inductee'}'s bust in the ${scene.league?.name || 'league'} Hall of Fame, class of ${scene.season}.`;
     }
+    if (scene.kind === 'coach-commit') {
+      const C = window.HoopWireCore;
+      return `${scene.recruit ? C.playerDisplay(scene.recruit) : 'A recruit'} announces a commitment to ${C.teamDisplay(scene.team)} on Hoop Gram.`;
+    }
+    if (scene.kind === 'coach-rafters') {
+      const C = window.HoopWireCore, p = scene.retired?.player;
+      return `${p ? C.playerDisplay(p) : 'A'}'s No. ${scene.retired?.num ?? ''} banner is raised to the rafters by the ${C.teamDisplay(scene.team)}.`;
+    }
+    if (scene.kind === 'coach-signing') {
+      const C = window.HoopWireCore, who = scene.signee ? C.playerDisplay(scene.signee) : 'The player';
+      return `${who} holds up a ${C.teamDisplay(scene.team)} jersey${scene.signee?.num != null ? ` with No. ${scene.signee.num}` : ''}.`;
+    }
+    if (scene.kind === 'coach-farewell') {
+      const C = window.HoopWireCore, who = scene.retiree ? C.playerDisplay(scene.retiree) : 'The player';
+      return `${who} says farewell at the podium.`;
+    }
     if (scene.kind === 'coach-award') {
       const C = window.HoopWireCore, who = scene.awardee ? C.playerDisplay(scene.awardee) : 'The winner';
       return `${who} of the ${C.teamDisplay(scene.team)} at the podium with the ${scene.season} ${scene.award?.name || 'award'} trophy.`;
@@ -540,7 +721,7 @@
     })[scene.kind] || `${name} of the ${team}.`;
   }
   const snap = person => person ? structuredClone({ id: person.id, tid: person.tid, fn: person.fn, ln: person.ln, num: person.num, appearance: person.appearance, accessories: person.accessories, suits: person.suits, isCoach: !!person.isCoach }) : null;
-  const court = team => structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court });
+  const court = team => structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court, championships: { yearsWon: [...(team?.championships?.yearsWon || [])] } });
   // The arena's ad strip: its home team's, else the first team in the league with one.
   function adsFor(home, league) {
     const office = home?.frontOffice?.adsURL ? home.frontOffice : (league.teams || []).find(t => t.frontOffice?.adsURL)?.frontOffice;
@@ -558,7 +739,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 25, seed: id, kind: `coach-${context.coachScene}`,
+      version: 30, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
@@ -569,9 +750,14 @@
       draftee: context.draftee ? { ...snap(context.draftee), wearsSuit: true, isCoach: false } : null, pick: context.pick || null,
       awardee: context.awardee ? { ...snap(context.awardee), wearsSuit: true, isCoach: false } : null,
       inductee: snap(context.inductee), hall: (context.hall || []).map(snap),
+      signee: context.signee ? { ...snap(context.signee), wearsSuit: true, isCoach: false } : null,
+      retiree: context.retiree ? { ...snap(context.retiree), wearsSuit: true, isCoach: false } : null,
+      recruit: snap(context.recruit),
+      retired: context.retired ? { player: snap(context.retired.player), num: context.retired.num, years: context.retired.years || null } : null,
+      retiredNumbers: (team?.retiredNumbers || []).map(n => typeof n === 'object' ? n?.num ?? n?.number ?? n?.jersey : n).filter(n => n != null),
       award: context.award ? { name: context.award.name, sprite: context.award.spriteName, primary: context.award.primaryC, secondary: context.award.secondaryC, base: context.award.baseC, plate: context.award.plateC } : null,
       players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, season
     };
   }
-  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft', 'coach-award', 'coach-hof'] };
+  window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-good', 'coach-draft', 'coach-award', 'coach-hof', 'coach-signing', 'coach-farewell', 'coach-rafters', 'coach-commit'] };
 })();
