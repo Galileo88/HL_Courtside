@@ -14,11 +14,11 @@ test('a finished college season keeps its beat on the pro calendar with save-bac
  assert.equal(N.offseason(pro,save.seasonLeagues).length,0);
  end(10);const cal=N.calendar(college,save.seasonLeagues);assert.equal(cal.over,true);assert.equal(cal.day,33);assert.equal(cal.own,11);
  const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story);
- assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-watch','offseason-returning','offseason-early-top-ten']);
- assert.ok(rows.every(s=>s.day===33&&s.seasonSnapshot.board.rows.length>=5));
- assert.match(rows[2].paragraphs.join(' '),/voters get their say when the new season opens/);
- // Nobody is both an early-entry prospect and a returning star.
- const board=new Set(rows[0].seasonSnapshot.roundup.items.map(x=>x.name));assert.ok(rows[1].seasonSnapshot.roundup.items.every(x=>!board.has(x.name)));
+ // Before the offseason nobody has declared, so only the board and the seniors run.
+ assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-watch','offseason-seniors']);
+ assert.ok(rows.every(s=>s.day===33&&s.seasonSnapshot.board.rows.length>=3));
+ assert.ok(rows[1].seasonSnapshot.roundup.items.every(x=>x.year==='Sr.'));
+ assert.doesNotMatch(rows.flatMap(s=>s.paragraphs).join(' '),/projected|counted as gone|returning next season/);
  assert.ok(N.candidates(college,save.seasonLeagues).every(x=>x.story.day>=11&&x.story.day<=33));
  college.season.news.push({league:1,date:20,phase:college.season.phase,type:17,tid:college.teams[0].id,pid:college.teams[0].roster[0].id,gid:0,data:{}},{league:1,date:10,phase:college.season.phase,type:17,tid:college.teams[0].id,pid:college.teams[0].roster[1].id,gid:0,data:{}});
  const dated=N.candidates(college,save.seasonLeagues).filter(x=>x.story.type==='Retirement').map(x=>x.story.day).sort((a,b)=>a-b);assert.deepEqual(dated,[11,21]);
@@ -26,4 +26,19 @@ test('a finished college season keeps its beat on the pro calendar with save-bac
  end(28);assert.deepEqual(N.offseason(college,save.seasonLeagues).map(x=>x.story.eventKey),['offseason-draft-watch']);
  // No pro league, or a college season still in progress: nothing new.
  assert.equal(N.offseason(college,[college]).length,0);
+});
+test('the college offseason reports the real draft class, who is back and the official preseason poll',()=>{
+ const save=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'..','sample_save'),'utf8')),[pro,college]=save.seasonLeagues;
+ const last=college.season.currentYear,next=last+1;college.season.currentYear=next;college.season.schedule=[];
+ const players=college.teams.flatMap(t=>t.roster);
+ for(const p of players)p.yrs=Math.max(1,p.yrs|0);
+ // Five players leave for the draft: off the rosters and into the pro draft class.
+ const gone=college.teams.slice(0,5).map(t=>t.roster.shift());pro.draftClass=gone;
+ college.teams.forEach((t,i)=>{t.season=[...(t.season||[]),{yr:next,poll:i+1,seed:0,seasonStats:{GP:0,W:0,L:0}}];});
+ const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story),key=k=>rows.find(s=>s.eventKey===k);
+ assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-class','offseason-returning','offseason-preseason-poll']);
+ assert.match(key('offseason-draft-class').headline,new RegExp(`five college players into the ${next} draft`));
+ const leaving=new Set(gone.map(p=>`${p.fn} ${p.ln}`));assert.ok(key('offseason-returning').seasonSnapshot.roundup.items.every(x=>!leaving.has(x.name)));
+ const poll=key('offseason-preseason-poll');assert.match(poll.paragraphs[0],new RegExp(`${next} .* preseason poll is out`));assert.equal(poll.seasonSnapshot.board.rows[0][0],college.teams[0].city+' '+college.teams[0].name);
+ assert.ok(rows.every(s=>s.day===1));
 });
