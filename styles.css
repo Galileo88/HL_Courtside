@@ -721,13 +721,15 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-stat-grid {
   display:grid;
   grid-template-columns:repeat(6,minmax(0,1fr));
-  gap:10px;
+  gap:1px;
+  border:1px solid #23466b;
+  border-top:2px solid #ee3546;
+  background:#17324f;
 }
 .tv-stat-card {
   min-width:0;
-  padding:15px 12px 13px;
-  border:1px solid #315579;
-  background:#091b30;
+  padding:16px 10px 14px;
+  background:#081829;
   text-align:center;
 }
 .tv-stat-card strong {
@@ -785,49 +787,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
   letter-spacing:.06em;
   text-transform:uppercase;
 }
-.tv-fact-grid {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
-}
-.tv-fact-card {
-  min-width:0;
-  padding:16px;
-  border:1px solid #315579;
-  background:#091b30;
-}
-.tv-fact-card > strong {
-  display:block;
-  margin-bottom:12px;
-  color:#fff;
-  font-size:16px;
-  line-height:1.25;
-}
-.tv-fact-values {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(64px,1fr));
-  gap:14px 16px;
-}
-.tv-fact-values span {
-  display:grid;
-  align-content:start;
-  gap:4px;
-  min-width:0;
-}
-.tv-fact-values small {
-  color:#8fb4d3;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.07em;
-  text-transform:uppercase;
-}
-.tv-fact-values b {
-  color:#f0f7ff;
-  font-size:18px;
-  line-height:1.2;
-  overflow-wrap:anywhere;
-  font-variant-numeric:tabular-nums;
-}
 .tv-story-details .box-result {
   margin-bottom:10px;
   color:#79fff4;
@@ -862,8 +821,8 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-postgame-player { min-width:0; padding:16px; background:#091b30; border-left:3px solid #ee3546; }
 .tv-postgame-label { display:block; color:#8fb4d3; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; overflow-wrap:anywhere; }
 .tv-story-details .tv-postgame-player h3 { margin:8px 0 14px; font-size:20px; overflow-wrap:anywhere; }
-.tv-postgame-player .tv-stat-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
-.tv-postgame-player .tv-stat-card { border:0; padding:8px 4px; background:#102b47; }
+.tv-postgame-player .tv-stat-grid { grid-template-columns:repeat(5,minmax(0,1fr)); border-top-width:1px; border-color:#23466b; }
+.tv-postgame-player .tv-stat-card { padding:9px 4px; background:#102b47; }
 .tv-postgame-shooting { margin:12px 0 0; color:#b9d9f4; font-size:12px; font-variant-numeric:tabular-nums; }
 @media(max-width:600px) {
   .tv-intro-tagline { max-width:calc(100% - 40px); }
@@ -894,7 +853,6 @@ a[aria-disabled="true"]:hover { background:inherit; }
 }
 @media(max-width:760px) {
   .tv-stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .tv-fact-grid { grid-template-columns:1fr; }
 }
 @media(max-width:600px) {
   .tv-panel { padding:14px; }
@@ -905,7 +863,7 @@ a[aria-disabled="true"]:hover { background:inherit; }
   }
   .tv-season-graphic,
   .tv-story-details .box-score { padding:14px 16px 18px; }
-  .tv-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .tv-stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .tv-stat-card { padding:13px 9px 11px; }
   .tv-stat-card strong { font-size:24px; }
   .tv-matchup-grid { grid-template-columns:1fr; gap:8px; }
@@ -998,4 +956,39 @@ a[aria-disabled="true"]:hover { background:inherit; }
   .article-body .season-summary-table[aria-label="Top three teams"] th:nth-child(2) {
     width:18%;
   }
+}
+
+/* Season stat graphics: a broadcast board, not a stack of boxes. */
+.tv-board { margin:0; border:1px solid #23466b; background:linear-gradient(180deg,#0b2038,#081829); }
+.tv-board-head { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; padding:12px 16px 11px; border-bottom:2px solid #ee3546; }
+.tv-board-kicker { color:#79fff4; font-size:10px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+.tv-board-title { color:#fff; font-size:15px; font-weight:800; }
+.tv-board-scroll { overflow-x:auto; }
+.tv-board-table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.tv-board-table thead th { padding:10px 14px 8px; color:#8fb4d3; font-size:10px; font-weight:900; letter-spacing:.09em; text-transform:uppercase; white-space:nowrap; border-bottom:1px solid #23466b; }
+.tv-board-table :is(th,td) { text-align:right; }
+.tv-board-table :is(th,td).is-text, .tv-board-table th.is-name, .tv-board-table thead th:first-child { text-align:left; }
+.tv-board-table tbody :is(th,td) { padding:13px 14px; border-top:1px solid #142d48; color:#dce9f7; font-size:15px; font-weight:600; white-space:nowrap; }
+.tv-board-table tbody tr:first-child :is(th,td) { border-top:0; }
+.tv-board-table tbody tr:nth-child(even) :is(th,td) { background:#0a1c31; }
+.tv-board-table tbody th.is-name { color:#fff; font-weight:800; white-space:normal; }
+.tv-board-table tbody td.is-text { color:#c9dcf0; white-space:normal; }
+.tv-board-table td.is-lead { color:#79fff4; font-weight:900; }
+.tv-board-table td.is-empty { color:#4f6f8f; }
+.tv-board-table .is-rank { width:1%; padding-right:4px; color:#6f93b5; font-weight:900; text-align:left; }
+.tv-board-table tbody tr:first-child th.is-name { box-shadow:inset 3px 0 #ee3546; }
+.tv-name-short { display:none; white-space:nowrap; }
+.tv-callout { display:grid; gap:6px; padding:20px 22px; border:1px solid #23466b; border-left:4px solid #ee3546; background:linear-gradient(180deg,#0b2038,#081829); }
+.tv-callout-label { color:#79fff4; font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.tv-callout-value { color:#fff; font-size:clamp(44px,9vw,68px); font-weight:900; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.tv-callout-context { color:#abc8e6; font-size:14px; font-weight:700; }
+@media(max-width:600px) {
+  .tv-board-head { padding:11px 12px 10px; }
+  .tv-season-graphic { padding-left:10px; padding-right:10px; }
+  .tv-board-table thead th { padding:9px 4px 7px; font-size:9px; letter-spacing:.04em; }
+  .tv-board-table tbody :is(th,td) { padding:11px 4px; font-size:13.5px; }
+  .tv-board-table :is(th,td):first-child { padding-left:10px; }
+  .tv-board-table :is(th,td):last-child { padding-right:10px; }
+  .tv-board-table .tv-name-full:has(+ .tv-name-short) { display:none; }
+  .tv-name-short { display:inline; }
 }

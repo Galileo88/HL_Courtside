@@ -553,24 +553,68 @@ branch.append(summary);
       }
       shell.append(grid);return shell;
     }
-    const grid=document.createElement('div');grid.className='tv-fact-grid';
-    for(const row of rows.slice(0,6)){
-      const card=document.createElement('div');card.className='tv-fact-card';
-      const title=document.createElement('strong');title.textContent=row[0]??story.headline;card.append(title);
-      const details=document.createElement('div');details.className='tv-fact-values';
-      for(let i=1;i<Math.min(headers.length,row.length);i++){
-        if(row[i]==null||row[i]==='—')continue;
-        const item=document.createElement('span');
-        const label=document.createElement('small');label.textContent=headers[i];
-        const value=document.createElement('b');value.textContent=row[i];
-        item.append(label,value);details.append(item);
-      }
-      // Spread the stats across the card in even columns: one row up to four,
-      // then balanced rows (five or six become two rows of three).
-      const count=details.children.length;details.style.gridTemplateColumns=`repeat(${count<=4?Math.max(1,count):Math.min(4,Math.ceil(count/2))},minmax(0,1fr))`;
-      card.append(details);grid.append(card);
-    }
-    shell.append(grid);return shell;
+    if(!rows.length)return shell;
+    shell.append(rows.length===1&&headers.length<=3?tvCallout(headers,rows[0]):tvBoard(story,headers,rows.slice(0,6)));
+    return shell;
+  }
+  // Broadcast stat graphics: a captioned table with each column's leader lit,
+  // or a single big number for a milestone.
+  const tvNumber=v=>{const t=String(v??'').trim();return /^-?\d[\d,]*(\.\d+)?%?$/.test(t)?Number(t.replace(/[,%]/g,'')):null;};
+  const tvFormat=v=>{const n=tvNumber(v);return n!==null&&Number.isInteger(n)&&Math.abs(n)>=1000&&!/[.%]/.test(String(v))?n.toLocaleString('en-US'):String(v??'');};
+  function tvBoardCaption(story,headers){
+    if(story.type==='Team season review')return ['Regular season','Team leaders'];
+    if(story.type==='Regular-season review')return ['Standings','Best records'];
+    if(story.type==='Season leaders')return ['League leaders','Per game'];
+    return ['By the numbers',headers[0]||''];
+  }
+  function tvBoard(story,headers,rows){
+    const board=document.createElement('figure');board.className='tv-board';
+    const [kicker,title]=tvBoardCaption(story,headers),caption=document.createElement('figcaption');caption.className='tv-board-head';
+    const k=document.createElement('span');k.className='tv-board-kicker';k.textContent=kicker;
+    const t=document.createElement('span');t.className='tv-board-title';t.textContent=title;caption.append(k,t);board.append(caption);
+    const ranked=story.type==='Regular-season review',people=/^player$/i.test(headers[0]);
+    // Drop columns with nothing in them (seeds before the bracket is set).
+    const keep=headers.map((_,i)=>i===0||rows.some(r=>r[i]!=null&&r[i]!==''&&r[i]!=='—'));
+    headers=headers.filter((_,i)=>keep[i]);rows=rows.map(r=>r.filter((_,i)=>keep[i]));
+    const numeric=headers.map((_,i)=>i>0&&rows.every(r=>r[i]==null||r[i]==='—'||tvNumber(r[i])!==null)&&rows.some(r=>tvNumber(r[i])!==null));
+    // Light the best mark in each stat column; games played and seeds aren't contests.
+    const lead=headers.map((h,i)=>{if(!people||!numeric[i]||rows.length<2||/^(GP|GS|MIN)$/i.test(h))return null;const vals=rows.map(r=>tvNumber(r[i])).filter(v=>v!==null);return vals.length?Math.max(...vals):null;});
+    const table=document.createElement('table');table.className='tv-board-table';
+    const head=document.createElement('tr');
+    if(ranked){const th=document.createElement('th');th.className='is-rank';th.textContent='#';th.scope='col';head.append(th);}
+    headers.forEach((h,i)=>{const th=document.createElement('th');th.scope='col';th.textContent=h;th.className=numeric[i]?'is-num':'is-text';head.append(th);});
+    const thead=document.createElement('thead');thead.append(head);
+    const tbody=document.createElement('tbody');
+    rows.forEach((row,r)=>{
+      const tr=document.createElement('tr');
+      if(ranked){const td=document.createElement('td');td.className='is-rank';td.textContent=r+1;tr.append(td);}
+      headers.forEach((_,i)=>{
+        const cell=document.createElement(i===0?'th':'td');const value=row[i];
+        if(i===0){cell.scope='row';cell.className='is-name';
+          // Phones get "B. Rhodes" so the stat columns keep their room.
+          const full=document.createElement('span');full.className='tv-name-full';full.textContent=value??'';cell.append(full);
+          const parts=String(value??'').trim().split(/\s+/);
+          if(people&&parts.length>1){const short=document.createElement('span');short.className='tv-name-short';short.textContent=`${parts[0][0]}.\u00a0${parts.slice(1).join('\u00a0')}`;cell.append(short);}
+        }else{
+          cell.className=numeric[i]?'is-num':'is-text';
+          if(value==null||value==='—'){cell.textContent='—';cell.classList.add('is-empty');}
+          else{cell.textContent=tvFormat(value);if(lead[i]!==null&&tvNumber(value)===lead[i])cell.classList.add('is-lead');}
+        }
+        tr.append(cell);
+      });
+      tbody.append(tr);
+    });
+    table.append(thead,tbody);
+    const scroll=document.createElement('div');scroll.className='tv-board-scroll';scroll.append(table);board.append(scroll);
+    return board;
+  }
+  function tvCallout(headers,row){
+    const box=document.createElement('div');box.className='tv-callout';
+    const label=document.createElement('span');label.className='tv-callout-label';label.textContent=row[0]??headers[0]??'';
+    const value=document.createElement('strong');value.className='tv-callout-value';value.textContent=tvFormat(row[1]);
+    box.append(label,value);
+    if(row[2]!=null&&row[2]!=='—'){const context=document.createElement('span');context.className='tv-callout-context';context.textContent=String(row[2]).replace(/\d{4,}/g,n=>Number(n).toLocaleString('en-US'));box.append(context);}
+    return box;
   }
   function tvStoryPanel(story) {
     const panel=document.createElement('section');panel.className='tv-story-details';
