@@ -15,13 +15,47 @@
   background: var(--paper);
   padding: 12px 0;
 }
+.wire-ticker-track,
+.wire-ticker-group {
+  display: flex;
+  flex-shrink: 0;
+}
 .wire-score {
   flex: 0 0 230px;
   padding: 0 16px;
   border-right: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
 }
-.wire-score:last-child {
+.wire-ticker-group:last-child .wire-score:last-child {
   border: 0;
+}
+a.wire-score:hover .wire-score-team,
+a.wire-score:focus-visible .wire-score-team {
+  color: #79fff4;
+}
+a.wire-score:focus-visible {
+  outline: 2px solid #79fff4;
+  outline-offset: -2px;
+}
+.wire-scores.is-ticking {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+.is-ticking .wire-ticker-track {
+  animation: wire-ticker var(--ticker-duration) linear infinite;
+}
+.is-ticking .wire-score {
+  border-right: 1px solid var(--line);
+}
+.is-ticking:hover .wire-ticker-track,
+.is-ticking:focus-within .wire-ticker-track {
+  animation-play-state: paused;
+}
+@keyframes wire-ticker {
+  to {
+    transform: translateX(-50%);
+  }
 }
 .wire-score .wire-meta {
   font-size: 10px;

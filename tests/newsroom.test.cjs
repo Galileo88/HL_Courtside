@@ -102,6 +102,22 @@ test('score groups label their own season and latest results day, with recap fal
   assert.equal(e.editions[1].scoreDay, 15);
   assert.equal(e.editions[0].games.length, 1);
 });
+test('final scores link to their recap only when the recap exists', () => {
+  const p = league('p', 0);
+  p.gameResults = {
+    1967: {
+      40: {
+        1: { gid: 1, home: { name: 'A', score: 100 }, away: { name: 'B', score: 90 } },
+        2: { gid: 2, home: { name: 'C', score: 80 }, away: { name: 'D', score: 85 } },
+      },
+    },
+  };
+  const e = N.buildEdition({ stories: [story('p:1967:game:1', 'p', 40)], leagues: [p] });
+  assert.deepEqual(
+    e.editions[0].games.map(g => g.storyId),
+    ['p:1967:game:1', null]
+  );
+});
 test('summaries use rendered prose, keep decimals and cap long sentences', () => {
   assert.equal(
     N.summary(story('a', 'p', 1), ['Alex averaged 31.5 points per game. Another sentence.']),

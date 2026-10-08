@@ -66,6 +66,11 @@
           ).values(),
         ];
       }
+      const recapIds = new Set(all.map(s => s.id));
+      games = games.map(g => {
+        const id = `${league.id}:${season}:game:${g.gid}`;
+        return { ...g, storyId: recapIds.has(id) ? id : null };
+      });
       // The save's calendar can run ahead of the last story day.
       const asOf =
         Number(league.asOf?.season) === season && Number(league.asOf?.day) > days[0]
