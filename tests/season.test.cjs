@@ -170,3 +170,9 @@ test('award stories stay focused on the winner and coach quotes discuss the winn
  assert.match(coachLine,/Player\b/);
  assert.match(coachLine,/award|recognition|honor|recognized/i);
 });
+test('team review headlines add something the record does not already say',()=>{
+  const save=JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,'..','sample_save'),'utf8'));
+  const headlines=save.seasonLeagues.flatMap(l=>S.candidates(l,save.seasonLeagues)).filter(x=>/^team-.*-regular$/.test(x.story.eventKey)).map(x=>x.story.headline);
+  assert.ok(headlines.length>0);
+  for(const h of headlines){assert.doesNotMatch(h,/winning season|losing season|(?:above|below|over|under) \.500|a winning record/i,h);assert.match(h,/review: /);}
+});
