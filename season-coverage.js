@@ -642,8 +642,10 @@
         // Some reviews show the coach: celebrating a big year, or alone on the sideline in a bad one.
         // The postseason has the last word: no confetti for a team left out, no gloom after a tournament run.
         const mood=title||(winPct>=.62&&(playoff||!bracketSet))?'good':winPct<=.38&&!run.some(x=>x.won)?'poor':null,coach=C.coachForTeam(r.team),last=results.at(-1);
-        if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene'))
-          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p)});
+        if(mood&&coach&&last?.story.eventKey===`team-${r.team.id}-regular`&&C.choose(last.story.id,[true,false],'coach-scene')){
+          const clincher=title&&lookup.completed.filter(x=>x.game.tRound===rounds.length&&x.game.winner===r.team.id).at(-1)?.game;
+          Object.assign(last.context,{coach,coachScene:mood,record:[record.W,record.L],champion:title,celebrants:leaders.filter(x=>x.p.tid===r.team.id).slice(0,2).map(x=>x.p),venue:clincher&&(league.teams||[]).find(t=>t.id===clincher.homeTeam)||r.team});
+        }
       }
     }
     const allowedRank=t=>{const r=records.find(x=>x.team.id===t?.id)?.year?.seasonStats;return r?.GP>0?1+records.filter(x=>x.year?.seasonStats?.GP>0&&x.year.seasonStats.OPP/x.year.seasonStats.GP<r.OPP/r.GP).length:null;};
@@ -750,7 +752,9 @@
       const titleCoach=C.coachForTeam(winner),titleStory=results.at(-1);
       if(titleCoach&&titleStory?.story.eventKey==='championship'){
         const stars=[...players.values()].map(p=>({p,s:stats(p,league,year,'playoffs',winner.id)})).filter(x=>x.s?.GP>0).sort((a,b)=>b.s.PTS-a.s.PTS).slice(0,2).map(x=>x.p);
-        Object.assign(titleStory.context,{coach:titleCoach,coachScene:'good',record:row?.seasonStats?[row.seasonStats.W,row.seasonStats.L]:null,champion:true,celebrants:stars});
+        // The celebration is on the floor where the title was clinched, the loser's when it was won on the road.
+        const venue=finalGame&&(league.teams||[]).find(t=>t.id===finalGame.homeTeam)||winner;
+        Object.assign(titleStory.context,{coach:titleCoach,coachScene:'good',record:row?.seasonStats?[row.seasonStats.W,row.seasonStats.L]:null,champion:true,celebrants:stars,venue});
       }
     }
     const titleCategories={PTS:[7,'the scoring title'],REB:[8,'the rebounding title'],AST:[9,'the assist title'],STL:[10,'the steals title'],BLK:[11,'the blocks title']};
