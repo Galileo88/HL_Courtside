@@ -39,6 +39,34 @@
     }
     return item.url;
   }
+  // iOS Safari can drop an IndexedDB-backed image while the app sits in the
+  // background; scrolling back to it re-reads a blob URL that no longer
+  // resolves. Rebuild that image once: copy the bytes into memory, or read the
+  // record from the archive again, then point every reference at the copy.
+  const recovering=new WeakSet();
+  async function freshBlob(blob){
+    try{return new Blob([await blob.arrayBuffer()],{type:blob.type||'image/png'});}catch{}
+    for(const story of state.stories.values())if(story.imageBlob===blob){const again=await archive.get('stories',story.id).catch(()=>null);if(again?.imageBlob){story.imageBlob=new Blob([await again.imageBlob.arrayBuffer()],{type:again.imageBlob.type||'image/png'});return story.imageBlob;}}
+    for(const league of state.leagues)for(const [season,studio] of Object.entries(league.studios||{}))for(const key of ['imageBlob','backdropBlob'])if(studio[key]===blob){
+      const again=(await archive.get('leagues',league.id).catch(()=>null))?.studios?.[season]?.[key];if(again){studio[key]=new Blob([await again.arrayBuffer()],{type:again.type||'image/png'});return studio[key];}
+    }
+    return null;
+  }
+  function replaceBlob(old,copy){
+    for(const story of state.stories.values())if(story.imageBlob===old)story.imageBlob=copy;
+    for(const league of state.leagues)for(const studio of Object.values(league.studios||{}))for(const key of ['imageBlob','backdropBlob'])if(studio[key]===old)studio[key]=copy;
+  }
+  document.addEventListener('error',async event=>{
+    const img=event.target;if(!(img instanceof HTMLImageElement)||recovering.has(img))return;
+    const src=img.getAttribute('src')||'';if(!src.startsWith('blob:'))return;
+    const entry=[...imageURLs].find(([,item])=>item.url===src);if(!entry)return;
+    recovering.add(img);
+    const [old]=entry,copy=await freshBlob(old);if(!copy)return;
+    replaceBlob(old,copy);imageURLs.delete(old);
+    const url=imageURL(copy);
+    for(const other of document.images)if(other.getAttribute('src')===src)other.src=url;
+    URL.revokeObjectURL(src);
+  },true);
   function status(message) { el.status.textContent = message; el.status.classList.remove("hidden"); }
   function selectedLeague() { return state.raw?.seasonLeagues[state.leagueIndex]; }
   function pending() {
