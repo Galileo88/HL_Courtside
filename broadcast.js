@@ -7,7 +7,25 @@
   const introSrc='assets/hoopwire-tv-intro.mp3',introLeadMs=8500;
   let turns=[],hosts=[],line=0,running=false,audio=null,introAudio=null,outroAudio=null,timer=null,epoch=0,samples=null,needsIntro=true,completed=false;
   let introElapsed=0,introDuration=introLeadMs,introFrame=null,introAnimations=[],outroActive=false;
-  let paused=false,lineRemaining=null,lineDue=0;
+  let paused=false,lineRemaining=null,lineDue=0,sweepAnimation=null;
+  // The same red wipe that closes the opening sequence carries every cut
+  // between the studio and the title card, so nothing snaps into place.
+  const sweepPanel=document.createElement('div');sweepPanel.className='tv-transition';sweepPanel.hidden=true;sweepPanel.setAttribute('aria-hidden','true');
+  el.tvStage.appendChild(sweepPanel);
+  const stillMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function sweep(phase){
+    sweepAnimation?.cancel();sweepAnimation=null;
+    if(stillMotion()){sweepPanel.hidden=true;return Promise.resolve(true);}
+    const at=x=>({transform:`translateX(${x}%) skewX(-18deg)`});
+    sweepPanel.hidden=false;
+    const animation=sweepAnimation=sweepPanel.animate(phase==='cover'?[at(-130),at(0)]:[at(0),at(130)],
+      {duration:phase==='cover'?420:560,easing:phase==='cover'?'cubic-bezier(.55,0,.85,.35)':'cubic-bezier(.2,.65,.3,1)',fill:'forwards'});
+    return animation.finished.then(()=>{
+      if(phase==='reveal'&&sweepAnimation===animation){sweepPanel.hidden=true;animation.cancel();sweepAnimation=null;}
+      return true;
+    },()=>false);
+  }
+  function clearSweep(){sweepAnimation?.cancel();sweepAnimation=null;sweepPanel.hidden=true;}
   function introVisible(value){el.tvIntro.hidden=!value;el.tvStage.classList.toggle('is-intro',value);}
   function settleLogo(){
     cancelAnimationFrame(introFrame);introFrame=null;
@@ -43,7 +61,7 @@
       introElapsed=media?media.currentTime*1000:resumeAt+performance.now()-started;
       const progress=Math.min(1,introElapsed/introDuration);
       introAnimations.forEach(a=>{a.currentTime=progress*10000;});
-      if(!media&&progress>=1){if(closing)settleLogo();else beginHosts(token);return;}
+      if(!media&&progress>=1){if(closing)finishOutro();else beginHosts(token);return;}
       introFrame=requestAnimationFrame(tick);
     };
     tick();
@@ -98,6 +116,7 @@
     if(audio){audio.onended=audio.onerror=null;audio.pause();if(resetIntro){audio.removeAttribute('src');audio=null;}}
     if(outroAudio){introElapsed=outroAudio.currentTime*1000;outroAudio.onended=outroAudio.onerror=null;outroAudio.pause();if(resetIntro){outroAudio.removeAttribute('src');outroAudio=null;}}
     if(introAudio){introElapsed=introAudio.currentTime*1000;introAudio.onended=introAudio.onerror=null;introAudio.pause();if(resetIntro){introAudio.removeAttribute('src');introAudio=null;}}
+    clearSweep();
     if(resetIntro)clearIntro();
     talking(false);updateStagePlay();
   }
@@ -105,7 +124,7 @@
     if(token!==epoch||!running||!needsIntro)return;
     clearTimeout(timer);timer=null;
     if(introAudio){introAudio.onended=introAudio.onerror=null;introAudio.pause();introAudio=null;}
-    clearIntro();
+    sweep('reveal');clearIntro();
     needsIntro=false;
     show();playLine();
   }
@@ -130,13 +149,19 @@
       cancelAnimationFrame(introFrame);introTick(token);
     }
   }
+  function outroCard(){
+    introVisible(true);el.tvIntro.classList.add('is-outro');
+    el.tvIntro.querySelector('.tv-intro-eyebrow').textContent='THANKS FOR WATCHING';
+    el.tvIntro.querySelector('.tv-intro-tagline').textContent='SEE YOU NEXT TIME ON THE DAILY DESK';
+  }
+  function finishOutro(){sweep('reveal');settleLogo();}
   async function playOutro() {
     const token=epoch,media=outroAudio||new Audio(introSrc);
     outroActive=true;updateStagePlay();
-    animateIntro();
+    outroCard();animateIntro();
     outroAudio=media;media.volume=.55;media.muted=!el.tvVoice.checked;
     const release=()=>{media.onended=media.onerror=null;media.pause();outroAudio=null;};
-    media.onended=()=>{if(token!==epoch||outroAudio!==media)return;release();settleLogo();};
+    media.onended=()=>{if(token!==epoch||outroAudio!==media)return;release();finishOutro();};
     const fallback=()=>{
       if(token!==epoch||outroAudio!==media)return;
       release();cancelAnimationFrame(introFrame);introTick(token,null,true);
@@ -176,12 +201,15 @@
     lineRemaining=null;lineDue=0;
     talking(false);
     if(line>=turns.length-1){
-      completed=true;stop();el.tvBubbles.replaceChildren();el.tvBubbles.hidden=true;
-      introVisible(true);el.tvIntro.classList.add('is-outro');
-      el.tvIntro.querySelector('.tv-intro-eyebrow').textContent='THANKS FOR WATCHING';
-      el.tvIntro.querySelector('.tv-intro-tagline').textContent='SEE YOU NEXT TIME ON THE DAILY DESK';
+      completed=true;stop();outroActive=true;updateStagePlay();
       el.tvDiscussionStatus.textContent='Episode complete. Replay or choose the next story.';
-      playOutro();
+      // Wipe the desk away, then pull the wipe off the closing card.
+      const closing=epoch;
+      sweep('cover').then(covered=>{
+        if(!covered||closing!==epoch||!completed)return;
+        el.tvBubbles.replaceChildren();el.tvBubbles.hidden=true;
+        outroCard();sweep('reveal');playOutro();
+      });
       return;
     }
     timer=setTimeout(()=>{if(token!==epoch||!running)return;line++;show();playLine();},turns[line+1]?.continuation?0:450);

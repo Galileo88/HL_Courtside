@@ -581,6 +581,8 @@ a[aria-disabled="true"]:hover { background:inherit; }
 .tv-intro-onair i { width:6px; height:6px; background:#ed2638; border-radius:50%; }
 .tv-intro-progress { position:absolute; bottom:0; left:0; width:100%; height:3px; background:#dd1f30; transform-origin:left; }
 .tv-intro-wipe { position:absolute; inset:-30%; background:linear-gradient(90deg,#a60918 0 68%,#e6e8ed 68% 70%,#121820 70%); transform:translateX(-130%) skewX(-18deg); }
+.tv-transition { position:absolute; inset:-30%; z-index:18; pointer-events:none; background:linear-gradient(90deg,#a60918 0 68%,#e6e8ed 68% 70%,#121820 70%); transform:translateX(0%) skewX(-18deg); }
+.tv-transition[hidden] { display:none; }
 .tv-stage-play {
   position:absolute;
   inset:0;
