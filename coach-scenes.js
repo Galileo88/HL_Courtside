@@ -7,7 +7,7 @@
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', 'cameraman-body', 'cameraman-head', '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -199,6 +199,18 @@
   }
   function depth(ctx, list) { list.filter(a => a.data).sort((a, b) => a.foot - b.foot).forEach(a => { shadow(ctx, a.x, a.foot); person(ctx, a.data, a.team, a.pose, a.frame, a.x, a.foot, a.facing, a.uniform || 0); }); }
 
+  // A TV camera operator from the game's media sprites: standing legs, and a
+  // head with the camera on the shoulder (cell 2 aims left, cell 6 right),
+  // the head half a unit above the body as with the game's spectators. The
+  // crew wear dark shirts and pants.
+  function cameraman(ctx, rand, x, foot, aim) {
+    const pick = list => list[Math.floor(rand() * list.length)], skin = pick(SKIN), hair = pick(HAIR), shirt = pick(['#22222a', '#2e3a59', '#3a3a44']), pants = pick(['#22222a', '#2e3a59']);
+    const head = { '220,129,88': shade(skin, 1), '215,85,66': shade(skin, .82), '50,175,0': shade(skin, 1), '45,60,90': shade(hair, 1), '20,125,255': shade(shirt, 1), '10,175,255': shade(shirt, 1.15), '5,200,255': shade(shirt, 1.3) };
+    const body = { '25,75,255': shade(pants, 1), '35,25,255': shade(pants, .78), '20,125,255': shade(pants, 1.15), '195,36,58': shade('#222228', 1), '205,172,190': shade('#222228', .8) };
+    shadow(ctx, x, foot, 9);
+    ctx.drawImage(swap(art['cameraman-body'], 0, body), x - 16, foot - 32);
+    ctx.drawImage(swap(art['cameraman-head'], aim === 'right' ? 6 : 2, head), x - 16, foot - 40);
+  }
   // Blue stage curtains in pixel art: a fold every 16 pixels, lit across each
   // fold, darkening toward the floor, under a scalloped valance.
   function curtains(ctx, bottom) {
@@ -266,6 +278,8 @@
       depth(ctx, [{ data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
       ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
       depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
+      // TV cameras at either side of the stage, aimed at the podium.
+      cameraman(ctx, rand, 80, base - 2, 'right'); cameraman(ctx, rand, 288, base - 2, 'left');
       audience(ctx, rand, null, [[180, 4], [202, 14]], { cheer: 0, chairs: true, spacing: 20 });
       return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: leagueMark?.data || scene.pressLeagueLogoData || null } };
     },
@@ -383,6 +397,8 @@
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
       // The commissioner beside the podium, turned toward the pick.
       shadow(ctx, 140, base - 5, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 6, 'right');
+      // TV cameras at either end of the stage, aimed at the podium.
+      cameraman(ctx, rand, 30, base - 2, 'right'); cameraman(ctx, rand, 354, base - 2, 'left');
       // Fans on the floor in front of the stage, backs to the camera.
       audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]]);
       return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
@@ -428,7 +444,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 20, seed: id, kind: `coach-${context.coachScene}`,
+      version: 21, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
