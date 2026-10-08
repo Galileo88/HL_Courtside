@@ -36,7 +36,7 @@ Wire style. The lede is one sentence: result plus who drove it. Then context, th
 
 These are original personalities. Don't borrow real broadcasters' catchphrases. Hosts address each other by first name, react in a few words ("Come on.", "Is it wrong, though?"), and never answer themselves: consecutive lines from one host are merged. They debate when the numbers support two readings (a volume night on poor shooting, a one-possession win, an upset, a 3-1 series). When the evidence points one way, they agree and add something.
 
-Angle priority for games: consequence (title, elimination), series state, upset, a night exceptional *for that player*, a streak of five or more, a huge margin, a shorter streak, a blowout, a close game, a routine win. A player is introduced by full name once, then by last name. Routine segments run 6–9 turns; major ones up to 14; thin ones 2–6.
+Angle priority for games: consequence (title, elimination), series state, upset, a night exceptional *for that player*, a streak of five or more, a huge margin, a shorter streak, a blowout, a close game, a routine win. Team reviews on the desk lead with how the season ended, not the record: a champion is celebrated whatever its regular season looked like (a middling record becomes the underdog story), a runner-up stings but rates as a great season, an underdog's run is praised, a favorite that went out before the last four fell short, and a winning team left out of the field is the frustration. A player is introduced by full name once, then by last name. Routine segments run 6–9 turns; major ones up to 14; thin ones 2–6.
 
 ## Players worth a story
 

@@ -523,6 +523,77 @@
     return frame(story,'championship',[`${T.display}: champions. That's the headline. ${J}?`,`It's over, and ${T.nick} ${C.verb(T,'are')} champions. ${J}, take it away.`,`The title belongs to ${T.nick}. ${J}?`,`Confetti's falling for ${T.nick}. ${J}, your reaction.`],
       [`Enjoy this one, ${T.nickname} fans. The next challenge can wait.`,"There will be offseason questions. Tonight belongs to the champions.","They earned the celebration. Congratulations.","A title gives this season its ending. What a ride."],body);
   }
+  // A team review leads with how the season ended. A title outranks any
+  // record, so a middling regular season becomes the backstory, not the grade.
+  function teamReviewScript(story,n=first()){
+    const team=teamRecords(story)[0];if(!team)return seasonScript(story,n);
+    const snap=story.seasonSnapshot?.postseason,result=snap?.result||story.seasonOutcome,J=n[1],A=n[2],N=n[3];
+    const T=C.teamRef({name:team.name}),rec=`${team.r.W}-${team.r.L}`,pct=team.r.W/Math.max(1,team.r.W+team.r.L);
+    const ppg=rate(team.r,'PTS'),opp=rate(team.r,'OPP'),gap=ppg!==null&&opp!==null?(team.r.PTS-team.r.OPP)/team.r.GP:null;
+    const fin=snap?.final,college=snap?.college??story.seasonSnapshot?.leagueType===1,field=college?'tournament':'playoffs';
+    const oppNick=fin?.opponent?C.teamRef({name:fin.opponent}).nick:null,margin=gap===null?'':Math.abs(gap).toFixed(1);
+    const seriesText=f=>!f?'':f.firstTo>1?` ${Math.max(f.wins,f.losses)}-${Math.min(f.wins,f.losses)}`:'';
+    const table=story.seasonSnapshot?.tables?.find(t=>t.label==='Regular-season player statistics');
+    const scorer=[...(table?.rows||[])].filter(r=>Number.isFinite(Number(r[2]))&&r[2]!==''&&r[2]!==null).sort((a,b)=>Number(b[2])-Number(a[2]))[0];
+    const body=[];
+    if(result==='champion'){
+      body.push(turn(1,pct>=.7?`A-plus. ${rec}, then the trophy. That's a complete season, start to finish.`:
+        pct>.5?pick(story,[`A-plus. Nobody hangs a banner for ${rec}. They hang one for the title, and that's what they've got.`,`A-plus. ${rec} is the footnote. Champions is the headline.`],'review:title'):
+        `A-plus, and I don't want to hear about ${rec}. Nobody gave them a chance. They won it anyway.`));
+      if(gap!==null)body.push(turn(3,gap<0?`And it wasn't supposed to happen. They were outscored by ${margin} a night in the regular season. Teams with that profile don't win titles. This one did.`:
+        pct<.6?`The regular season undersold them. ${ppg} scored, ${opp} allowed, plus ${margin} a night. The margin said they were better than ${rec}.`:
+        `${ppg} scored, ${opp} allowed, plus ${margin} a night. The numbers said champion all year.`));
+      body.push(turn(2,pct<.6?pick(story,["They peaked when it counted. The regular season was the warm-up.","That's a team that figured it out at exactly the right time."],'review:peak'):
+        "And they never let up. Hard to stay that good for that long."));
+      if(fin&&oppNick)body.push(turn(0,fin.firstTo<=1?`And they finished it by beating ${oppNick} in the ${fin.round}.`:fin.losses===0?`And they swept ${oppNick} in the ${fin.round}.`:`And they beat ${oppNick}${seriesText(fin)} in the ${fin.round}.`));
+      if(snap?.roundsWon>=3&&pct<=.55)body.push(turn(3,`${cap(C.num(snap.roundsWon))} rounds won from a ${rec} start. Remember that the next time somebody writes a team off in the regular season.`));
+      if(scorer){body.push(turn(0,`Who led the way?`));body.push(turn(2,`${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high. And now a champion.`));body.push(turn(1,`Put some respect on that name.`));}
+      return frame(story,'review-title',[`${cap(T.nick)} went ${rec} in the regular season and finished as champions. ${J}, grade it.`,`From ${rec} to a title. ${J}, grade ${C.possessive(T.nick)} season.`,`${T.display}: champions. That's the whole review. ${J}?`],
+        ["Enjoy it. They earned every bit of it.","Banner season. Congratulations.","That's how you end a season.","Champions. Nothing else to say."],body);
+    }
+    if(result==='runnerup'){
+      body.push(turn(1,`It stings, but it's a great season. ${rec}, and ${college?'one game':'one series'} from a title.`));
+      if(fin&&oppNick)body.push(turn(3,fin.firstTo>1?`${cap(oppNick)} took the ${fin.round}${seriesText(fin)}. ${fin.wins>0?`${cap(T.nick)} made them earn it.`:"That one got away fast."}`:`${cap(oppNick)} won the title game. One night, and it went the other way.`));
+      body.push(turn(2,pct<.55?`Nobody expected them there off a ${rec} season. That's real progress.`:"Now they know what it takes. Get back and finish it."));
+      if(scorer){body.push(turn(0,`Who carried them?`));body.push(turn(2,`${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high.`));}
+      return frame(story,'review-runnerup',[`${cap(T.nick)} got all the way to the ${fin?.round||'final'}. ${J}, how do you grade it?`,`One step short for ${T.nick}. ${J}?`],
+        ["So close. They'll be back.","A great run that ended one step early.","That one will hurt for a while, and it should."],body);
+    }
+    // A run is the story for an underdog or a team that reached the last four;
+    // a favorite going out earlier fell short, however many rounds it won.
+    const lastFour=fin&&/semifinal|Final Four/i.test(fin.round),favorite=pct>=.6;
+    if(result==='eliminated'&&snap?.roundsWon>0&&(!favorite||lastFour)){
+      body.push(turn(1,pct<.5?`I'll take it. ${rec} and they won ${snap.roundsWon===1?'a round':`${C.num(snap.roundsWon)} rounds`}. Nobody saw that coming.`:`Good season. ${rec}, and a run to the ${fin?.round}.`));
+      if(fin&&oppNick)body.push(turn(3,fin.firstTo>1?`${cap(oppNick)} ended it in the ${fin.round},${seriesText(fin)}.`:`${cap(oppNick)} ended it in the ${fin.round}.`));
+      body.push(turn(2,"They found something in the postseason. That's the part to build on."));
+      if(scorer){body.push(turn(0,`Who carried them?`));body.push(turn(2,`${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high.`));}
+      return frame(story,'review-run',[`${cap(T.nick)} made a run to the ${fin?.round||'later rounds'}. ${J}?`,`${T.display}: ${rec}, then a ${college?'tournament':'playoff'} run. ${J}, grade it.`],
+        ["A run worth remembering.","They'll take a lot from that one.","Good season. Not the ending they wanted."],body);
+    }
+    if(result==='eliminated'&&favorite&&snap?.roundsWon>0){
+      body.push(turn(1,`${rec} and out in the ${fin?.round}. For a team this good, that's short.`));
+      if(fin&&oppNick)body.push(turn(3,fin.firstTo>1?`${cap(oppNick)} took the series${seriesText(fin)}.${fin.wins===0?' Swept.':''}`:`${cap(oppNick)} sent them home in the ${fin.round}.`));
+      body.push(turn(2,"They won a round, sure. But a regular season like that sets the bar higher."));
+      if(scorer){body.push(turn(0,`Who carried them?`));body.push(turn(2,`${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high.`));}
+      return frame(story,'review-short',[`${cap(T.nick)}: ${rec}, then out in the ${fin?.round||'playoffs'}. ${J}?`,`A ${rec} season that ended early for ${T.nick}. ${J}, grade it.`],
+        ["They'll want more next year.","The bar's higher now.","Good regular season. Short postseason."],body);
+    }
+    if(result==='eliminated'){
+      body.push(turn(1,pct>.55?`Disappointing. ${rec} and out in the first round. That's not the finish a winning team wants.`:pct<.5?`${rec} and they still made the ${field}. Getting there was the win.`:`${rec}, one round, done. About what the record said.`));
+      if(fin&&oppNick)body.push(turn(3,fin.firstTo>1?`${cap(oppNick)} took the series${seriesText(fin)}.${fin.wins===0?' Not much of a fight.':''}`:`${cap(oppNick)} sent them home in the ${fin.round}.`));
+      body.push(turn(2,pct>.55?"The regular season was good. The postseason is what people remember.":"Get back there and win a round next time."));
+      return frame(story,'review-out',[`${cap(T.nick)}: ${rec} and a first-round exit. ${J}?`,`An early ${field} exit for ${T.nick}. ${J}, grade it.`],
+        ["They'll want more next year.","The offseason starts now.","Short postseason. Long summer."],body);
+    }
+    if(result==='alive')return seasonScript(story,n);
+    if(result==='missed'&&team.r.W>team.r.L){
+      body.push(turn(1,`${rec} and no ${college?'tournament':'postseason'}. That's the frustrating part. You win more than you lose and still go home.`));
+      if(gap!==null)body.push(turn(3,`${ppg} scored, ${opp} allowed. ${gap>0?"They were better than the result.":"The margin explains it."}`));
+      body.push(turn(2,"A couple of wins either way and this is a different conversation."));
+      return frame(story,'review-missed',[`${cap(T.nick)} finished ${rec} and missed the ${field}. ${J}?`,`Left out at ${rec}. ${J}, grade it.`],["So close to the field.","They'll want those losses back.","That one's going to bug them all summer."],body);
+    }
+    return seasonScript(story,n);
+  }
   function seasonScript(story,n=first()){
     const teams=teamRecords(story).sort((a,b)=>b.r.W-a.r.W||a.r.L-b.r.L);if(!teams.length)return genericScript(story,n);
     const team=teams[0],T=C.teamRef({name:team.name}),ppg=rate(team.r,'PTS'),opp=rate(team.r,'OPP'),gap=ppg!==null&&opp!==null?(team.r.PTS-team.r.OPP)/team.r.GP:null,J=n[1];
@@ -642,7 +713,8 @@
       title?pick(story,["That's a championship reaction I can understand. Let them enjoy it.","You can feel it. That's a group that went through something together."],'quote:title'):
       /consisten/i.test(words)?"Consistency. That's the challenge: doing it again next game, and the game after that.":/champion|title|finish the job/i.test(words)?"That's a championship reaction I can understand. Let them enjoy it.":
       /responsib|not good enough|higher|better|identity/i.test(words)?"Fair. Now show me. Saying it is the easy part.":/proud|earned/i.test(words)?"And they should be proud. That's a group that earned it.":/records|believ|chance|nothing to lose/i.test(words)?"That's a locker room that believes. I love that.":
-      /film|clean up|work/i.test(words)?"That's the right mentality. Enjoy the win, fix the mistakes.":null;
+      /disappoint|isn't the ending|wasn't the ending|bitter|hurts?\b/i.test(words)?pick(story,["That's honest. You can hear how much that one hurts.","You can hear it in that. They expected more."],'quote:hurt'):
+      /film|clean up|get back to work/i.test(words)?"That's the right mentality. Enjoy the win, fix the mistakes.":null;
     return response?[turn(0,`Here's what ${who} had to say: “${words}”`),turn(pick(story,[1,2],'quote:reactor'),response)]:[];
   }
   function baseScript(story,context,n){
@@ -653,7 +725,8 @@
     if(story.type==='Playoff preview'||story.eventKey?.startsWith('playoff-round-'))return playoffScript(story,n);
     if(story.type==='Championship review'||story.eventKey==='championship')return championshipScript(story,n);
     if(story.gameSummary)return gameScript(story,context,n);
-    if(['Team season review','Regular-season review'].includes(story.type))return seasonScript(story,n);
+    if(story.type==='Team season review')return teamReviewScript(story,n);
+    if(story.type==='Regular-season review')return seasonScript(story,n);
     return genericScript(story,n);
   }
   function script(story,context,names){
