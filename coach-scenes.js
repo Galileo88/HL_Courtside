@@ -1,8 +1,4 @@
-/* Coach story scenes, built from the game's own art at the game's scale:
-   the game's arena (stairs, crowd, court), the bench chairs and sitting and
-   celebrating sprites, the podium, the locker room, and the curtained stage
-   the draft and the press conference share. The camera frames a 384 x 216 piece of the world at 2x, the same framing as
-   the wide action shots, so people are their native 32 x 42. */
+/* Coach, award, draft and offseason scenes, framed like the action shots (384 x 216 of the world at 2x). */
 (() => {
   'use strict';
   const art = {};
@@ -538,7 +534,7 @@
   // lit with highlights from the upper left; hair and beard sit a step darker
   // in the shading; brows, irises and the mouth line fall into the shadow;
   // the outline is a deep bronze.
-  // The Hall of Fame mark, when the app ships one; the scene letters its own title otherwise.
+  // The Hall of Fame mark; the scene letters its own title if it fails to load.
   let hofLogo;
   const loadHofLogo = () =>
     (hofLogo ||= new Promise(resolve => {

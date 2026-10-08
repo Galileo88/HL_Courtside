@@ -1,4 +1,4 @@
-/* Playback-time evidence. Dates and record chains matter more than archive size. */
+/* Evidence the TV desk may cite at playback: results, streaks, series and stakes. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.HoopWireBroadcastContext = factory();

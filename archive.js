@@ -54,7 +54,6 @@
         tx.objectStore('meta').put({ id: 'legacy-migrated', date: new Date().toISOString() });
       });
     }
-    // Clears every league, pro and college alike.
     async resetAll() {
       await new Promise((resolve, reject) => {
         const tx = this.db.transaction(STORES, 'readwrite');

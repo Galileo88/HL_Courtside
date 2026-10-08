@@ -1,4 +1,4 @@
-/* Static player renderer adapted from HoopLeagueStudio's game-asset preview. */
+/* Draws Hoop Land player sprites with a player's appearance and team uniform. */
 (() => {
   const root = './player-assets/';
   const files = [
@@ -207,7 +207,7 @@
       let next;
       const skinScale = skinShades[`${r},${g},${b}`];
       if (nativeSuit && suit) {
-        // Native suit atlas (texture 787): dedicated clothing masks, no overlays.
+        // Native suit atlas: dedicated clothing masks, no overlays.
         const suitColor = (key, fallback) => rgb(color(suit[key], team, fallback));
         if (r === 195 && g === 36 && b === 58) next = suitColor('shoeC', '#000000');
         else if (skinScale !== undefined) next = shade(skin, skinScale);
@@ -232,9 +232,8 @@
           width = row.max - row.min + 1;
         const leftEdge = x === row.min,
           rightEdge = x === row.max;
-        // The idle sprite encodes the collar as exactly three light-blue pixels
-        // (5,200,255), matching jersey/collar.png. Using that exact mask avoids
-        // recoloring nearby jersey pixels and accidentally drawing multiple collars.
+        // The idle sprite encodes the collar as exactly three (5,200,255) pixels;
+        // matching only those avoids recoloring nearby jersey pixels.
         const collar = r === 5 && g === 200;
         // Hoop Land's front-facing uniform is asymmetric: the viewer-left torso and
         // shorts edge stay in the base uniform color. The upper-left shoulder and
@@ -322,8 +321,7 @@
       paint(sceneCtx, images['coach-tie'], 0, 0, color(suit.tieC, team, '#66718a'));
       sceneCtx.restore();
     }
-    // The taller staging area adds eight logical pixels above the body. The
-    // player stays at the original 2x preview scale instead of being shrunk.
+    // The staging area adds eight logical pixels above the body.
     // The injured player sits lower in the game's sprite, the head bobbing a pixel
     // between frames; a running stride lifts the head a pixel on alternate frames.
     sceneCtx.save();

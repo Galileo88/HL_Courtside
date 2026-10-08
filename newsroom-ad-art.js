@@ -78,7 +78,6 @@
         'idle',
         'right'
       );
-      // A deliberate shoulders-up hero portrait contrasts with the full court shot.
       ctx.drawImage(lead, 4, 4, 24, 27, 156, 15, 144, 162);
       const ball = document.createElement('canvas');
       ball.width = ball.height = 8;
@@ -264,7 +263,7 @@
       night.addColorStop(1, '#071019');
       ctx.fillStyle = night;
       ctx.fillRect(0, 0, 300, 285);
-      // Arena lights and the open road frame the truck, rather than a showroom.
+      // Arena lights and the open road frame the truck.
       for (const [x, y] of [
         [29, 100],
         [267, 87],

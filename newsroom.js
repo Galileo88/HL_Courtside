@@ -1,4 +1,4 @@
-/* Archive-backed editorial editions; selection never depends on upload time. */
+/* Picks the stories for each newsroom edition from the archive. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.HoopWireNewsroom = factory();

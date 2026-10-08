@@ -1,4 +1,4 @@
-/* Exclusive HoopWire hosts, with the loaded league's advertisement artwork. */
+/* The HoopWire TV studio: four hosts at the announcer desk with the league's ad artwork. */
 (() => {
   'use strict';
   const cache = new Map();

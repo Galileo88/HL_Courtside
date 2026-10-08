@@ -1,4 +1,4 @@
-/* Court layers and sprite positions adapted from HoopLeagueStudio's inspected court preview. */
+/* Renders a team's court from the game's floor layers, custom overlay and hoop sprites. */
 (() => {
   'use strict';
   const cache = new Map();

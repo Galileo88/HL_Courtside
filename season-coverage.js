@@ -1,4 +1,4 @@
-/* Milestone reporting uses saved year records, awards and brackets, not phase numbers. */
+/* Season coverage: awards, playoffs, leaders and team reviews. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./core.js'));
   else root.HoopWireSeason = factory(root.HoopWireCore);

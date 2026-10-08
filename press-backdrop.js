@@ -1,4 +1,4 @@
-/* Team marks follow the white placement guides in the press-wall tile. */
+/* Press-conference wall: league and team logos placed on the wall tile's guides. */
 (() => {
   'use strict';
   const logos = new Map(),

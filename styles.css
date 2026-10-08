@@ -714,7 +714,7 @@ button:disabled {
   }
 }
 
-/* Studio-inspired entry: dark grid, blue panels and cyan action frames. */
+/* Save-entry screen: dark grid, blue panels and cyan action frames. */
 .brand {
   color: inherit;
   text-decoration: none;
@@ -1051,7 +1051,7 @@ dialog p {
   }
 }
 
-/* Carry the Studio palette through the newsroom and archive. */
+/* Newsroom and archive palette. */
 :root {
   --ink: #f0f7ff;
   --muted: #abc8e6;
@@ -1610,7 +1610,7 @@ a[aria-disabled='true']:hover {
   }
 }
 
-/* Broadcast lower-third / story graphics. The TV view should read like a show, not an admin report. */
+/* Broadcast lower-third and story graphics. */
 .tv-segment {
   margin-top: 18px;
   padding: 0;
@@ -1782,7 +1782,7 @@ a[aria-disabled='true']:hover {
   }
 }
 
-/* Season stat graphics: a broadcast board, not a stack of boxes. */
+/* Season stat boards. */
 .tv-board {
   margin: 0;
   border: 1px solid #23466b;

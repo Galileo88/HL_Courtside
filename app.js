@@ -1,3 +1,4 @@
+/* App controller: save loading, archive, newsroom, story pages and HoopWire TV. */
 (() => {
   'use strict';
   const C = window.HoopWireCore;
@@ -560,7 +561,6 @@
     const storiesForLabels = [...state.stories.values()];
     for (const story of stories) {
       const node = el.articleTemplate.content.cloneNode(true);
-      // Same kicker as the TV desk; same league label as the newsroom cards.
       node.querySelector('.article-meta').textContent = tvStoryKicker(story);
       const league = state.leagues.find(l => l.id === story.fingerprint),
         info = league ? window.HoopWireNewsroom.leagueInfo(league, storiesForLabels) : null;
@@ -583,7 +583,6 @@
         p.textContent = text;
         node.querySelector('.article-body').appendChild(p);
       }
-      // Articles carry the same stat boards as the TV desk.
       const body = node.querySelector('.article-body');
       if (story.kind === 'season' && story.type !== 'Regular-season review') {
         const graphic = tvSeasonGraphic(story, 10);
@@ -1727,7 +1726,6 @@
     el.archiveTeam.value = '';
     view();
   });
-  // The site menu holds what used to interrupt the page, like loading a new save.
   function siteMenu(open) {
     el.siteMenu.hidden = !open;
     el.siteMenuButton.setAttribute('aria-expanded', String(open));

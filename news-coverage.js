@@ -1,4 +1,4 @@
-/* NewsData event values verified from the game's enum metadata, not sample outcomes. */
+/* Transaction, award and offseason stories from the save's news events. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
     module.exports = factory(require('./core'), require('./records-coverage'), require('./season-coverage'));

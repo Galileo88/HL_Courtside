@@ -1,6 +1,4 @@
-/* Player performance stories. A night earns coverage when it would make a
-   sports desk look twice: a breakout line that is big for this league, or a
-   key player going quiet. Role players bouncing around small averages don't. */
+/* Player performance stories: breakout lines and key players going quiet. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
     module.exports = factory(require('./core'), require('./season-coverage'));

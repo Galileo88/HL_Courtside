@@ -1,4 +1,3 @@
-/* Editorial front pages share HoopWire's existing colors and imagery. */
 .shell:has(.front-page:not(.hidden)) {
   width: min(1280px, calc(100% - 28px));
   max-width: 1280px;

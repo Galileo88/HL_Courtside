@@ -1,4 +1,4 @@
-/* Shared front-page presentation. Data selection and navigation stay separate. */
+/* Renders the newsroom front page. */
 (() => {
   'use strict';
   function element(tag, className, text) {

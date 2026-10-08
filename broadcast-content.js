@@ -1,6 +1,4 @@
-/* The Daily Desk: a debate show, not a box-score readout. Maya runs the room,
-   Jordan brings the take, Andre sees the whole floor and Nina checks the math.
-   Every opinion rests on a verified number; box scores never prove a play. */
+/* HoopWire TV scripts: four-host desk segments built from each story's verified facts. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
     module.exports = factory(

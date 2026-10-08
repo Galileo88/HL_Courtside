@@ -1,4 +1,4 @@
-/* In-season context and record watches. All statistics originate in the uploaded save. */
+/* In-season context, milestones and record watches. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports)
     module.exports = factory(require('./core'), require('./season-coverage'));
