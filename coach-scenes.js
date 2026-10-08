@@ -152,6 +152,22 @@
     for (const p of shots) ctx.drawImage(art['camera-flash'], p.x - 14, p.y - (p.up ? 30 : 20), 28, 28);
     ctx.globalCompositeOperation = 'source-over';
   }
+  // The arena's ad strip: the home team's custom strip when the save names one,
+  // otherwise the game's own. Either way it is eight bands stacked down a
+  // square sheet (the eighth repeats the first), adSize pixels wide.
+  async function adStrip(scene) {
+    const url = scene.adsData || scene.ads?.url;
+    if (url && (String(url).startsWith('data:') || window.HoopWireCourt.validURL(url))) {
+      const image = await window.HoopWireCourt.loadImage(url, true).catch(() => null);
+      if (image) {
+        let data = scene.adsData || null;
+        if (!data) try { const c = document.createElement('canvas'); c.width = image.width; c.height = image.height; c.getContext('2d').drawImage(image, 0, 0); data = c.toDataURL('image/png'); } catch { data = null; }
+        const width = Math.min(Math.max(1, Number(scene.ads?.size) || image.width), image.width);
+        return { image, width, band: width / 8, bands: Math.max(1, Math.min(7, Math.floor(image.height / (width / 8)) - 1)), data, custom: true };
+      }
+    }
+    return { image: art['billboard-ads'], width: 128, band: 16, bands: 7, data: null, custom: false };
+  }
   async function arena(scene, crowd, camera, rand, { fill = 1, cheer = false, bench = [], benchPose = 'bench-idle', announcers = [] } = {}) {
     // The floor, the crowd and the fans belong to the home team of the arena.
     const team = scene.venue || scene.team, floor = await window.HoopWireCourt.render(team, { includeHoops: false });
@@ -167,8 +183,12 @@
     for (const x of [...seatsOf(BENCH.home), ...seatsOf(BENCH.road)]) { const [cx, cy] = px(x, 6.25); cell(ctx, art.chair, 0, cx - 16, cy - 16); }
     for (const x of ANNOUNCERS) { const [cx, cy] = px(x, 6.42); cell(ctx, art.chair, 0, cx - 16, cy - 16); }
     announcers.forEach((a, i) => { if (!a) return; const [x, y] = px(ANNOUNCERS[i], 5.92); person(ctx, a, team, 'sitting', 0, x, y + 1, 'left'); const [hx, hy] = px(ANNOUNCERS[i], 6.67); cell(ctx, art.headset, 0, hx - 16, hy - 16, 32, 2); });
-    const [tx, ty] = [px(0, 5.72)[0] - 64, px(0, 5.72)[1] - 32], band = Math.floor(rand() * 8);
-    ctx.drawImage(art['billboard-ads'], 1, band * 16 + 1, 126, 14, tx + 1, ty + 17, 126, 14);
+    // The table's opening is 126 x 14 of its 128 x 32 pixels; the game's mask
+    // crops the band to that, a sixteenth off each edge of a 16-pixel band.
+    const [tx, ty] = [px(0, 5.72)[0] - 64, px(0, 5.72)[1] - 32], ads = await adStrip(scene), band = Math.floor(rand() * ads.bands), u = ads.width / 128;
+    ctx.imageSmoothingEnabled = ads.custom; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(ads.image, u, band * ads.band + ads.band / 16, 126 * u, ads.band * 14 / 16, tx + 1, ty + 17, 126, 14);
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(art['announce-table'], tx, ty);
     // Seated bench players: feet at the sitting sprite's bottom pivot.
     for (const b of bench) { const [x, y] = px(b.seat, 5.75); person(ctx, b.data, scene.team, benchPose, b.frame || 0, x, y + 1, 'left'); }
@@ -179,7 +199,7 @@
     for (const s of fans) { const [x, y] = px(s.x, s.y); cell(ctx, art.chair, 0, x - 16, y - 16); }
     for (const s of fans) if (s.f) { const [x, y] = px(s.x, s.y); ctx.drawImage(s.f.body, x - 16, y - 16); }
     for (const s of fans) if (s.f) { const [x, y] = px(s.x, s.y + .25); ctx.drawImage(s.f.head, x - 16, y - 16); }
-    return { canvas, ctx, customCourt: floor.customCourt };
+    return { canvas, ctx, customCourt: floor.customCourt, adsData: ads.data };
   }
   function depth(ctx, list) { list.filter(a => a.data).sort((a, b) => a.foot - b.foot).forEach(a => { shadow(ctx, a.x, a.foot); person(ctx, a.data, a.team, a.pose, a.frame, a.x, a.foot, a.facing, a.uniform || 0); }); }
 
@@ -224,12 +244,12 @@
       const bad = scene.record && scene.record[0] / Math.max(1, scene.record[0] + scene.record[1]) < .3;
       const camera = [1060, 166, 384, 216], seats = seatsOf(BENCH.home), players = scene.players || [];
       const bench = [3, 6, 8, 11, 14].map((s, i) => ({ seat: seats[s], data: players[i], frame: i % 4 })).filter(b => b.data);
-      const { canvas, ctx, customCourt } = await arena(scene, bad ? 'crowd-0' : 'crowd-50', camera, rand, { fill: bad ? .12 : .4, bench });
+      const { canvas, ctx, customCourt, adsData } = await arena(scene, bad ? 'crowd-0' : 'crowd-50', camera, rand, { fill: bad ? .12 : .4, bench });
       depth(ctx, [{ data: scene.coach, team: scene.team, pose: 'idle', frame: 0, x: 1250, foot: 356, facing: 'left' }]);
       const light = ctx.createRadialGradient(1250, 330, 10, 1250, 330, 240);
       light.addColorStop(0, 'rgba(0,0,0,.04)'); light.addColorStop(1, 'rgba(6,9,20,.55)');
       ctx.fillStyle = light; ctx.fillRect(...camera);
-      return { canvas, extra: { customCourt } };
+      return { canvas, extra: { customCourt, adsData } };
     },
     // A good season: the coach and the stars just above the center circle, the
     // scorer's table and the far stands behind them, under the confetti.
@@ -237,7 +257,7 @@
       // On the road the winners wear their road uniforms, and the home crowd has nothing to cheer.
       // The camera's top is the far stands' back fan rows; the group stands about three units above center court.
       const [cx] = px(0, 0), [, top] = px(0, 9.75), gy = px(0, 4.4)[1], camera = [cx - 192, top, 384, 216], players = scene.players || [], away = !!scene.venue, uniform = away ? 1 : 0;
-      const { canvas, ctx, customCourt } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: !away, announcers: scene.broadcasters || [] });
+      const { canvas, ctx, customCourt, adsData } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: !away, announcers: scene.broadcasters || [] });
       const coach = { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: cx, foot: gy + 30, facing: 'left', uniform };
       depth(ctx, [
         { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: cx - 72, foot: gy, facing: 'right', uniform },
@@ -251,7 +271,7 @@
       // The game's confetti, in the team's colors, over the whole frame.
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
       for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 40 + (i % 5) * 95 + rand() * 30, camera[1] - 50 + Math.floor(i / 5) * 115 + rand() * 30, 160, 160);
-      return { canvas, extra: { customCourt } };
+      return { canvas, extra: { customCourt, adsData } };
     },
     // Draft night: the pick at the game's podium in front of the stage screens.
     // The center screen stacks the league logo, the DRAFT DAY mark and the
@@ -352,6 +372,11 @@
   }
   const snap = person => person ? structuredClone({ id: person.id, tid: person.tid, fn: person.fn, ln: person.ln, num: person.num, appearance: person.appearance, accessories: person.accessories, suits: person.suits, isCoach: !!person.isCoach }) : null;
   const court = team => structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court });
+  // The arena's ad strip: its home team's, else the first team in the league with one.
+  function adsFor(home, league) {
+    const office = home?.frontOffice?.adsURL ? home.frontOffice : (league.teams || []).find(t => t.frontOffice?.adsURL)?.frontOffice;
+    return office ? { url: office.adsURL, size: Number(office.adSize) || null } : null;
+  }
   // The league's title award (id 0) names the trophy sprite, championship for
   // the pros and natty for college, and carries its four colors.
   function trophyColors(league) {
@@ -364,11 +389,11 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 10, seed: id, kind: `coach-${context.coachScene}`,
+      version: 11, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
-      trophy: trophyColors(league),
+      trophy: trophyColors(league), ads: adsFor(context.venue || team, league),
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
       // The broadcast crew at the table works for the arena's home team.
       broadcasters: ((context.venue || team)?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).slice(0, 4).map(p => ({ ...snap(p), isCoach: true })),

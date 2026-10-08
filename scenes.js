@@ -137,7 +137,7 @@
       // Coach stories: hiring, firing, a rough season, a good one.
       const drawn=await window.HoopWireCoachScenes.draw(scene,art),extra=drawn.extra||{};
       ctx.drawImage(drawn.canvas,0,0);
-      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{})};
+      sceneInputs={...scene,...(extra.pressLogoData!==undefined?{pressLogoData:extra.pressLogoData,pressLeagueLogoData:extra.pressLeagueLogoData}:{}),...(extra.adsData!==undefined?{adsData:extra.adsData}:{})};
       customCourt=extra.customCourt||null;
     } else if (scene.kind === 'interview') {
       const stage=document.createElement('canvas');stage.width=768;stage.height=432;
