@@ -285,8 +285,8 @@
     },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
-      // The same 2x camera as the other coach scenes, so the coach stays the same size as at the podium or courtside.
-      const { canvas, ctx } = stage([0, 0, 384, 216]);
+      // A tight 3x shot on the coach and the lockers either side, like the press conference.
+      const { canvas, ctx } = stage([64, 40, 256, 144]);
       const room = art['locker-room'], top = 96, left = -32, seat = 192;
       // The game's locker room tile, run the width of the room, with its wood above and its carpet below in the team's color.
       ctx.fillStyle = 'rgb(70,33,31)'; ctx.fillRect(0, 0, 384, top);
@@ -297,7 +297,7 @@
       // The coach on the middle chair of a locker bay; the game seats the sitting sprite 8 pixels above the tile's bottom, level with the chair legs.
       shadow(ctx, seat, top + 58, 10);
       person(ctx, scene.coach, scene.team, 'sitting', 0, seat, top + 56, 'left');
-      const light = ctx.createRadialGradient(seat, top + 40, 8, seat, top + 40, 210);
+      const light = ctx.createRadialGradient(seat, top + 40, 8, seat, top + 40, 150);
       light.addColorStop(0, 'rgba(0,0,0,0)'); light.addColorStop(1, 'rgba(4,6,14,.7)');
       ctx.fillStyle = light; ctx.fillRect(0, 0, 384, 216);
       return { canvas };
@@ -444,7 +444,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 21, seed: id, kind: `coach-${context.coachScene}`,
+      version: 22, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
