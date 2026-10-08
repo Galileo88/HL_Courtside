@@ -264,8 +264,8 @@
   // stripes and straps (10,175,255) the stripe color; the collar (5,200,255)
   // the collar color; the hem (30,50,255) a shadow of the jersey color. The
   // hanger's steel pixels are cleared, the number goes on in the game's own
-  // digits where the game places it (half the jersey's width, a little above
-  // its middle), and a dark outline runs round it like every other sprite.
+  // digits at double size across the chest, and a dark outline runs round it
+  // like every other sprite.
   function jersey(team, num) {
     const u = team?.uniforms?.[0] || {}, body = token(team, u.jersey, teamColor(team, 0, '#147dff'));
     const stripe = token(team, u.jerseyStripe, body), collar = token(team, u.jerseyCollar, stripe);
@@ -273,11 +273,14 @@
     const shirt = swap(art['jersey-hanger'], 0, map), g = shirt.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 32);
     for (let i = 0; i < d.data.length; i += 4) if (d.data[i] === 163 && d.data[i + 1] === 172 && d.data[i + 2] === 190) d.data[i + 3] = 0;
     g.putImageData(d, 0, 0);
-    if (num != null) g.drawImage(window.HoopWirePlayer.numberTile(num, token(team, u.jerseyNumber, stripe)), 9, 5);
-    const out = document.createElement('canvas'); out.width = out.height = 34;
+    // The digits sit in the lower part of their tile; at double size they fill the chest, centered on it.
+    if (num != null) { g.imageSmoothingEnabled = false; g.drawImage(window.HoopWirePlayer.numberTile(num, token(team, u.jerseyNumber, stripe)), 0, -10, 32, 32); }
+    // The jersey sits two pixels in, so its pixels (and the number's two-pixel
+    // strokes) start on even columns and rows and scale evenly at half size.
+    const out = document.createElement('canvas'); out.width = out.height = 36;
     const o = out.getContext('2d'), dark = recolor(shirt, '#14101e');
-    for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) o.drawImage(dark, dx, dy);
-    o.drawImage(shirt, 1, 1);
+    for (const [dx, dy] of [[1, 2], [3, 2], [2, 1], [2, 3]]) o.drawImage(dark, dx, dy);
+    o.drawImage(shirt, 2, 2);
     return out;
   }
   // Blue stage curtains in pixel art: a fold every 16 pixels, lit across each
@@ -356,8 +359,8 @@
         depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 172, foot: base - 4, facing: 'right' }, { data: scene.signee, team, pose: 'suit-standing', frame: 0, x: 196, foot: base - 4, facing: 'left' }]);
         // The jersey held up between them at chest height, at half the player's
         // pixel scale, as the game hangs jerseys beside players in its locker room.
-        const shirt = jersey(team, scene.signee?.num), u = 1 / 2, cut = 6, [jx, jy] = [184 - 17 * u, base - 4 - 17];
-        ctx.drawImage(shirt, 0, cut, 34, 34 - cut, jx, jy, 34 * u, (34 - cut) * u);
+        const shirt = jersey(team, scene.signee?.num), u = 1 / 2, cut = 6, [jx, jy] = [184 - 18 * u, base - 4 - 17];
+        ctx.drawImage(shirt, 0, cut, 36, 36 - cut, jx, jy, 36 * u, (36 - cut) * u);
       } else {
         depth(ctx, [award ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : farewell ? { data: scene.retiree, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' } : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
         ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
@@ -732,7 +735,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 28, seed: id, kind: `coach-${context.coachScene}`,
+      version: 29, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
