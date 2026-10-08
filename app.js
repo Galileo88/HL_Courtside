@@ -565,6 +565,9 @@ branch.append(summary);
         const value=document.createElement('b');value.textContent=row[i];
         item.append(label,value);details.append(item);
       }
+      // Spread the stats across the card in even columns: one row up to four,
+      // then balanced rows (five or six become two rows of three).
+      const count=details.children.length;details.style.gridTemplateColumns=`repeat(${count<=4?Math.max(1,count):Math.min(4,Math.ceil(count/2))},minmax(0,1fr))`;
       card.append(details);grid.append(card);
     }
     shell.append(grid);return shell;
