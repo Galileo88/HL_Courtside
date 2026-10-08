@@ -585,10 +585,25 @@
       ctx.fillStyle = light; ctx.fillRect(...camera);
       return { canvas, extra: { customCourt, adsData } };
     },
-    // A strong season without a postseason win: the same court-level shot as a
-    // celebration, the players celebrating on the floor in front of a cheering
-    // home crowd, but without confetti or a trophy.
-    strong(scene, rand) { return scenes.good(scene, rand); },
+    // A strong season without a postseason win: a loose, in-game moment rather
+    // than a posed celebration. The shot takes in the near end of the home bench,
+    // the sideline and a stretch of the floor with the fans above: players run
+    // back down the court, some with their hands up, the bench is on its feet
+    // and the coach stands on the sideline.
+    async strong(scene, rand) {
+      const camera = [1000, 214, 384, 216], seats = seatsOf(BENCH.home), players = scene.players || [];
+      const bench = [4, 7, 10, 13].map((s, i) => ({ seat: seats[s], data: players[4 + i], frame: i % 4 })).filter(b => b.data);
+      const { canvas, ctx, customCourt, adsData } = await arena(scene, 'crowd-100', camera, rand, { fill: .95, cheer: true, bench, benchPose: 'bench-celebrate' });
+      const on = (data, pose, frame, x, foot, facing) => ({ data, team: scene.team, pose, frame, x, foot, facing });
+      depth(ctx, [
+        on(scene.coach, 'idle', 0, 1236, 360, 'left'),
+        on(players[0], 'running', 0, 1066, 404, 'left'),
+        on(players[1], 'celebrate', 1, 1142, 422, 'left'),
+        on(players[2], 'running', 2, 1268, 396, 'left'),
+        on(players[3], 'celebrate', 3, 1336, 414, 'right')
+      ]);
+      return { canvas, extra: { customCourt, adsData } };
+    },
     // A good season: the coach and the stars just above the center circle, the
     // scorer's table and the far stands behind them, under the confetti.
     async good(scene, rand) {
@@ -606,8 +621,7 @@
       ]);
       // The championship trophy in the league's award colors, at its native size, its base in the coach's raised hands.
       if (scene.champion && scene.coach) ctx.drawImage(trophy(scene.trophy), cx - 16, coach.foot - 32 - 29, 32, 32);
-      // The game's confetti, in the team's colors, over the whole frame; a strong regular season has none.
-      if (scene.kind === 'coach-strong') return { canvas, extra: { customCourt, adsData } };
+      // The game's confetti, in the team's colors, over the whole frame.
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
       for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 40 + (i % 5) * 95 + rand() * 30, camera[1] - 50 + Math.floor(i / 5) * 115 + rand() * 30, 160, 160);
       return { canvas, extra: { customCourt, adsData } };
@@ -745,7 +759,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 31, seed: id, kind: `coach-${context.coachScene}`,
+      version: 32, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
@@ -762,7 +776,7 @@
       retired: context.retired ? { player: snap(context.retired.player), num: context.retired.num, years: context.retired.years || null } : null,
       retiredNumbers: (team?.retiredNumbers || []).map(n => typeof n === 'object' ? n?.num ?? n?.number ?? n?.jersey : n).filter(n => n != null),
       award: context.award ? { name: context.award.name, sprite: context.award.spriteName, primary: context.award.primaryC, secondary: context.award.secondaryC, base: context.award.baseC, plate: context.award.plateC } : null,
-      players: [...(context.celebrants || []), ...others].slice(0, 4).map(snap), record: context.record || null, champion: !!context.champion, advanced: context.advanced || null, season
+      players: [...(context.celebrants || []), ...others].slice(0, 8).map(snap), record: context.record || null, champion: !!context.champion, advanced: context.advanced || null, season
     };
   }
   window.HoopWireCoachScenes = { draw, caption, inputs, kinds: ['coach-hire', 'coach-fire', 'coach-poor', 'coach-strong', 'coach-good', 'coach-draft', 'coach-award', 'coach-hof', 'coach-signing', 'coach-farewell', 'coach-rafters', 'coach-commit'] };
