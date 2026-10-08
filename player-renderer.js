@@ -182,7 +182,7 @@
  }
  window.HoopWirePlayer={
   ready:()=>Promise.all(Object.values(images).map(image=>image.decode())),
-  draw,ballPalette,
+  draw,ballPalette,portrait:drawPortrait,
   drawBall(canvas,ball={}) {
    const c=canvas.getContext('2d'),tile=document.createElement('canvas');tile.width=tile.height=8;
    const t=tile.getContext('2d');t.drawImage(flightBall,0,0);
