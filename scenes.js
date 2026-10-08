@@ -155,12 +155,12 @@
       sceneInputs={...scene,pressLogoData:backdrop.logoData,pressLogoStatus:backdrop.status,pressLeagueLogoData:backdrop.leagueLogoData,pressLeagueLogoStatus:backdrop.leagueStatus};
       // In the close shots the wall behind the player is softly out of focus, like
       // a shallow depth of field, so the logos don't compete with the player:
-      // painted sharp, shrunk to a fifth with smoothing, then drawn back up with
+      // painted sharp, shrunk to a third with smoothing, then drawn back up with
       // smoothing. The wider group shots keep the wall sharp.
       if(variant==='player-close-up'||variant==='player-profile'){
         const wall=document.createElement('canvas');wall.width=canvas.width;wall.height=canvas.height;
         window.HoopWirePressBackdrop.paint(wall.getContext('2d'),backdrop,design.camera);
-        const soft=document.createElement('canvas');soft.width=Math.round(canvas.width/5);soft.height=Math.round(canvas.height/5);
+        const soft=document.createElement('canvas');soft.width=Math.round(canvas.width/3);soft.height=Math.round(canvas.height/3);
         const softCtx=soft.getContext('2d');softCtx.imageSmoothingEnabled=true;softCtx.imageSmoothingQuality='high';softCtx.drawImage(wall,0,0,soft.width,soft.height);
         ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(soft,0,0,canvas.width,canvas.height);ctx.restore();
       }else window.HoopWirePressBackdrop.paint(ctx,backdrop,design.camera);
