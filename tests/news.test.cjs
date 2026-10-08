@@ -8,3 +8,20 @@ test('source evidence is retained; read flags and field order do not create dupl
 test('unknown types, wrong leagues, future announcements and missing identities are not guessed',()=>{const l=fixture();l.season.news=[event(999),event(17,{league:1}),event(17,{date:5}),event(17,{pid:999}),event(17,{phase:8})];assert.equal(N.candidates(l).length,0);});
 test('award and championship events share existing milestone identities; game recap events are not duplicated',()=>{const l=fixture();l.season.news=[event(12,{data:{awardId:2}}),event(13),event(9)];const rows=N.candidates(l).map(x=>x.story);assert.equal(rows.length,2);assert.equal(rows[0].eventKey,'award-2-11');assert.equal(rows[1].eventKey,'championship');});
 test('injury disappointment overrides a winning season for coach and injured player',()=>{const l=fixture();l.teams[0].season=[{yr:8,seasonStats:{W:60,L:22}}];l.season.news=[event(10,{data:{injury:{gamesOut:5}}})];const text=N.candidates(l)[0].story.paragraphs.join(' ');assert.match(text,/head coach Casey Coach said/);assert.match(text,/Alex Star said/);assert.match(text,/disappoint|frustrat|hate/);assert.doesNotMatch(text,/fictional interview|great season/);});
+test('a finished college season keeps its beat on the pro calendar with save-backed offseason features',()=>{
+ const save=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'..','sample_save'),'utf8')),[pro,college]=save.seasonLeagues;
+ const champ=college.teams[0].id,full=college.season.schedule,end=day=>{college.season.schedule=full.slice(0,day+1);college.season.news=[...college.season.news.filter(n=>n.type!==13),{league:1,date:day,phase:college.season.phase,type:13,tid:champ,pid:0,gid:0,data:{}}];};
+ assert.equal(N.offseason(pro,save.seasonLeagues).length,0);
+ end(10);const cal=N.calendar(college,save.seasonLeagues);assert.equal(cal.over,true);assert.equal(cal.day,33);assert.equal(cal.own,11);
+ const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story);
+ assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-watch','offseason-returning','offseason-early-top-ten']);
+ assert.ok(rows.every(s=>s.day===33&&s.seasonSnapshot.board.rows.length>=5));
+ assert.match(rows[2].paragraphs.join(' '),/not the official poll/);
+ assert.ok(N.candidates(college,save.seasonLeagues).every(x=>x.story.day>=11&&x.story.day<=33));
+ college.season.news.push({league:1,date:20,phase:college.season.phase,type:17,tid:college.teams[0].id,pid:college.teams[0].roster[0].id,gid:0,data:{}},{league:1,date:10,phase:college.season.phase,type:17,tid:college.teams[0].id,pid:college.teams[0].roster[1].id,gid:0,data:{}});
+ const dated=N.candidates(college,save.seasonLeagues).filter(x=>x.story.type==='Retirement').map(x=>x.story.day).sort((a,b)=>a-b);assert.deepEqual(dated,[11,21]);
+ // The features run a week apart on the pro calendar.
+ end(28);assert.deepEqual(N.offseason(college,save.seasonLeagues).map(x=>x.story.eventKey),['offseason-draft-watch']);
+ // No pro league, or a college season still in progress: nothing new.
+ assert.equal(N.offseason(college,[college]).length,0);
+});

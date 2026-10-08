@@ -102,3 +102,12 @@ dialog h2 { font-family:var(--hw-font-ui); font-weight:800; letter-spacing:-.01e
 /* The welcome card is a panel like the rest; its Choose save button stays the call to action. */
 .menu-card { background:var(--hw-panel); border:1px solid var(--hw-line); border-top:3px solid var(--hw-red); border-radius:var(--hw-radius); box-shadow:none; }
 .menu-card h2 { font-family:var(--hw-font-ui); text-shadow:none; }
+
+/* Archive actions stay on one row; phones drop the repeated word. */
+@media(max-width:600px) {
+  .archive-panel .actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .archive-panel .actions > :is(button,.file-button) { margin:0; padding:11px 6px; text-align:center; justify-content:center; white-space:nowrap; }
+  .archive-panel .actions > [hidden] { display:none; }
+  .archive-panel .actions .label-more { display:none; }
+  .archive-panel .actions button.danger { margin-left:0; }
+}

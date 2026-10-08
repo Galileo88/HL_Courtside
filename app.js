@@ -287,7 +287,7 @@ branch.append(summary);
       }
       // Articles carry the same stat boards as the TV desk.
       const body=node.querySelector('.article-body');
-      if(story.kind==='season'&&story.type!=='Regular-season review'){const graphic=tvSeasonGraphic(story);if(graphic.childElementCount){graphic.classList.add('article-graphic');body.append(graphic);}}
+      if(story.kind==='season'&&story.type!=='Regular-season review'){const graphic=tvSeasonGraphic(story,10);if(graphic.childElementCount){graphic.classList.add('article-graphic');body.append(graphic);}}
       else if(story.gameSummary||story.gid!=null){const extra=[performanceBoard(story),postgameBoard(story)].filter(Boolean);if(extra.length){const graphic=document.createElement('div');graphic.className='tv-season-graphic article-graphic';graphic.append(...extra);body.append(graphic);}}
       for(const group of reviewLists){
         const section=document.createElement('section');section.className='season-summary';
@@ -343,7 +343,7 @@ branch.append(summary);
         const result={gid:game.gId,home:{id:game.homeTeam,name:C.teamDisplay(lookup.teams.get(game.homeTeam)),score:game.homeScore},away:{id:game.awayTeam,name:C.teamDisplay(lookup.teams.get(game.awayTeam)),score:game.awayScore},homeRecord:game.homeRecord,awayRecord:game.awayRecord,gameType:game.gameType,tRound:game.tRound};
         gameResults[year][dayIndex+1][game.gId]=window.HoopWireBroadcastContext.enrichResult(gameResults[year][dayIndex+1][game.gId],result);
       }
-      leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,logoURL:league.logoURL||null,studios,gameResults});
+      leagues.push({...previous,id:fingerprint,name:league.leagueName||"League",shortName:league.shortName||null,leagueType:league.leagueType,logoURL:league.logoURL||null,asOf:{season:year,day:Math.max(1,lookup.latestDay+1)},studios,gameResults});
       // The active save is authoritative for its current verified player box scores.
       // Rewriting the same snapshot id refreshes stale browser-archive values.
       for(const snapshot of C.captureSnapshots(league,fingerprint)){
@@ -389,7 +389,7 @@ branch.append(summary);
     }));
     stories.push(...composed);
     const milestoneIds=new Set();
-    const milestones=[...window.HoopWireSeason.candidates(league,state.raw.seasonLeagues),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league),...window.HoopWirePerformance.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);const existing=state.stories.get(x.story.id);return !existing||Number(x.story.editorialVersion||0)>Number(existing.editorialVersion||0);});
+    const milestones=[...window.HoopWireSeason.candidates(league,state.raw.seasonLeagues),...window.HoopWireRecords.candidates(league),...window.HoopWireNews.candidates(league,state.raw.seasonLeagues),...window.HoopWireNews.offseason(league,state.raw.seasonLeagues),...window.HoopWirePerformance.candidates(league)].filter(x=>{if(milestoneIds.has(x.story.id))return false;milestoneIds.add(x.story.id);const existing=state.stories.get(x.story.id);return !existing||Number(x.story.editorialVersion||0)>Number(existing.editorialVersion||0);});
     // Compose in small batches to keep long season uploads responsive.
     for(let i=0;i<milestones.length;i+=4){
       stories.push(...await Promise.all(milestones.slice(i,i+4).map(async ({story,context})=>{
@@ -508,12 +508,14 @@ branch.append(summary);
     if(story.eventKey?.startsWith('playoff-round-')||story.type==='Playoff preview')return 'PLAYOFF DESK';
     if(story.eventKey==='championship'||story.type==='Championship review')return 'CHAMPIONSHIP DESK';
     if(story.type==='Regular-season review'||story.type==='Team season review'||story.type==='Season leaders')return 'SEASON WRAP';
+    if(story.type==='Draft watch')return 'DRAFT WATCH';
+    if(story.type==='College offseason')return 'COLLEGE OFFSEASON';
     if(story.performanceSnapshot)return 'PLAYER WATCH';
     if(/record|milestone/i.test(story.type||''))return 'RECORD BOOK';
     if(story.gameSummary)return 'POSTGAME';
     return 'HOOPWIRE DESK';
   }
-  function tvSeasonGraphic(story) {
+  function tvSeasonGraphic(story,limit=6) {
     const shell=document.createElement('div');shell.className='tv-season-graphic';
     const facts=window.HoopWireSeason.factsForStory(story),headers=facts.headers||[],rows=facts.rows||[];
     if(story.eventKey?.startsWith('award-')&&rows[0]){
@@ -538,6 +540,9 @@ branch.append(summary);
       }
       shell.append(grid);return shell;
     }
+    // Offseason boards carry their own caption, ranks and school lines.
+    const board=story.seasonSnapshot?.board;
+    if(board?.rows?.length){shell.append(statBoard({kicker:board.kicker,title:board.title,headers:board.headers,rows:board.rows.slice(0,limit),ranked:!!board.ranked,subs:board.subs?.slice(0,limit)||null}));return shell;}
     if(!rows.length)return shell;
     shell.append(rows.length===1&&headers.length<=3?tvCallout(headers,rows[0]):tvBoard(story,headers,rows.slice(0,6)));
     return shell;

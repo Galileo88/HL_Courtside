@@ -20,7 +20,7 @@
     return {winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:player||team.roster?.[0],potg:player||null,potgStatsTrusted:!!player,
       gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}};
   }
-  function roundup(list,{league,lookup,players,year,fp,result}){
+  function roundup(list,{league,lookup,players,year,fp,result,day}){
     const type=list[0].type,short=league.shortName||league.leagueName,cap=C.capitalize;
     const rows=list.map(n=>({n,p:players.get(n.pid),t:lookup.teams.get(n.tid)})).filter(x=>x.p&&x.t);
     if(!rows.length)return;
@@ -87,13 +87,16 @@
     const key=`roundup-${type}-${list[0].phase}-${type===2?year:list[0].date}`;
     if(result.some(x=>x.story.eventKey===key))return;
     const related=[...new Map(rows.map(x=>[x.t.id,x.t])).values()];
-    const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:Math.max(1,C.buildLookups(league).latestDay+1),type:storyType,headline,paragraphs,
+    const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day,type:storyType,headline,paragraphs,
       importance:type===2?120:95,templateVersion:5,editorialVersion:2,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
       relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
       seasonSnapshot:{headers,rows:table,source:'season.news',roundup:{type,count:rows.length,items:(type===3?[lead,...ordered.filter(x=>x!==lead)]:ordered).slice(0,12).map(item)}}};
     result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
   }
-  function candidates(league){
+  function candidates(league,leagues=[]){
+    const cal=calendar(league,leagues);
+    // News from the college season keeps its own date; news after it follows the pro calendar.
+    const dayOf=n=>cal.over?Math.min(cal.day,Math.max(cal.own,Number(n.date)+1)):cal.own;
     const lookup=C.buildLookups(league),year=C.seasonYear(league),fp=C.buildFingerprint(league),players=new Map(lookup.players),result=[];
     for(const p of [...(league.retirees||[]),...(league.hallOfFame||[])])if(p&&Number.isInteger(p.id)&&!players.has(p.id))players.set(p.id,p);
     const coaches=new Map((league.coaches||[]).map(p=>[p.id,p]));
@@ -110,7 +113,7 @@
     const grouped=new Map();
     for(const n of events)if(roundupTypes.has(n.type)){const k=`${n.type}:${n.phase}:${n.type===2?'all':n.date}`;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(n);}
     const bundled=new Set([...grouped.values()].filter(list=>list.length>=roundupSize||list[0].type===2).flat());
-    for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,year,fp,result});
+    for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,year,fp,result,day:dayOf(list[0])});
     for(const event of events.filter(n=>!bundled.has(n))){
       const info=event.data||{},jersey=info.retiredNumber;
       let coachEvent=[26,27,28,29].includes(event.type);
@@ -190,7 +193,7 @@
       team ||= related[0];if(!team)continue;
       const key=event.type===12?`award-${info.awardId}-${event.pid}`:event.type===13?'championship':`news-${C.hashString(JSON.stringify(canonical({league:event.league,phase:event.phase,date:event.date,type:event.type,tid:event.tid,pid:event.pid,gid:event.gid,data:info})))}`;
       if(result.some(x=>x.story.eventKey===key))continue;
-      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:Math.max(1,lookup.latestDay+1),type,headline,paragraphs,importance:[16,17,22,25].includes(event.type)?125:85,templateVersion:event.type===10?6:5,editorialVersion:1,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:dayOf(event),type,headline,paragraphs,importance:[16,17,22,25].includes(event.type)?125:85,templateVersion:event.type===10?6:5,editorialVersion:1,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
@@ -198,5 +201,88 @@
     }
     return result;
   }
-  return {candidates,types};
+  // College stops at its title game while the pro league keeps the shared
+  // calendar running; coverage written in that gap carries the pro date.
+  function calendar(league,leagues=[]){
+    const own=Math.max(1,C.buildLookups(league).latestDay+1),year=C.seasonYear(league);
+    const over=league.leagueType===1&&(league.season?.news||[]).some(n=>n.type===13&&n.league===league.leagueType&&n.phase===league.season?.phase);
+    const pro=over?leagues.find(l=>l!==league&&l.leagueType===0&&C.seasonYear(l)===year):null;
+    const proDay=pro?Math.max(1,C.buildLookups(pro).latestDay+1):0;
+    return {day:Math.max(own,proDay),own,over,elapsed:Math.max(0,proDay-own)};
+  }
+  const classes=['Fr.','So.','Jr.','Sr.'],classOf=p=>classes[Math.min(3,Math.max(0,p.yrs|0))];
+  // Between the college title game and the new season, the desk keeps the
+  // college beat going: who's headed to the draft, who's coming back, and an
+  // early look at next season. Each piece runs once, a week apart on the
+  // pro calendar, and every number comes from the save.
+  function offseason(league,leagues=[]){
+    const cal=calendar(league,leagues);if(!cal.over||cal.elapsed<1)return [];
+    const lookup=C.buildLookups(league),year=C.seasonYear(league),fp=C.buildFingerprint(league),short=league.shortName||league.leagueName,result=[];
+    const name=p=>C.playerDisplay(p),last=p=>p.ln||C.surname(name(p)),T=t=>C.teamRef(t),cap=C.capitalize;
+    const rows=[...lookup.players.values()].map(p=>({p,t:lookup.teams.get(p.tid),s:S.stats(p,league,year)})).filter(x=>x.t&&x.s?.GP>0);
+    if(rows.length<10)return [];
+    const pg=(x,k)=>Number(perGame(x.s,k))||0,line=x=>`${perGame(x.s,'PTS')} points, ${perGame(x.s,'REB')} rebounds and ${perGame(x.s,'AST')} assists`;
+    const champion=lookup.teams.get((league.season?.news||[]).find(n=>n.type===13&&n.league===league.leagueType&&n.phase===league.season?.phase)?.tid);
+    const statRow=x=>[name(x.p),classOf(x.p),perGame(x.s,'PTS'),perGame(x.s,'REB'),perGame(x.s,'AST')];
+    const item=x=>({name:name(x.p),team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,age:x.p.age||null,year:classOf(x.p),senior:x.p.yrs>=3,pronoun:C.pronoun(x.p),season:{PTS:perGame(x.s,'PTS'),REB:perGame(x.s,'REB'),AST:perGame(x.s,'AST')}});
+    const push=(key,{type,headline,paragraphs,board,items,lead,kind,extra={}})=>{
+      const related=[...new Map((items||[]).map(x=>[x.t.id,x.t])).values()];
+      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:cal.day,type,headline,paragraphs,
+        importance:90,templateVersion:5,editorialVersion:1,quotesEnabled:false,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),
+        seasonSnapshot:{headers:board.headers,rows:board.rows,board,source:'season.offseason',roundup:{type:kind,count:items.length,items:items.slice(0,12).map(item),...extra}}};
+      result.push({story,context:contextFor(lead.t,lookup,league,lead.p)});
+    };
+    const subs=list=>list.map(x=>C.teamDisplay(x.t));
+    // 1. The big board: ceiling first, production as the tiebreaker.
+    const all=x=>pg(x,'PTS')+pg(x,'REB')+pg(x,'AST');
+    // Pro teams draft on potential first, so the board does too.
+    const board=[...rows].sort((a,b)=>(b.p.pot||0)-(a.p.pot||0)||all(b)-all(a)||a.p.id-b.p.id).slice(0,10);
+    {
+      const top=board[0],seniors=board.filter(x=>x.p.yrs>=3).length,he=C.pronoun(top.p);
+      const paragraphs=[`With the ${year} ${short} season in the books, the draft conversation starts now. ${name(top.p)}, a ${({'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'})[classOf(top.p)]} at ${T(top.t).short}, tops HoopWire's big board after averaging ${line(top)}.`,
+        top.p.yrs>=3?`${cap(last(top.p))} is out of college eligibility, so the pros are next.`:`${cap(last(top.p))} has college eligibility left, so the question is whether ${he||last(top.p)} leaves early.`,
+        `Next on the board: ${C.listJoin(board.slice(1,4).map(x=>`${name(x.p)} (${T(x.t).short}, ${classOf(x.p)})`))}.`,
+        ...board.slice(0,4).filter(x=>pg(x,'PTS')<8).slice(0,1).map(x=>`${name(x.p)} scored only ${perGame(x.s,'PTS')} points a game. The board is betting on ${C.possessive(last(x.p))} ceiling, not the box score.`),
+        seniors===board.length?`All ten are seniors on their way out.`:seniors?`${cap(C.num(seniors))} of the top ten are seniors on their way out; the other ${C.num(board.length-seniors)} would have to declare early.`:`None of the top ten are seniors. Every one of them would have to declare early.`];
+      push('offseason-draft-watch',{type:'Draft watch',kind:'draft-watch',headline:`Draft watch: ${name(top.p)} tops HoopWire's big board`,paragraphs,items:board,lead:top,
+        board:{kicker:'Draft watch',title:'Big board',headers:['Player','Class','PPG','RPG','APG'],rows:board.map(statRow),subs:subs(board),ranked:true},extra:{seniors}});
+    }
+    // 2. Who's back: the best underclassmen not on the big board's way out.
+    if(cal.elapsed>=7){
+      const back=rows.filter(x=>x.p.yrs<3&&x.s.GP>=Math.max(1,Math.floor(Math.max(...rows.map(r=>r.s.GP))/2))).sort((a,b)=>pg(b,'PTS')-pg(a,'PTS')||a.p.id-b.p.id).slice(0,8);
+      if(back.length>=3){
+        const top=back[0],next=back.slice(1,4),fromChamp=champion&&back.find(x=>x.t.id===champion.id);
+        const paragraphs=[`The best scorer coming back next season is ${name(top.p)} of ${T(top.t).full}. The ${classOf(top.p)==='Fr.'?'freshman':classOf(top.p)==='So.'?'sophomore':'junior'} averaged ${line(top)}.`,
+          `Also returning: ${C.listJoin(next.map(x=>`${name(x.p)} (${T(x.t).short}, ${perGame(x.s,'PTS')} points)`))}.`,
+          fromChamp?`${cap(T(champion).full)} ${C.verb(T(champion),'bring')} back ${name(fromChamp.p)}, who averaged ${perGame(fromChamp.s,'PTS')} points for the ${year} champions.`:'',
+          `That list can still change. Any of them could declare for the draft before next season.`].filter(Boolean);
+        push('offseason-returning',{type:'College offseason',kind:'returning',headline:`${name(top.p)} leads the stars returning next season`,paragraphs,items:back,lead:top,
+          board:{kicker:'Next season',title:'Top returning scorers',headers:['Player','Class','PPG','RPG','APG'],rows:back.map(statRow),subs:subs(back),ranked:true}});
+      }
+    }
+    // 3. An early top ten, built only from who is back and how much they scored.
+    if(cal.elapsed>=14){
+      const ranked=[...lookup.teams.values()].map(t=>{
+        const roster=rows.filter(x=>x.t.id===t.id),pts=roster.reduce((n,x)=>n+x.s.PTS,0),back=roster.filter(x=>x.p.yrs<3);
+        const kept=pts>0?back.reduce((n,x)=>n+x.s.PTS,0)/pts:0,talent=back.map(x=>x.p.pot||0).sort((a,b)=>b-a).slice(0,7),record=(t.season||[]).find(r=>r.yr===year);
+        const games=(record?.seasonStats?.W||0)+(record?.seasonStats?.L||0),win=games?record.seasonStats.W/games:0,ceiling=talent.length?talent.reduce((a,b)=>a+b,0)/talent.length:0;
+        // Last season's results, scaled by how much of that team returns, plus the ceiling of who's back.
+        return {t,back,kept,score:win*kept+ceiling/20,record:record?.seasonStats,poll:record?.poll,star:back.sort((a,b)=>pg(b,'PTS')-pg(a,'PTS'))[0]};
+      }).filter(x=>x.back.length&&x.star).sort((a,b)=>b.score-a.score||a.t.id-b.t.id),teams=ranked.slice(0,10);
+      if(teams.length>=5){
+        const top=teams[0],rec=x=>x.record?`${x.record.W}-${x.record.L}`:'—',pct=x=>Math.round(x.kept*100);
+        const paragraphs=[`It is never too early. HoopWire's first look at next season puts ${T(top.t).full} at No. 1. ${T(top.t).plural?'They bring':'It brings'} back ${pct(top)} percent of their scoring, led by ${name(top.star.p)} at ${perGame(top.star.s,'PTS')} points a game.`,
+          `Rounding out the top five: ${C.listJoin(teams.slice(1,5).map(x=>`${T(x.t).short} (${rec(x)})`))}.`,
+          ...ranked.filter(x=>x.t.id===champion?.id).map(x=>{const at=ranked.indexOf(x)+1;return at<=10?`The ${year} champions, ${T(champion).full}, open at No. ${at}.`:`The ${year} champions, ${T(champion).full}, come in at No. ${at}, with ${pct(x)} percent of their scoring back.`;}),
+          `This is HoopWire's projection, not the official poll, which comes out when the new season opens. It weighs last season's record, how much of the scoring returns and the talent level of who is back.`].filter(Boolean);
+        const lead={p:top.star.p,t:top.t};
+        push('offseason-early-top-ten',{type:'College offseason',kind:'early-top-ten',headline:`Way-too-early top 10: ${T(top.t).nickname} ${C.verb(T(top.t),'open')} next season at No. 1`,paragraphs,items:teams.map(x=>x.star),lead,
+          board:{kicker:'Next season',title:'HoopWire early top 10',headers:['School','Record','Final poll','Scoring back','Top returner'],rows:teams.map(x=>[C.teamDisplay(x.t),rec(x),x.poll>0?x.poll:'—',`${pct(x)}%`,name(x.star.p)]),ranked:true},
+          extra:{championRank:champion?ranked.findIndex(x=>x.t.id===champion.id)+1||null:null,teams:teams.map(x=>({team:C.teamDisplay(x.t),teamCity:x.t.city||null,teamNickname:x.t.name||null,record:rec(x),poll:x.poll||null,kept:pct(x),star:name(x.star.p),starPTS:perGame(x.star.s,'PTS')})),champion:champion?C.teamDisplay(champion):null}});
+      }
+    }
+    return result;
+  }
+  return {candidates,offseason,calendar,types};
 });

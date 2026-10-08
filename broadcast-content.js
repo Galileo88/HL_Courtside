@@ -689,6 +689,28 @@
         if(vets.length>1)body.push(turn(3,`Also moving: ${join(vets.slice(1,4).map(x=>`${x.name} to ${T(x)}`))}.${rookies?` And ${C.plural(rookies,'rookie')} signed first deals.`:''}`));
       }else body.push(turn(1,"Rookie contracts don't win championships. Wake me up when a real free agent moves."),turn(3,`Mostly rookie deals, Jordan. ${top.name} with ${T(top)} is the headliner.`));
       close=pick(story,["The market's open. We'll keep tracking it.","More moves to come. Stay tuned.","Free agency isn't over. Not even close.","That's the latest from the market."],'fa:close');
+    }else if(r.type==='draft-watch'){
+      const word={'Fr.':'freshman','So.':'sophomore','Jr.':'junior','Sr.':'senior'}[top.year]||'player',sleeper=items.slice(1,4).find(x=>Number(x.season?.PTS)<8);
+      open=pick(story,[`Draft watch. ${top.name} sits atop our big board. ${J}, is that the right No. 1?`,`The college season's over, so let's talk draft. ${top.name} is our top prospect. ${J}?`,`${top.name} tops the HoopWire big board. ${J}, go.`],'watch:open');
+      body.push(turn(1,top.season?.PTS?`I'm good with it. ${top.season.PTS} points and ${top.season.REB} rebounds as a ${word}. That's a pro.`:`I'm good with it. You bet on that kind of talent.`));
+      if(!top.senior)body.push(turn(2,`The question is whether ${last(top)} comes out. There's eligibility left, but you don't stay at the top of a board forever.`));
+      if(sleeper)body.push(turn(3,`${sleeper.name} is on that board at ${sleeper.season.PTS} points a game. That's a bet on the ceiling.`),turn(1,`That's a projection pick. Show me production.`));
+      if(Number.isInteger(r.seniors))body.push(turn(3,r.seniors?`${cap(C.num(r.seniors))} of our top ten are seniors. The rest would have to declare early.`:`Not one senior in our top ten. Every one of them would have to declare early.`));
+      close=pick(story,["The board will move. It always does.","Draft night is a long way off.","We'll update the board as the decisions come in."],'watch:close');
+    }else if(r.type==='returning'){
+      open=pick(story,[`Let's look ahead. ${top.name} is the best scorer coming back next season. ${J}?`,`Who's back next year? ${top.name} leads the list. ${J}?`,`${top.name}, ${top.season?.PTS} points a game, and coming back. ${J}?`],'back:open');
+      body.push(turn(1,`${top.season?.PTS} a night, and ${last(top)} is coming back? That's trouble for everybody else.`));
+      if(items.length>1)body.push(turn(3,`Also back: ${join(items.slice(1,4).map(x=>`${x.name} at ${x.season?.PTS}`))}.`));
+      body.push(turn(2,`If they all actually come back. Somebody on that list is going to get a draft itch.`));
+      close=pick(story,["Next season's already taking shape.","That's who's back. For now.","We'll see who's still there when the season opens."],'back:close');
+    }else if(r.type==='early-top-ten'){
+      const teams=r.teams||[],first=teams[0];if(!first)return genericScript(story,n);
+      const ref=x=>C.teamRef({city:x.teamCity,name:x.teamNickname||x.team}),TT=x=>ref(x).nick,rank=r.championRank;
+      open=pick(story,[`Way-too-early top 10. We've got ${TT(first)} at No. 1. ${J}, agree?`,`It's never too early. ${cap(TT(first))} ${C.verb(ref(first),'open')} next season at No. 1 on our list. ${J}?`,`Our early top 10 is out, and ${TT(first)} ${C.verb(ref(first),'are')} on top. ${J}, go.`],'early:open');
+      body.push(turn(1,`I'll take it. ${first.kept} percent of the scoring back, and ${first.star} at ${first.starPTS} a night. That's a real start.`));
+      if(rank&&r.champion)body.push(turn(2,rank===1?`Hard to argue. The champs bring back enough to do it again.`:rank>10?`The defending champs aren't even in the top ten? I'd keep the champs higher until somebody knocks them off.`:`The defending champs at No. ${rank}? I'd keep the champs higher until somebody knocks them off.`));
+      if(teams.length>1)body.push(turn(3,`Rounding out the top five: ${join(teams.slice(1,5).map(x=>ref(x).short))}.`));
+      close=pick(story,["It's never too early.","Ask us again when the season opens.","Plenty of time for this list to look silly."],'early:close');
     }else if(r.type===14){
       open=pick(story,[`Recruiting news. ${top.name} commits to ${T(top)}. ${J}?`,`${C.capitalize(C.plural(r.count,'commitment'))} in one day, and ${top.name} headlines it. ${J}?`,`${top.name} picks ${T(top)}. ${J}, how big is that?`,`Signing day energy. ${top.name} to ${T(top)}. ${J}?`],'rec:open');
       body.push(turn(1,pick(story,[`That's a get. ${cap(T(top))} just won the day.`,`Huge. That's the kind of name that changes a program.`,`I love it. You recruit, you win. Simple.`],'rec:take')));
