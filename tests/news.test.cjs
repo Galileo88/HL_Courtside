@@ -55,3 +55,12 @@ test('news value follows who it is about: role-player retirements share a roundu
  assert.ok(star&&star.importance>=120);assert.ok(group&&group.importance<star.importance);assert.match(group.headline,/four veterans into retirement/);
  const folded=rows.filter(s=>s.inRoundup);assert.equal(folded.length,4);assert.ok(folded.every(s=>s.inRoundup===group.id&&s.importance<20));
 });
+test('notable coaches get their own story ahead of unknowns, who stay in the carousel unless the job is a big one',()=>{
+ const l=fixture();l.teams=[1,2,3,4,5].map(id=>({id,name:`Team${id}`,roster:[],season:[{yr:7,seasonStats:{GP:82,W:id===2?60:30,L:id===2?22:52}}],frontOffice:{staff:[{id:90+id,tid:id,pos:1,fn:'Coach',ln:`C${id}`,pot:7,career:{season:{W:id===1?250:id===2?100:120,L:id===1?78:228},playoffs:{W:id===1?40:0}},awards:id===1?[{id:0,yearsWon:[5,6]}]:[]}]}}));
+ l.season.news=[1,2,3,4,5].map(id=>event(26,{tid:id,pid:90+id}));
+ const rows=N.candidates(l).map(x=>x.story),own=rows.filter(s=>!s.inRoundup&&!s.seasonSnapshot?.roundup);
+ const big=own.find(s=>/C1/.test(s.headline)),contender=own.find(s=>/C2/.test(s.headline));
+ assert.ok(big&&contender,'the proven coach and the contender\'s hire keep their own stories');assert.ok(big.importance>contender.importance);
+ assert.match(big.paragraphs[0],/brings a 250-78 career record, 40 playoff wins and two championships/);
+ assert.equal(rows.filter(s=>s.inRoundup).length,3);assert.match(rows.find(s=>s.seasonSnapshot?.roundup?.type===26).paragraphs[0],/Coach C1/);
+});

@@ -22,7 +22,23 @@
     return {winner:team,loser:opponent,home:team,game:{homeTeam:team.id},scenePlayer:player||team.roster?.[0],potg:player||null,potgStatsTrusted:!!player,
       gameBall:league.gameballs?.[Number(league.settings?.gameBall)||0]||{pri:'E37033',sec:'E37033',ter:'E37033',outline:'44220F'}};
   }
-  function roundup(list,{league,lookup,players,coaches,year,fp,result,day}){
+  // A coach's standing: career winning percentage, playoff wins, titles and the
+  // game's own coach rating. Roughly: under 6 an unknown, 6 a solid name, 15 a big one.
+  function coachStature(c){
+    const r=c?.career?.season||{},po=c?.career?.playoffs||{},games=(r.W||0)+(r.L||0);
+    const titles=(c?.awards||[]).filter(a=>a.id===0).reduce((n,a)=>n+(a.yearsWon||[]).length,0);
+    return Math.round(((games>=40?(r.W/games-.5)*40:0)+titles*8+(po.W||0)/8+((c?.pot||7)-7)*2)*10)/10;
+  }
+  const coachTier=v=>v>=15?'star':v>=6?'regular':'role';
+  function coachRecord(c){
+    const r=c?.career?.season||{},po=c?.career?.playoffs||{},titles=(c?.awards||[]).filter(a=>a.id===0).reduce((n,a)=>n+(a.yearsWon||[]).length,0);
+    if(!((r.W||0)+(r.L||0)))return '';
+    // "an 89-39 record", "an 11-5 record": the article follows how the number is said.
+    const an=/^8/.test(String(r.W))||/^1[18]$/.test(String(r.W))?'an':'a';
+    const parts=[`${an} ${r.W}-${r.L} career record`,...(po.W>0?[C.plural(po.W,'playoff win')]:[]),...(titles?[titles===1?'a championship':`${C.num(titles)} championships`]:[])];
+    return C.listJoin(parts);
+  }
+  function roundup(list,{league,lookup,players,coaches,year,fp,result,day,own=()=>false}){
     const type=list[0].type,short=league.shortName||league.leagueName,cap=C.capitalize;
     // Retirement news often points at no current team; the player's last team from the stat lines stands in.
     const lastTeam=p=>{const lines=(p?.stats||[]).filter(x=>x.league===league.leagueType).sort((a,b)=>b.yr-a.yr).flatMap(x=>x.season||[]);return lines.map(x=>lookup.teams.get(x.tid)).find(Boolean)||lookup.teams.get(p?.tid)||null;};
@@ -89,17 +105,18 @@
     }else if(type===26){
       // The coaching carousel, led by the strongest team that made a hire.
       const strength=t=>{const r=(t.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;return r?r.W/Math.max(1,r.W+r.L):0;};
-      rows.sort((a,b)=>strength(b.t)-strength(a.t)||a.t.id-b.t.id);
+      rows.sort((a,b)=>coachStature(b.p)-coachStature(a.p)||strength(b.t)-strength(a.t)||a.t.id-b.t.id);
       lead=rows[0];storyType='Coaching change';
       const rec=t=>{const r=(t.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;return r?` (${r.W}-${r.L} last season)`:'';};
       headline=`Coaching carousel: ${C.plural(rows.length,league.leagueType===1?'program':'team')} ${rows.length===1?'changes':'change'} coaches`;
-      paragraphs.push(`${cap(T(lead.t).full)}${rec(lead.t)} hired ${name(lead.p)}, the biggest job filled in an offseason when ${C.plural(rows.length,league.leagueType===1?'program':'team')} changed coaches.`);
+      paragraphs.push(`${cap(T(lead.t).full)}${rec(lead.t)} hired ${name(lead.p)}${coachRecord(lead.p)?`, who brings ${coachRecord(lead.p)}`:''}. It was the biggest name to move in an offseason when ${C.plural(rows.length,league.leagueType===1?'program':'team')} changed coaches.`);
       if(rows.length>1)paragraphs.push(`Also hiring: ${C.listJoin(rows.slice(1,6).map(x=>`${T(x.t).nick} (${name(x.p)})`))}${rows.length>6?`, among ${C.plural(rows.length-6,'other')}`:''}.`);
       headers=['Team','Hire'];table=rows.map(x=>[C.teamDisplay(x.t),name(x.p)]);
     }else if(type===16||type===17){
       // Role players at the end of the line: one story for the group.
       const career=x=>R.history(x.p,league);
-      rows.sort((a,b)=>R.stature(b.p,league)-R.stature(a.p,league)||a.p.id-b.p.id);
+      // Players with their own story are listed, but the group is led by someone without one.
+      rows.sort((a,b)=>Number(own(a.n))-Number(own(b.n))||R.stature(b.p,league)-R.stature(a.p,league)||a.p.id-b.p.id);
       lead=rows[0];storyType=type===17?'Retirement':'Retirement announcement';
       const c=career(lead),careerLine=x=>{const h=career(x);return h?.GP>0?`${(h.PTS/h.GP).toFixed(1)} points over ${h.GP} games`:'';};
       headline=type===17?`${name(lead.p)} leads ${C.plural(rows.length,'veteran')} into retirement`:`${name(lead.p)} among ${C.plural(rows.length,'veteran')} set to retire`;
@@ -152,10 +169,29 @@
     for(const n of events)if(roundupTypes.has(n.type)){const k=`${groupOf(n.type)}:${n.phase}:${wholePhase(n.type)?'all':n.date}`;if(!grouped.has(k))grouped.set(k,[]);grouped.get(k).push(n);}
     const bundled=new Set([...grouped.values()].filter(list=>list.length>=roundupSize||list[0].type===2).flat());
     for(const [k,list] of grouped)if(bundled.has(list[0]))roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0])});
+    const inRoundup=new Map();
+    // Hires and option decisions fold into their roundup, but a name worth
+    // its own story keeps one: a notable coach, a contender's new coach, a player who matters.
+    const contender=t=>{const r=t&&(t.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;return !!r&&r.W/Math.max(1,r.W+r.L)>=.65;};
+    for(const list of grouped.values())if(bundled.has(list[0])&&(list[0].type===26||optionTypes.has(list[0].type)))for(const n of list){
+      bundled.delete(n);
+      const level=n.type===26?null:R.tier(R.stature(players.get(n.pid),league)),declined=[19,21].includes(n.type);
+      const own=n.type===26?coachTier(coachStature(coaches.get(n.pid)))!=='role'||contender(lookup.teams.get(n.tid)):level==='star'||(declined&&level==='regular');
+      if(!own)inRoundup.set(n,`roundup-${groupOf(n.type)}-${n.phase}-all`);
+    }
     // Role players' retirements share one roundup; names people know keep their own story.
-    const quiet=new Map(),inRoundup=new Map();
+    const quiet=new Map();
     for(const n of events)if((n.type===16||n.type===17)&&players.has(n.pid)&&R.tier(R.stature(players.get(n.pid),league))==='role'){const k=`${n.type}:${n.phase}`;quiet.set(k,[...(quiet.get(k)||[]),n]);}
-    for(const list of quiet.values())if(list.length>=3){roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0])});for(const n of list)inRoundup.set(n,`roundup-${list[0].type}-${list[0].phase}-all`);}
+    // A role player's farewell is still a story with an angle: a title, a whole career in one place, the longest run.
+    const angle=new Map();
+    for(const list of quiet.values()){
+      const games=n=>R.history(players.get(n.pid),league)?.GP||0,longest=Math.max(...list.map(games));
+      for(const n of list){const p=players.get(n.pid),titles=(p.awards||[]).filter(a=>a.id===0&&a.league===league.leagueType).reduce((k,a)=>k+(a.yearsWon||[]).length,0);
+        const teams=new Set((p.stats||[]).filter(x=>x.league===league.leagueType).flatMap(x=>(x.season||[]).map(y=>y.tid))),seasons=new Set((p.stats||[]).filter(x=>x.league===league.leagueType).map(x=>x.yr)).size;
+        const why=titles?{titles}:teams.size===1&&seasons>=7?{lifer:seasons,team:[...teams][0]}:list.length>=3&&games(n)===longest&&longest>=200?{longest}:null;
+        if(why)angle.set(n,why);}
+    }
+    for(const list of quiet.values())if(list.length>=3){roundup(list,{league,lookup,players,coaches,year,fp,result,day:dayOf(list[0]),own:n=>angle.has(n)});for(const n of list)if(!angle.has(n))inRoundup.set(n,`roundup-${list[0].type}-${list[0].phase}-all`);}
     for(const event of events.filter(n=>!bundled.has(n))){
       const info=event.data||{},jersey=info.retiredNumber;
       let coachEvent=[26,27,28,29].includes(event.type);
@@ -216,13 +252,17 @@
             paragraphs=[owner==='player'?`${name} ${accepted?'exercised':'declined'} a player option with ${T.full}.`:`${Full} ${accepted?'picked up':'declined'} the team option on ${C.possessive(name)} contract.`,season].filter(Boolean);break;}
           case 22:headline=`${name} enters the Hall of Fame`;paragraphs=[`${name} has been inducted into the ${league.shortName||league.leagueName} Hall of Fame.`];break;
           case 25:if(!Number.isInteger(jersey?.num)||jersey.num<0)continue;headline=`${nick} ${C.verb(T,'retire')} ${C.possessive(name)} No. ${jersey.num}`;paragraphs=[`${Full} retired No. ${jersey.num} in honor of ${name}. Nobody will wear it for the franchise again.`];break;
-          case 26:headline=`${nick} ${C.verb(T,'hire')} ${name}`;paragraphs=[`${name} is joining the ${T.display} coaching staff.`];break;
-          case 27:case 28:headline=`${nick} ${C.verb(T,'part')} ways with ${name}`;paragraphs=[`${Full} ${event.type===28?'fired':'released'} coach ${name}${standing?`, with the team at ${standing.slice(2,-1)}`:''}.`];break;
+          case 26:{const head=(team?.frontOffice?.staff||[]).find(c=>c.id===player.id)?.pos===1,cr=coachRecord(player),prior=(team.season||[]).filter(r=>r.seasonStats?.GP>0).sort((a,b)=>b.yr-a.yr)[0]?.seasonStats;
+            headline=`${nick} ${C.verb(T,'hire')} ${name}`;
+            paragraphs=head?[`${Full} hired ${name} as head coach.${cr?` ${C.capitalize(last)} brings ${cr}.`:''}`,prior&&prior.W/Math.max(1,prior.W+prior.L)>=.65?`It's one of the best jobs in the league: ${T.nick} went ${prior.W}-${prior.L} last season.`:''].filter(Boolean):[`${name} is joining the ${T.display} coaching staff.`];break;}
+          case 27:case 28:headline=`${nick} ${C.verb(T,'part')} ways with ${name}`;paragraphs=[`${Full} ${event.type===28?'fired':'released'} coach ${name}${standing?`, with the team at ${standing.slice(2,-1)}`:''}.${coachRecord(player)?` ${C.capitalize(last)} leaves with ${coachRecord(player)}.`:''}`];break;
           case 29:headline=`Coach ${name} retires`;paragraphs=[`${name} has retired from coaching.`];break;
           case 30:headline=`${nick} ${C.verb(T,'extend')} ${name}`;paragraphs=[`${Full} and ${name} agreed to a contract extension${info.contract?.ext?.yrs>0?` that adds ${C.plural(info.contract.ext.yrs,'year')}`:''}.`,season].filter(Boolean);break;
           case 31:headline=`${name} requests a trade`;paragraphs=[`${name} has asked ${T.full} for a trade. No deal is in place yet.`,season].filter(Boolean);break;
         }
         if(!headline)continue;
+        const why=angle.get(event);
+        if(why)paragraphs.push(why.titles?`${C.capitalize(last)} won ${why.titles===1?'a championship':`${C.num(why.titles)} championships`} along the way.`:why.lifer?`${C.capitalize(last)} spent all ${C.num(why.lifer)} seasons with ${C.teamRef(lookup.teams.get(why.team)||team).full}.`:`No one in this year's retirement class played longer: ${why.longest} games.`);
         if(!coachEvent){
           const career=R.history(player,league);
           if(career&&[16,17,22,25].includes(event.type)){paragraphs.push(`${C.surname(name)} averaged ${(career.PTS/career.GP).toFixed(1)} points, ${(career.REB/career.GP).toFixed(1)} rebounds and ${(career.AST/career.GP).toFixed(1)} assists over ${career.GP} regular-season games in ${league.shortName||league.leagueName}.`);rows.push(['Career PPG',(career.PTS/career.GP).toFixed(1),'Regular season'],['Career RPG',(career.REB/career.GP).toFixed(1),'Regular season'],['Career APG',(career.AST/career.GP).toFixed(1),'Regular season']);}
@@ -238,10 +278,10 @@
       // News value follows who it's about: a star's retirement leads, a bench player's is a line in a roundup.
       const size=coachEvent?0:R.stature(player,league),now=!coachEvent&&player?S.stats(player,league,year):null,ppg=now?.GP>0?now.PTS/now.GP:0;
       const teamRec=team&&((team.season||[]).find(r=>r.yr===year&&r.seasonStats?.GP>0)||(team.season||[]).find(r=>r.yr===year-1))?.seasonStats,winPct=teamRec&&teamRec.W+teamRec.L>0?teamRec.W/(teamRec.W+teamRec.L):.5;
-      const value=event.type===16||event.type===17?(R.tier(size)==='role'?40:Math.min(135,60+2.5*size)):event.type===22?120:event.type===25?100:event.type===13?125:event.type===12?85:
+      const value=event.type===16||event.type===17?(R.tier(size)==='role'?(angle.has(event)?(angle.get(event).titles?60:55):40):Math.min(135,60+2.5*size)):event.type===22?120:event.type===25?100:event.type===13?125:event.type===12?85:
         event.type===10?Math.min(110,45+3*ppg+(winPct>=.6?15:0)):event.type===11?Math.min(80,35+2*ppg):event.type===7?Math.min(125,60+2.5*Math.max(size,...(info.trade?.teams||[]).flatMap(t=>(t.assets||[]).map(a=>R.stature(players.get(a.pid),league))))):
-        [26,27,28,29].includes(event.type)?Math.round(Math.min(100,70+(winPct-.5)*40+(event.type===28?10:0))):[3,5,6,18,19,20,21].includes(event.type)?Math.min(100,45+2*size):event.type===30?Math.min(110,50+2*size):event.type===31?Math.min(120,60+2.5*size):50;
-      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:dayOf(event),type,headline,paragraphs,importance:inRoundup.has(event)?10:Math.round(value),...(inRoundup.has(event)?{inRoundup:`${fp}:${year}:season:${inRoundup.get(event)}`}:{}),templateVersion:event.type===10?6:5,editorialVersion:2,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
+        [26,27,28,29].includes(event.type)?Math.round(Math.min(120,55+2*Math.max(0,coachStature(player))+(winPct-.5)*40+(event.type===28?10:0))):[18,19,20,21].includes(event.type)?Math.min(85,30+2*size):[3,5,6].includes(event.type)?Math.min(100,45+2*size):event.type===30?Math.min(110,50+2*size):event.type===31?Math.min(120,60+2.5*size):50;
+      const story={id:`${fp}:${year}:season:${key}`,eventKey:key,kind:'season',fingerprint:fp,season:year,day:dayOf(event),type,headline,paragraphs,importance:inRoundup.has(event)?10:Math.round(value),...(inRoundup.has(event)?{inRoundup:`${fp}:${year}:season:${inRoundup.get(event)}`}:{}),templateVersion:event.type===10?6:5,editorialVersion:3,quotesEnabled:true,leagueName:league.leagueName,createdAt:new Date().toISOString(),
         relatedTeams:related.map(t=>({id:t.id,name:C.teamDisplay(t),logoURL:t.logoURL||null})),seasonSnapshot:{headers:event.type===7?['From','Asset','To']:['Category','Value','Context'],rows,newsEvent:structuredClone(event),source:'season.news'}};
       const opponent=related.find(t=>t.id!==team.id)||[...lookup.teams.values()].find(t=>t.id!==team.id);
       const featured=!coachEvent&&player&&related.some(t=>t.id===event.tid)?player:null;
