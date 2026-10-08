@@ -1,10 +1,10 @@
 /* Static player renderer adapted from HoopLeagueStudio's game-asset preview. */
 (()=>{
  const root='./player-assets/';
- const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff','injured-leg','injured-leg-arms'];
+ const files=['idle','head','eye-white','eye-color','brow-color','unibrow-color','hair','facial-hair','head-accessories','shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff','injured-leg','injured-leg-arms','running','running-arms'];
  const images={};
  const flightBall=new Image();flightBall.src='./scene-assets/ball-seams.png';images['flight-ball']=flightBall;
- for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff','injured-leg','injured-leg-arms'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
+ for(const file of files){const image=new Image();image.src=(['shooting','shooting-arms','dribbling','passing','passing-arms','dunking','dunking-arms','coach-jacket','coach-undershirt','coach-tie','staff-idle','staff-idle-alt','jersey-numbers','celebrate','bench-idle','bench-celebrate','sitting','sitting-staff','injured-leg','injured-leg-arms','running','running-arms'].includes(file)?'./scene-assets/':root)+file+'.png';images[file]=image}
  const hex=(value,fallback)=>/^#?[\da-f]{6}$/i.test(String(value||''))?'#'+String(value).replace('#',''):fallback;
  const color=(value,team,fallback)=>{
   const slot={PRI:0,SEC:1,TER:2}[String(value||'').toUpperCase()];
@@ -150,10 +150,11 @@
   }
   // The taller staging area adds eight logical pixels above the body. The
   // player stays at the original 2x preview scale instead of being shrunk.
-  // The injured player sits lower in the game's sprite, the head bobbing a pixel between frames.
-  sceneCtx.save();sceneCtx.translate(0,offsetY+(pose==='idle'?[-8,-7,-6,-7][frame%4]:pose==='injured-leg'?[-5,-4][frame%2]:-8));
+  // The injured player sits lower in the game's sprite, the head bobbing a pixel
+  // between frames; a running stride lifts the head a pixel on alternate frames.
+  sceneCtx.save();sceneCtx.translate(0,offsetY+(pose==='idle'?[-8,-7,-6,-7][frame%4]:pose==='injured-leg'?[-5,-4][frame%2]:pose==='running'?[-9,-8][frame%2]:-8));
   // Back views: the second and fourth rows of the four-column atlases, the second frame of a sitting strip.
-  const back=pose==='dunking'?frame>=4:pose==='sitting'?frame%2===1:['idle','celebrate','bench-idle','bench-celebrate','suit-standing'].includes(pose)&&Math.floor(frame/4)%2===1,headX=back?32:0;
+  const back=pose==='dunking'?frame>=4:pose==='sitting'?frame%2===1:['idle','celebrate','bench-idle','bench-celebrate','suit-standing','running'].includes(pose)&&Math.floor(frame/4)%2===1,headX=back?32:0;
   // The injured sprite keeps its own pained face; only the hair goes on it.
   if(pose!=='injured-leg'){
    paint(sceneCtx,images.head,headX,0,hex(appearance.skinC,'#dc8158'));
@@ -167,7 +168,7 @@
   if(gear.headAcc!=='none')atlas(sceneCtx,images['head-accessories'],gear.headAcc,8,color(gear.headAccC,team,'#ffffff'),0);
   atlas(sceneCtx,images['head-accessories'],gear.headAcc2,8,color(gear.headAcc2C,team,'#ffffff'),0);
   sceneCtx.restore();
-  const arms={shooting:'shooting-arms',passing:'passing-arms',dunking:'dunking-arms','injured-leg':'injured-leg-arms'}[pose];
+  const arms={shooting:'shooting-arms',passing:'passing-arms',dunking:'dunking-arms','injured-leg':'injured-leg-arms',running:'running-arms'}[pose];
   if(arms){sceneCtx.save();sceneCtx.translate(0,offsetY);body(sceneCtx,frame,player,team,uniformIndex,arms,ball);sceneCtx.restore();}
   const scale=canvas.width/32;
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;
