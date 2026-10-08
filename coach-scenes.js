@@ -1,14 +1,13 @@
 /* Coach story scenes, built from the game's own art at the game's scale:
    the game's arena (stairs, crowd, court), the bench chairs and sitting and
-   celebrating sprites, the press wall and podium, the locker room, and the
-   draft stage. The
-   camera frames a 384 x 216 piece of the world at 2x, the same framing as
+   celebrating sprites, the podium, the locker room, and the curtained stage
+   the draft and the press conference share. The camera frames a 384 x 216 piece of the world at 2x, the same framing as
    the wide action shots, so people are their native 32 x 42. */
 (() => {
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'podium-background', 'billboard-ads', '../assets/draft_logo'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'natty', 'confetti', 'draft-podium', 'locker-room', 'billboard-ads', '../assets/draft_logo'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name.replace(/^.*\//, '')] = image; }));
     return ready;
@@ -200,30 +199,53 @@
   }
   function depth(ctx, list) { list.filter(a => a.data).sort((a, b) => a.foot - b.foot).forEach(a => { shadow(ctx, a.x, a.foot); person(ctx, a.data, a.team, a.pose, a.frame, a.x, a.foot, a.facing, a.uniform || 0); }); }
 
+  // Blue stage curtains in pixel art: a fold every 16 pixels, lit across each
+  // fold, darkening toward the floor, under a scalloped valance.
+  function curtains(ctx, bottom) {
+    const folds = [.62, .7, .8, .9, 1, 1.06, 1.1, 1.06, 1, .92, .84, .76, .7, .64, .58, .56];
+    for (let x = 0; x < 384; x++) {
+      const k = folds[x % 16];
+      for (let y = 0; y < bottom; y += 4) {
+        const fade = 1 - .35 * y / bottom, v = shade('#1f4fb8', k * fade);
+        ctx.fillStyle = `rgb(${v[0]},${v[1]},${v[2]})`; ctx.fillRect(x, y, 1, 4);
+      }
+    }
+    for (let x = 0; x < 384; x += 24) {
+      ctx.fillStyle = '#163a8c'; ctx.fillRect(x, 0, 24, 9);
+      ctx.fillStyle = '#163a8c'; ctx.fillRect(x + 2, 9, 20, 2); ctx.fillRect(x + 5, 11, 14, 2);
+      ctx.fillStyle = '#2c5fcc'; ctx.fillRect(x, 2, 24, 1);
+      ctx.fillStyle = '#0c2460'; ctx.fillRect(x + 5, 13, 14, 1);
+    }
+    ctx.fillStyle = 'rgba(4,8,24,.2)'; ctx.fillRect(0, 0, 384, bottom);
+  }
+  // The stage both the draft and the press conference stand on: a spotlight
+  // on the podium, the deck with floorboards closer together toward the
+  // curtains, and its front face in the team's color. Returns the podium's base.
+  function stageFloor(ctx, primary) {
+    ctx.globalCompositeOperation = 'lighter';
+    const spot = ctx.createRadialGradient(192, 130, 6, 192, 130, 90); spot.addColorStop(0, 'rgba(120,150,220,.35)'); spot.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
+    const deck = 128, edge = 172;
+    ctx.fillStyle = '#1b2033'; ctx.fillRect(0, deck, 384, edge - deck); ctx.fillStyle = '#2d3550'; ctx.fillRect(0, deck, 384, 1);
+    ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let y = deck + 4, gap = 4; y < edge; y += gap, gap += 1) ctx.fillRect(0, y, 384, 1);
+    ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = primary; ctx.fillRect(0, edge, 384, 2);
+    // The podium stands back from the stage's edge.
+    return edge - 10;
+  }
   const scenes = {
     // The introductory press conference: the wall, the podium, the press.
-    async hire(scene, rand, sceneArt) {
-      // A tighter 3x shot on the speakers, the wall rendered at that zoom so its logos stay sharp.
-      const camera = [56, 16, 256, 144], { canvas, ctx, world, screen } = stage(camera);
-      screen();
-      const wall = await window.HoopWirePressBackdrop.render(sceneArt['press-background'], scene.team, scene.pressLogoData, { scale: 768 / camera[2], league: scene.league, leagueData: scene.pressLeagueLogoData });
-      window.HoopWirePressBackdrop.paint(ctx, wall, camera.map(v => v * 2));
-      world();
-      // The stage deck runs from the wall to its front edge; the podium stands
-      // well back from that edge, the coach behind it, the executive beside.
-      const floor = 74, edge = 126;
-      ctx.fillStyle = '#1b2130'; ctx.fillRect(0, floor, 384, edge - floor); ctx.fillStyle = '#2b3346'; ctx.fillRect(0, floor, 384, 1);
-      // Floorboards, closer together toward the wall.
-      ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let y = floor + 4, gap = 4; y < edge; y += gap, gap += 1) ctx.fillRect(0, y, 384, 1);
-      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = teamColor(scene.team, 0, '#1d428a'); ctx.fillRect(0, edge, 384, 2);
-      // A press-room lectern: the game's podium at two-thirds size, which at this
-      // 3x zoom is exactly two screen pixels per sprite pixel. Its top is 25 of
-      // its 64 rows down; the coach stands close behind it, covered to the chest.
-      const base = edge - 20, size = 128 / 3, lectern = [200 - size / 2, base - size];
-      depth(ctx, [{ data: scene.executive, team: scene.team, pose: 'idle', frame: 0, x: 150, foot: floor + 22, facing: 'right' }, { data: scene.coach, team: scene.team, pose: 'idle', frame: 1, x: 200, foot: base - 12, facing: 'left' }]);
-      ctx.drawImage(art['draft-podium'], ...lectern, size, size);
-      audience(ctx, rand, null, [[148, 4], [170, 14]], { cheer: 0, chairs: true, spacing: 20 });
-      return { canvas, extra: { pressLogoData: wall.logoData, pressLeagueLogoData: wall.leagueLogoData } };
+    async hire(scene, rand) {
+      // Laid out like the draft: the curtains and stage, the coach behind the
+      // game's podium where the pick stands, the executive beside it where the
+      // commissioner stands, and the press seated in front.
+      const { canvas, ctx } = stage([0, 0, 384, 216]), team = scene.team;
+      curtains(ctx, 128);
+      const base = stageFloor(ctx, teamColor(team, 0, '#1d428a'));
+      depth(ctx, [{ data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' }]);
+      ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
+      depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
+      audience(ctx, rand, null, [[184, 4], [206, 14]], { cheer: 0, chairs: true, spacing: 20 });
+      return { canvas, extra: { pressLogoData: scene.pressLogoData || null, pressLeagueLogoData: scene.pressLeagueLogoData || null } };
     },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
@@ -285,10 +307,7 @@
     async draft(scene, rand) {
       const { canvas, ctx, world, screen } = stage([0, 0, 384, 216]), team = scene.team, player = scene.draftee;
       const primary = teamColor(team, 0, '#1d428a'), secondary = teamColor(team, 1, '#ffffff');
-      // The game's draft backdrop: its Hoop Land pattern at half size, one screen pixel per pattern pixel, close to the game's 20:48 scale against the players.
-      ctx.fillStyle = '#0a1534'; ctx.fillRect(0, 0, 384, 216);
-      for (let y = 0; y < 150; y += 64) for (let x = 0; x < 384; x += 64) ctx.drawImage(art['podium-background'], x, y, 64, 64);
-      ctx.fillStyle = 'rgba(6,10,28,.45)'; ctx.fillRect(0, 0, 384, 150);
+      curtains(ctx, 128);
       const panel = (x, y, w, h) => {
         ctx.fillStyle = '#05070d'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
         ctx.fillStyle = '#20263a'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -336,18 +355,8 @@
         ctx.font = '900 13px Arial'; ctx.fillStyle = '#c9d6f2';
         ctx.fillText(scene.pick?.pk ? `${scene.pick.rd ? `ROUND ${scene.pick.rd} · ` : ''}PICK ${scene.pick.pk}` : 'DRAFT PICK', 2 * (x + 42), 2 * 100); world();
       }
-      // Spotlight on the podium.
-      ctx.globalCompositeOperation = 'lighter';
-      const spot = ctx.createRadialGradient(192, 130, 6, 192, 130, 90); spot.addColorStop(0, 'rgba(120,150,220,.35)'); spot.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
-      // The stage: its deck, with floorboards closer together toward the wall, then its front face.
-      const deck = 128, edge = 172;
-      ctx.fillStyle = '#1b2033'; ctx.fillRect(0, deck, 384, edge - deck); ctx.fillStyle = '#2d3550'; ctx.fillRect(0, deck, 384, 1);
-      ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let y = deck + 4, gap = 4; y < edge; y += gap, gap += 1) ctx.fillRect(0, y, 384, 1);
-      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = primary; ctx.fillRect(0, edge, 384, 2);
-      // The podium stands back from the stage's edge; the game stands the
-      // player's feet 27 pixels above the podium's base.
-      const base = edge - 10, podium = [160, base - 64];
+      // The pick behind the podium; the game stands the player's feet 27 pixels above the podium's base.
+      const base = stageFloor(ctx, primary), podium = [160, base - 64];
       if (player) { shadow(ctx, 192, base - 26, 10); person(ctx, player, team, 'suit-standing', 0, 192, base - 27, 'left'); }
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
       // The commissioner beside the podium, turned toward the pick.
@@ -397,7 +406,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 16, seed: id, kind: `coach-${context.coachScene}`,
+      version: 17, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
