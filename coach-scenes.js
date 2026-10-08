@@ -213,28 +213,40 @@
     ctx.drawImage(swap(art['cameraman-body'], 0, body), x - 16, foot - 32);
     ctx.drawImage(swap(art['cameraman-head'], aim === 'right' ? 6 : 2, head), x - 16, foot - 40);
   }
-  // A Hall of Fame bust: the player's portrait (32 x 28) cast in bronze. Each
-  // sprite's brightness range is stretched over a bronze-only ramp, with the
-  // outline kept as the deepest patina and the whites of the eyes cast in the
-  // same metal as the face, so nothing glows. The bust ends below the
-  // shoulders in a curve.
-  const BRONZE = [[48, 26, 12], [86, 48, 20], [124, 74, 32], [162, 102, 44], [198, 134, 58], [238, 186, 96]];
-  function bronze(player, team, scale = 2) {
+  // A Hall of Fame bust: the player's portrait (32 x 28) cast in bronze, the
+  // same bronze for everyone, as a real bust is. The portrait is drawn with
+  // marker colors in place of the player's own (skin red, hair green, brows
+  // blue, eyes cyan) and no team or gear, so only the sculpted form carries
+  // over: the face, head and the whites of the eyes take the primary bronze,
+  // lit with highlights from the upper left; hair and beard sit a step darker
+  // in the shading; brows, irises and the mouth line fall into the shadow;
+  // the outline stays black.
+  // The Hall of Fame mark, when the app ships one; the scene letters its own title otherwise.
+  let hofLogo;
+  const loadHofLogo = () => hofLogo ||= new Promise(resolve => { const image = new Image(); image.onload = () => resolve(image); image.onerror = () => resolve(null); image.src = 'assets/hof_logo.png'; });
+  const BRONZE = { highlight: [191, 119, 28], primary: [172, 107, 25], shading: [156, 97, 23], shadow: [130, 81, 19], outline: [0, 0, 0] };
+  function bronze(player, scale = 2) {
     const c = document.createElement('canvas'); c.width = 32; c.height = 28;
-    window.HoopWirePlayer.portrait(c, { ...player, wearsSuit: false, isCoach: false }, team, 0);
-    const g = c.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 28), lum = i => .3 * d.data[i] + .59 * d.data[i + 1] + .11 * d.data[i + 2];
-    const tones = []; for (let i = 0; i < d.data.length; i += 4) if (d.data[i + 3] && lum(i) > 40 && lum(i) < 235) tones.push(lum(i));
-    tones.sort((a, b) => a - b);
-    const lo = tones[0] ?? 40, hi = tones[tones.length - 1] ?? 235, mid = tones[Math.floor(tones.length / 2)] ?? 128, out = new Uint8ClampedArray(d.data);
+    const a = player.appearance || {};
+    const cast = { ...player, num: null, accessories: [], wearsSuit: false, isCoach: false,
+      appearance: { ...a, skinC: 'FF0000', hairC: '00FF00', fHairC: '00FF00', browC: '0000FF', eyeC: '00FFFF' } };
+    window.HoopWirePlayer.portrait(c, cast, null, 0);
+    const g = c.getContext('2d', { willReadFrequently: true }), d = g.getImageData(0, 0, 32, 28), out = new Uint8ClampedArray(d.data.length);
     for (let y = 0; y < 28; y++) for (let x = 0; x < 32; x++) {
-      const i = (y * 32 + x) * 4; if (!d.data[i + 3]) continue;
-      let l = lum(i); if (l >= 235) l = mid;
-      let k = l <= 40 ? 0 : 1 + Math.min(BRONZE.length - 2, Math.floor((l - lo) / Math.max(1, hi - lo) * (BRONZE.length - 1)));
-      // Sculpted shading: lighter toward the light on the left, darker on the
-      // right and toward the base, a glint where the light first meets the edge.
-      if (k) k = Math.max(1, Math.min(BRONZE.length - 2, k + (x < 11 ? 1 : 0) - (x > 21 ? 1 : 0) - (y > 21 ? 1 : 0)));
-      if (k && (x === 0 || !d.data[i - 1] || (y > 0 && !d.data[i - 128 + 3]))) k = BRONZE.length - 1;
-      out.set([...BRONZE[k], 255], i);
+      const i = (y * 32 + x) * 4; if (d.data[i + 3] < 128) continue;
+      const [r, gr, b] = d.data.slice(i, i + 3), hi = Math.max(r, gr, b), lit = (r + gr + b) / 3;
+      let tone;
+      if (hi < 48) tone = 'outline';
+      else if (r > 180 && gr > 180 && b > 180) tone = 'primary';
+      else if (b > r + 40 && gr > r + 40) tone = 'shadow';
+      else if (b > r && b > gr) tone = 'shadow';
+      else if (gr > r && gr > b) tone = hi > 150 ? 'shading' : 'shadow';
+      else if (r > gr + 40 && r > b + 40) tone = hi > 200 ? 'primary' : hi > 140 ? 'shading' : 'shadow';
+      else tone = lit > 150 ? 'primary' : lit > 90 ? 'shading' : 'shadow';
+      // Light from the upper left: the first lit pixels along the top and left edges catch it.
+      const edge = x === 0 || d.data[i - 1] < 128 || y === 0 || d.data[i - 128 + 3] < 128;
+      if (tone === 'primary' && edge && x < 20) tone = 'highlight';
+      out.set([...BRONZE[tone], 255], i);
     }
     g.putImageData(new ImageData(out, 32, 28), 0, 0);
     g.globalCompositeOperation = 'destination-in'; g.beginPath(); g.ellipse(16, 10, 16, 19, 0, 0, Math.PI * 2); g.fill();
@@ -317,7 +329,10 @@
         ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(px0 + 2, top + 2, 20, 22);
         ctx.fillStyle = '#14182a'; ctx.fillRect(px0, top, 20, 22); ctx.fillStyle = '#1f2540'; ctx.fillRect(px0 + 2, top + 2, 16, 20);
         ctx.fillStyle = '#c9a24a'; ctx.fillRect(px0 - 1, top, 22, 2);
-        ctx.drawImage(trophy(scene.award), px0 - 6, top - 30, 32, 32);
+        // The statuette at two-thirds size, two screen pixels per sprite pixel at
+        // this 3x zoom, so it reads as a trophy beside the player, not a figure.
+        const size = 64 / 3;
+        ctx.drawImage(trophy(scene.award), px0 + 10 - size / 2, top - 20, size, size);
       } else depth(ctx, [{ data: scene.executive, team, pose: 'idle', frame: 0, x: 140, foot: base - 6, facing: 'right' }]);
       // TV cameras at either side of the stage, aimed at the podium.
       cameraman(ctx, rand, 80, base - 2, 'right'); cameraman(ctx, rand, 288, base - 2, 'left');
@@ -344,7 +359,7 @@
       const place = (p, x, top, lit) => {
         pedestal(x, top, p ? window.HoopWireCore.playerDisplay(p) : null);
         if (!p) return;
-        const b = bronze(p, team);
+        const b = bronze(p);
         if (!lit) { const g = b.getContext('2d'); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(14,8,4,.45)'; g.fillRect(0, 0, b.width, b.height); }
         ctx.drawImage(b, x - b.width / 2, top - b.height);
       };
@@ -356,8 +371,17 @@
       ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
       place(scene.inductee, 192, 118, true);
       screen(); const k = canvas.width / camera[2];
-      ctx.textAlign = 'center'; ctx.fillStyle = '#e6cd8e'; ctx.font = '700 26px Georgia'; ctx.fillText('HALL OF FAME', (192 - camera[0]) * k, (40 - camera[1]) * k);
-      ctx.fillStyle = '#c4a45e'; ctx.font = '700 15px Georgia'; ctx.fillText(`${scene.league?.name ? `${scene.league.name.toUpperCase()} · ` : ''}CLASS OF ${scene.season}`, (192 - camera[0]) * k, (48 - camera[1]) * k);
+      // The Hall of Fame mark on the wall above the busts, the class year beneath it.
+      const cx = (192 - camera[0]) * k, logo = await loadHofLogo();
+      ctx.textAlign = 'center';
+      if (logo) {
+        const w = 300, h = Math.round(w * logo.height / logo.width);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(logo, Math.round(cx - w / 2), 30, w, h); ctx.imageSmoothingEnabled = false;
+        ctx.fillStyle = '#d9cfbd'; ctx.font = '700 24px "Arial Narrow", "Roboto Condensed", Arial, sans-serif'; ctx.fillText(`CLASS OF ${scene.season}`, cx, 30 + h + 30);
+      } else {
+        ctx.fillStyle = '#e6cd8e'; ctx.font = '700 26px Georgia'; ctx.fillText('HALL OF FAME', cx, (40 - camera[1]) * k);
+        ctx.fillStyle = '#c4a45e'; ctx.font = '700 15px Georgia'; ctx.fillText(`CLASS OF ${scene.season}`, cx, (48 - camera[1]) * k);
+      }
       world();
       return { canvas };
     },
@@ -532,7 +556,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 22, seed: id, kind: `coach-${context.coachScene}`,
+      version: 24, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
