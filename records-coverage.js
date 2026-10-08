@@ -106,11 +106,13 @@
     }
     // Where a record came from: a season mark has its year; a career mark is
     // still growing while its holder plays, so it's "held by" until they stop.
-    // Only the save's retirees are called retired; anyone else just last played.
+    // Only the save's retirees are called retired (graduated, in college); anyone else just last played.
     const recordOrigin=(record,scope,holder,league,year)=>{
       if(scope==='season')return Number.isInteger(record.yr)?`set by ${holder} in ${record.yr}`:`set by ${holder}`;
       const years=(record.p.stats||[]).filter(s=>s.league===league.leagueType&&Number.isInteger(s.yr)).map(s=>s.yr),last=years.length?Math.max(...years):null;
-      if(retired.has(record.p.id))return last!==null?`set by ${holder}, who retired in ${last}`:`set by ${holder}, who has since retired`;
+      // College players who leave the game graduate; pros retire.
+      const left=league.leagueType===1?'graduated':'retired';
+      if(retired.has(record.p.id))return last!==null?`set by ${holder}, who ${left} in ${last}`:`set by ${holder}, who has since ${left}`;
       return last!==null&&last<year?`set by ${holder}, who last played in ${last}`:`held by ${holder}`;
     };
     // Compare current totals with prior seasons and the league's career leaderboard from player histories.

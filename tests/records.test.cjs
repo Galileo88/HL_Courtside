@@ -18,6 +18,10 @@ test('a career record held by a retiree says when they retired; active holders s
   l.retirees=[{id:99,tid:0,fn:'Old',ln:'Timer',stats:[{league:0,yr:1,season:[{tid:1,GP:20,PTS:2050,REB:0,AST:0,STL:0,BLK:0,TPM:0}]}]}];
   const watch=R.candidates(l).filter(x=>x.story.type==='Record watch').map(x=>x.story.paragraphs[0]).find(p=>/career record/.test(p));
   assert.match(watch,/^Alex Star is now only 50 points shy of the FL career record, 2,050, set by Old Timer, who retired in 1\.$/);
+  // The same league as a college one: its players graduate.
+  const swap=()=>{for(const t of l.teams)for(const p of t.roster)for(const st of p.stats)st.league=1-st.league;l.retirees[0].stats[0].league=1-l.retirees[0].stats[0].league;l.season.schedule[0].results[0].league=1-l.season.schedule[0].results[0].league;l.leagueType=1-l.leagueType;};
+  swap();const college=R.candidates(l).filter(x=>x.story.type==='Record watch').map(x=>x.story.paragraphs[0]).find(p=>/career record/.test(p));
+  assert.match(college,/set by Old Timer, who graduated in 1\.$/);swap();
   l.retirees=[];l.teams[1].roster[0].stats.push({league:0,yr:2,season:[{tid:2,GP:1,PTS:1050,REB:0,AST:0,STL:0,BLK:0,TPM:0}]});
   const held=R.candidates(l).filter(x=>x.story.type==='Record watch').map(x=>x.story.paragraphs[0]).find(p=>/career record/.test(p));
   if(held)assert.match(held,/held by Sam Moon\.$/);
