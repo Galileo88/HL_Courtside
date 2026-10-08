@@ -396,7 +396,7 @@ branch.append(summary);
         story.broadcastAsOfDay=C.buildLookups(league).latestDay+1;
         const old=state.stories.get(story.id);
         // Coach stories show the coach at the podium; an archived action image is redrawn.
-        const redraw=context.coachScene?old?.sceneInputs?.kind!==`coach-${context.coachScene}`||(old?.sceneInputs?.version||0)<6:context.coach&&!old?.sceneInputs?.player?.isCoach;
+        const redraw=context.coachScene?old?.sceneInputs?.kind!==`coach-${context.coachScene}`||(old?.sceneInputs?.version||0)<7:context.coach&&!old?.sceneInputs?.player?.isCoach;
         if(old&&!redraw){for(const key of ['day','createdAt','imageBlob','sceneInputs','imageAlt','imageCaption','customCourt'])if(old[key]!==undefined)story[key]=old[key];return story;}
         if(old)for(const key of ['day','createdAt'])if(old[key]!==undefined)story[key]=old[key];
         if(context.coachScene)return Object.assign(story,await window.HoopWireScenes.render(window.HoopWireCoachScenes.inputs(context,story.id,league,story.season)));

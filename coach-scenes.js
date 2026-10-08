@@ -140,20 +140,21 @@
     },
     // After the firing: the empty locker room, the coach alone on a chair.
     async fire(scene, rand) {
-      const { canvas, ctx } = stage([0, 0, 256, 144]);
-      const room = art['locker-room'], top = 50;
+      // The same 2x camera as the other coach scenes, so the coach stays the same size as at the podium or courtside.
+      const { canvas, ctx } = stage([0, 0, 384, 216]);
+      const room = art['locker-room'], top = 96, left = -32, seat = 192;
       // The game's locker room tile, run the width of the room, with its wood above and its carpet below in the team's color.
-      ctx.fillStyle = 'rgb(70,33,31)'; ctx.fillRect(0, 0, 256, top);
-      ctx.fillStyle = 'rgb(98,53,48)'; for (let y = 6; y < top; y += 8) ctx.fillRect(0, y, 256, 1);
-      for (let x = 0; x < 256; x += 64) ctx.drawImage(room, x, top);
-      ctx.fillStyle = 'rgb(15,77,163)'; ctx.fillRect(0, top + 64, 256, 144 - top - 64);
-      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, top + 64, 256, 2);
-      // The coach on the middle chair of the second locker bay.
-      shadow(ctx, 96, top + 60, 10);
-      person(ctx, scene.coach, scene.team, 'sitting', 0, 96, top + 58, 'left');
-      const light = ctx.createRadialGradient(96, top + 40, 8, 96, top + 40, 150);
+      ctx.fillStyle = 'rgb(70,33,31)'; ctx.fillRect(0, 0, 384, top);
+      ctx.fillStyle = 'rgb(98,53,48)'; for (let y = 6; y < top; y += 8) ctx.fillRect(0, y, 384, 1);
+      for (let x = left; x < 384; x += 64) ctx.drawImage(room, x, top);
+      ctx.fillStyle = 'rgb(15,77,163)'; ctx.fillRect(0, top + 64, 384, 216 - top - 64);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, top + 64, 384, 2);
+      // The coach on the middle chair of a locker bay; the game seats the sitting sprite 8 pixels above the tile's bottom, level with the chair legs.
+      shadow(ctx, seat, top + 58, 10);
+      person(ctx, scene.coach, scene.team, 'sitting', 0, seat, top + 56, 'left');
+      const light = ctx.createRadialGradient(seat, top + 40, 8, seat, top + 40, 210);
       light.addColorStop(0, 'rgba(0,0,0,0)'); light.addColorStop(1, 'rgba(4,6,14,.7)');
-      ctx.fillStyle = light; ctx.fillRect(0, 0, 256, 144);
+      ctx.fillStyle = light; ctx.fillRect(0, 0, 384, 216);
       return { canvas };
     },
     // A rough season: a thin crowd, a quiet home bench, the coach on the sideline in front of it.
@@ -210,7 +211,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 6, seed: id, kind: `coach-${context.coachScene}`,
+      version: 7, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court }),
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
