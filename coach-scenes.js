@@ -468,15 +468,39 @@
       const handle = p ? `@${String(p.fn || '').toLowerCase()}${String(p.ln || '').toLowerCase()}`.replace(/[^@a-z0-9._]/g, '') : '@recruit';
       ctx.fillStyle = '#ffffff'; ctx.font = '700 15px Arial'; ctx.textAlign = 'left'; ctx.fillText(handle, cx + 14, cy + 70);
       const hw = ctx.measureText(handle).width; sprite(art['hoopgram-verified'], cx + 20 + hw, cy + 58, 1.25);
-      // The photo: the school's colors and logo, the recruit's portrait in its uniform.
+      // The photo, in one of two designs picked per story: the recruit's
+      // portrait over the school's colors and a faint logo, or the recruit
+      // standing with a ball beside the school's logo on a dark field cut by
+      // the school's color at two corners.
       const [px0, py0, pw, ph] = [cx + 12, cy + 82, cw - 24, 236];
-      const photo = ctx.createLinearGradient(0, py0, 0, py0 + ph); photo.addColorStop(0, `rgb(${shade(primary, 1.1)})`); photo.addColorStop(1, `rgb(${shade(primary, .7)})`);
-      ctx.fillStyle = photo; ctx.fillRect(px0, py0, pw, ph);
       const logo = await window.HoopWirePressBackdrop.teamLogo(team, scene.pressLogoData);
-      if (logo?.image) { const image = trim(logo.image), fit = Math.min(200 / image.width, 200 / image.height), w = image.width * fit, h = image.height * fit;
-        ctx.globalAlpha = .28; ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(image, px0 + (pw - w) / 2, py0 + 12, w, h); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false; }
-      if (p) { const c = document.createElement('canvas'); c.width = 32 * 7; c.height = 28 * 7; window.HoopWirePlayer.portrait(c, { ...p, wearsSuit: false, isCoach: false }, team, 0); ctx.drawImage(c, px0 + (pw - c.width) / 2, py0 + ph - c.height); }
-      ctx.fillStyle = secondary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
+      const fit = (image, box) => { const im = trim(image), k = Math.min(box / im.width, box / im.height); return [im, im.width * k, im.height * k]; };
+      if (C.choose(String(scene.seed), ['portrait', 'standing'], 'hoopgram-design') === 'standing') {
+        ctx.fillStyle = '#171717'; ctx.fillRect(px0, py0, pw, ph);
+        ctx.save(); ctx.beginPath(); ctx.rect(px0, py0, pw, ph); ctx.clip();
+        ctx.fillStyle = `rgb(${shade(primary, .58)})`;
+        ctx.beginPath(); ctx.moveTo(px0 + pw * .58, py0); ctx.lineTo(px0 + pw, py0); ctx.lineTo(px0 + pw, py0 + ph * .5); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px0, py0 + ph * .48); ctx.lineTo(px0, py0 + ph); ctx.lineTo(px0 + pw * .34, py0 + ph); ctx.fill();
+        ctx.restore();
+        if (logo?.image) {
+          const [im, w, h] = fit(logo.image, 112), [lx, ly] = [px0 + pw - 70, py0 + 86];
+          // A mostly dark logo would vanish on the dark field, so it sits on a white disc ringed in the school's color.
+          const g = document.createElement('canvas'); g.width = g.height = 24; const gc = g.getContext('2d', { willReadFrequently: true }); gc.drawImage(im, 0, 0, 24, 24);
+          const px = gc.getImageData(0, 0, 24, 24).data; let sum = 0, n = 0; for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { sum += .299 * px[i] + .587 * px[i + 1] + .114 * px[i + 2]; n++; }
+          if (n && sum / n / 255 < .45) { ctx.fillStyle = primary; ctx.beginPath(); ctx.arc(lx, ly, 64, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.arc(lx, ly, 60, 0, Math.PI * 2); ctx.fill(); }
+          const k = n && sum / n / 255 < .45 ? .82 : 1;
+          ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, lx - w * k / 2, ly - h * k / 2, w * k, h * k); ctx.imageSmoothingEnabled = false;
+        }
+        // The recruit at five times the sprite's size, holding the ball low, in the school's uniform.
+        if (p) { const c = document.createElement('canvas'); c.width = 32 * 5; c.height = 42 * 5; window.HoopWirePlayer.draw(c, { ...p, wearsSuit: false, isCoach: false }, team, 0, 1, 'dribbling', 'right', {}); ctx.drawImage(c, px0 - 6, py0 + ph - c.height + 6); }
+        ctx.fillStyle = primary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
+      } else {
+        const photo = ctx.createLinearGradient(0, py0, 0, py0 + ph); photo.addColorStop(0, `rgb(${shade(primary, 1.1)})`); photo.addColorStop(1, `rgb(${shade(primary, .7)})`);
+        ctx.fillStyle = photo; ctx.fillRect(px0, py0, pw, ph);
+        if (logo?.image) { const [im, w, h] = fit(logo.image, 200); ctx.globalAlpha = .28; ctx.imageSmoothingEnabled = !logo.pixel; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, px0 + (pw - w) / 2, py0 + 12, w, h); ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false; }
+        if (p) { const c = document.createElement('canvas'); c.width = 32 * 7; c.height = 28 * 7; window.HoopWirePlayer.portrait(c, { ...p, wearsSuit: false, isCoach: false }, team, 0); ctx.drawImage(c, px0 + (pw - c.width) / 2, py0 + ph - c.height); }
+        ctx.fillStyle = secondary; ctx.fillRect(px0, py0 + ph - 4, pw, 4);
+      }
       // Likes and the caption.
       const likes = Math.round((2 + rand() * 18) * 10) / 10;
       sprite(art['hoopgram-like'], cx + 14, py0 + ph + 12, 1.75, '#e5484d');
