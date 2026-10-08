@@ -340,15 +340,18 @@
       ctx.globalCompositeOperation = 'lighter';
       const spot = ctx.createRadialGradient(192, 130, 6, 192, 130, 90); spot.addColorStop(0, 'rgba(120,150,220,.35)'); spot.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = spot; ctx.fillRect(0, 0, 384, 216); ctx.globalCompositeOperation = 'source-over';
-      // The stage: its deck, then its front face.
-      ctx.fillStyle = '#1b2033'; ctx.fillRect(0, 150, 384, 22); ctx.fillStyle = '#2d3550'; ctx.fillRect(0, 150, 384, 1);
-      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, 172, 384, 44); ctx.fillStyle = primary; ctx.fillRect(0, 172, 384, 2);
-      // The pick behind the podium: the game stands the player's feet 27 pixels above the podium's base.
-      const base = 172, podium = [160, base - 64];
+      // The stage: its deck, with floorboards closer together toward the wall, then its front face.
+      const deck = 128, edge = 172;
+      ctx.fillStyle = '#1b2033'; ctx.fillRect(0, deck, 384, edge - deck); ctx.fillStyle = '#2d3550'; ctx.fillRect(0, deck, 384, 1);
+      ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let y = deck + 4, gap = 4; y < edge; y += gap, gap += 1) ctx.fillRect(0, y, 384, 1);
+      ctx.fillStyle = '#0d1020'; ctx.fillRect(0, edge, 384, 216 - edge); ctx.fillStyle = primary; ctx.fillRect(0, edge, 384, 2);
+      // The podium stands back from the stage's edge; the game stands the
+      // player's feet 27 pixels above the podium's base.
+      const base = edge - 10, podium = [160, base - 64];
       if (player) { shadow(ctx, 192, base - 26, 10); person(ctx, player, team, 'suit-standing', 0, 192, base - 27, 'left'); }
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
       // The commissioner beside the podium, turned toward the pick.
-      shadow(ctx, 140, base - 13, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 14, 'right');
+      shadow(ctx, 140, base - 5, 10); person(ctx, COMMISSIONER, null, 'suit-standing', 0, 140, base - 6, 'right');
       // Fans on the floor in front of the stage, backs to the camera.
       audience(ctx, rand, team, [[180, 0], [194, 8], [208, 4]]);
       return { canvas, extra: { pressLogoData: mark?.data || scene.pressLogoData || null, pressLeagueLogoData: logo?.data || scene.pressLeagueLogoData || null } };
@@ -394,7 +397,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 15, seed: id, kind: `coach-${context.coachScene}`,
+      version: 16, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: court(team),
       venue: context.venue && context.venue.id !== team?.id ? court(context.venue) : null,
