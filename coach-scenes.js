@@ -7,7 +7,7 @@
   "use strict";
   const art = {};
   let ready;
-  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'trophy', 'confetti', 'camera-flash', 'draft-podium', 'locker-room'];
+  const files = ['crowd-100', 'crowd-50', 'crowd-0', 'stairs', 'announce-table', 'guard-rails', 'spectator-body', 'spectator-head-m', 'spectator-head-f', 'spectator-cheer-m', 'spectator-cheer-f', 'headset', 'chair', 'championship', 'confetti', 'camera-flash', 'draft-podium', 'locker-room'];
   function load() {
     ready ||= Promise.all(files.map(async name => { const image = new Image(); image.src = `scene-assets/${name}.png`; await image.decode(); art[name] = image; }));
     return ready;
@@ -168,20 +168,19 @@
       ctx.fillStyle = light; ctx.fillRect(...camera);
       return { canvas, extra: { customCourt } };
     },
-    // A good season: a full, cheering house, confetti, the coach and the stars at center court.
+    // A good season: the coach and the stars at center court, under the confetti.
     async good(scene, rand) {
-      const camera = [832, 170, 384, 216], players = scene.players || [], seats = seatsOf(BENCH.home);
-      const staff = scene.broadcasters || [];
-      const { canvas, ctx, customCourt } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: true, announcers: staff });
+      const [cx, cy] = px(0, 0), camera = [cx - 192, cy - 108, 384, 216], players = scene.players || [];
+      const { canvas, ctx, customCourt } = await arena(scene, 'crowd-100', camera, rand, { fill: 1, cheer: true, announcers: scene.broadcasters || [] });
       depth(ctx, [
-        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: 912, foot: 350, facing: 'right' },
-        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: 1136, foot: 352, facing: 'left' },
-        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: 964, foot: 364, facing: 'right' },
-        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: 1084, foot: 366, facing: 'left' },
-        { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: 1024, foot: 376, facing: 'left' }
+        { data: players[0], team: scene.team, pose: 'celebrate', frame: 0, x: cx - 72, foot: cy + 6, facing: 'right' },
+        { data: players[1], team: scene.team, pose: 'celebrate', frame: 2, x: cx + 72, foot: cy + 8, facing: 'left' },
+        { data: players[2], team: scene.team, pose: 'celebrate', frame: 1, x: cx - 38, foot: cy + 24, facing: 'right' },
+        { data: players[3], team: scene.team, pose: 'celebrate', frame: 3, x: cx + 38, foot: cy + 26, facing: 'left' },
+        { data: scene.coach, team: scene.team, pose: scene.champion ? 'celebrate' : 'idle', frame: 0, x: cx, foot: cy + 36, facing: 'left' }
       ]);
-      // The trophy, raised over the coach's head.
-      if (scene.champion) ctx.drawImage(art.trophy, 1012, 376 - 60, 24, 24);
+      // The championship trophy, at its native size, raised in the coach's hands.
+      if (scene.champion) ctx.drawImage(art.championship, cx - 16, cy + 36 - 72, 32, 32);
       // The game's confetti, in the team's colors, over the whole frame.
       const pieces = [teamColor(scene.team, 0, '#147dff'), teamColor(scene.team, 1, '#ffffff'), '#ffffff', '#ffd23f'].map(c => recolor(art.confetti, c));
       for (let i = 0; i < 10; i++) ctx.drawImage(pieces[i % pieces.length], camera[0] - 40 + (i % 5) * 95 + rand() * 30, camera[1] - 50 + Math.floor(i / 5) * 115 + rand() * 30, 160, 160);
@@ -211,7 +210,7 @@
     const executive = (team?.frontOffice?.staff || []).filter(p => p.pos !== 1 && p.appearance).sort((a, b) => a.pos - b.pos)[0];
     const others = (team?.roster || []).filter(p => !(context.celebrants || []).some(c => c.id === p.id)).sort((a, b) => a.id - b.id);
     return {
-      version: 5, seed: id, kind: `coach-${context.coachScene}`,
+      version: 6, seed: id, kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
       team: structuredClone({ id: team?.id, city: team?.city, name: team?.name, shortName: team?.shortName, logoURL: team?.logoURL || null, teamColors: team?.teamColors, uniforms: team?.uniforms, court: team?.court }),
       coach: context.coach, executive: executive ? { ...snap(executive), isCoach: true } : null,
