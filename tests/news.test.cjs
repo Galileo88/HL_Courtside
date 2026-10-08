@@ -35,10 +35,32 @@ test('the college offseason reports the real draft class, who is back and the of
  // Five players leave for the draft: off the rosters and into the pro draft class.
  const gone=college.teams.slice(0,5).map(t=>t.roster.shift());pro.draftClass=gone;
  college.teams.forEach((t,i)=>{t.season=[...(t.season||[]),{yr:next,poll:i+1,seed:0,seasonStats:{GP:0,W:0,L:0}}];});
+ // The top team's case is its incoming class.
+ const t0=college.teams[0];for(let i=0;i<4;i++)t0.roster.push({id:900000+i,tid:t0.id,fn:'Fresh',ln:`Man${i}`,yrs:0,pot:10,stats:[]});
+ for(const t of college.teams.slice(1,6))t.roster.push({id:910000+t.id,tid:t.id,fn:'Other',ln:`Kid${t.id}`,yrs:0,pot:6,stats:[]});
  const rows=N.offseason(college,save.seasonLeagues).map(x=>x.story),key=k=>rows.find(s=>s.eventKey===k);
  assert.deepEqual(rows.map(s=>s.eventKey),['offseason-draft-class','offseason-returning','offseason-preseason-poll']);
- assert.match(key('offseason-draft-class').headline,new RegExp(`five college players into the ${next} draft`));
+ assert.match(key('offseason-draft-class').headline,new RegExp(`leads the ${next} draft class$`));
  const leaving=new Set(gone.map(p=>`${p.fn} ${p.ln}`));assert.ok(key('offseason-returning').seasonSnapshot.roundup.items.every(x=>!leaving.has(x.name)));
  const poll=key('offseason-preseason-poll');assert.match(poll.paragraphs[0],new RegExp(`${next} .* preseason poll is out`));assert.equal(poll.seasonSnapshot.board.rows[0][0],college.teams[0].city+' '+college.teams[0].name);
+ assert.match(poll.paragraphs.join(' '),/The case for No\. 1 is the freshman class\. .* signed four recruits, more than any other program/);
  assert.ok(rows.every(s=>s.day===1));
+});
+test('news value follows who it is about: role-player retirements share a roundup, stars keep their own story',()=>{
+ const l=fixture(),roster=l.teams[0].roster;
+ for(let i=0;i<4;i++)roster.push({id:20+i,tid:1,fn:'Bench',ln:`Guy${i}`,stats:[{yr:8,league:0,season:[{tid:1,GP:40,PTS:80,REB:40,AST:20}]}]});
+ roster.push({id:30,tid:1,fn:'Big',ln:'Star',awards:[{id:2,league:0,yearsWon:[7,8]}],stats:[{yr:8,league:0,season:[{tid:1,GP:80,PTS:2000,REB:500,AST:400}]}]});
+ l.season.news=[...[20,21,22,23].map(pid=>event(17,{pid})),event(17,{pid:30})];
+ const rows=N.candidates(l).map(x=>x.story),star=rows.find(s=>s.headline==='Big Star calls it a career'),group=rows.find(s=>s.seasonSnapshot?.roundup?.type===17);
+ assert.ok(star&&star.importance>=120);assert.ok(group&&group.importance<star.importance);assert.match(group.headline,/leads this year's retirement class$/);
+ const folded=rows.filter(s=>s.inRoundup);assert.equal(folded.length,4);assert.ok(folded.every(s=>s.inRoundup===group.id&&s.importance<20));
+});
+test('notable coaches get their own story ahead of unknowns, who stay in the carousel unless the job is a big one',()=>{
+ const l=fixture();l.teams=[1,2,3,4,5].map(id=>({id,name:`Team${id}`,roster:[],season:[{yr:7,seasonStats:{GP:82,W:id===2?60:30,L:id===2?22:52}}],frontOffice:{staff:[{id:90+id,tid:id,pos:1,fn:'Coach',ln:`C${id}`,pot:7,career:{season:{W:id===1?250:id===2?100:120,L:id===1?78:228},playoffs:{W:id===1?40:0}},awards:id===1?[{id:0,yearsWon:[5,6]}]:[]}]}}));
+ l.season.news=[1,2,3,4,5].map(id=>event(26,{tid:id,pid:90+id}));
+ const rows=N.candidates(l).map(x=>x.story),own=rows.filter(s=>!s.inRoundup&&!s.seasonSnapshot?.roundup);
+ const big=own.find(s=>/C1/.test(s.headline)),contender=own.find(s=>/C2/.test(s.headline));
+ assert.ok(big&&contender,'the proven coach and the contender\'s hire keep their own stories');assert.ok(big.importance>contender.importance);
+ assert.match(big.paragraphs[0],/brings a 250-78 career record, 40 playoff wins and two championships/);
+ assert.equal(rows.filter(s=>s.inRoundup).length,3);assert.match(rows.find(s=>s.seasonSnapshot?.roundup?.type===26).paragraphs[0],/Coach C1/);
 });

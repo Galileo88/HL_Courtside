@@ -4,7 +4,23 @@
   else root.HoopWireNewsroom=factory();
 })(globalThis,function(){
   'use strict';
-  const staleDays=3;
+  const staleDays=3,ageCost=30;
+  // Story families for variety: no block of the page goes to one kind of news.
+  function family(s){
+    const t=s.type||'';
+    if(s.performanceSnapshot)return 'performance';
+    if(s.gameSummary||(s.gid!=null&&s.kind!=='season'))return 'game';
+    if(/retire|hall of fame|jersey/i.test(t))return 'farewell';
+    if(/injur/i.test(t))return 'injury';
+    if(/coach/i.test(t))return 'coaching';
+    if(/record|milestone/i.test(t))return 'record';
+    if(/review|leaders/i.test(t))return 'review';
+    if(/sign|free agency|trade|roster|waiv|option|extension|contract/i.test(t))return 'transaction';
+    if(/recruit|commit|draft|offseason|poll|declaration/i.test(t))return 'pipeline';
+    if(/award/i.test(t))return 'award';
+    if(/playoff|championship|snub/i.test(t))return 'postseason';
+    return t||'other';
+  }
   const priority=(a,b)=>(b.importance||0)-(a.importance||0)||a.id.localeCompare(b.id);
   function leagueInfo(league,stories){
     const types=[...new Set(stories.filter(s=>s.fingerprint===league.id).map(s=>s.seasonSnapshot?.leagueType).filter(t=>t===0||t===1))];
@@ -12,7 +28,7 @@
   }
   function buildEdition({stories,leagues,fingerprint=null}){
     const known=new Map(leagues.map(l=>[l.id,leagueInfo(l,stories)]));
-    const scoped=stories.filter(s=>known.has(s.fingerprint)&&(fingerprint===null||s.fingerprint===fingerprint));
+    const scoped=stories.filter(s=>known.has(s.fingerprint)&&!s.inRoundup&&(fingerprint===null||s.fingerprint===fingerprint));
     const editions=[],entries=[];
     for(const league of known.values()){
       const all=scoped.filter(s=>s.fingerprint===league.id);if(!all.length)continue;
@@ -40,17 +56,24 @@
       edition.stale=behind(edition.day);
       // Old finals (a college title game) leave the score strip once the calendar moves on.
       edition.scoresStale=behind(edition.scoreDay||0);
-      for(const story of entries[i].candidates)pool.push({story,offset:entries[i].days.indexOf(story.day)+(edition.stale?3:0)});
+      for(const story of entries[i].candidates)pool.push({story,offset:entries[i].days.indexOf(story.day)+(edition.stale?3:0),age:edition.stale?(edition.season===anchor.season?anchor.day-story.day:365):Math.max(0,entries[i].days[0]-story.day)});
     });
-    pool.sort((a,b)=>a.offset-b.offset||priority(a.story,b.story));
-    const used=new Set(),take=entry=>{if(!entry)return null;used.add(entry.story.id);return entry.story;};
-    const lead=take(pool.find(e=>e.offset===0));
+    // The lead is the freshest day's biggest story. Below it, news value
+    // decides, with each day of age costing a little.
+    const weight=e=>(e.story.importance||0)-ageCost*e.age;
+    pool.sort((a,b)=>weight(b)-weight(a)||a.offset-b.offset||priority(a.story,b.story));
+    const used=new Set(),count=new Map(),take=entry=>{if(!entry)return null;used.add(entry.story.id);const f=family(entry.story);count.set(f,(count.get(f)||0)+1);return entry.story;};
+    // Variety: a kind of story can't take over a block while other news waits.
+    const next=(ok=()=>true,cap=Infinity,counts=count)=>pool.find(e=>!used.has(e.story.id)&&ok(e)&&(counts.get(family(e.story))||0)<(family(e.story)==='game'?cap+1:cap))||pool.find(e=>!used.has(e.story.id)&&ok(e));
+    const lead=take(pool.find(e=>e.offset===0)||null);
     const supporting=[];
-    if(fingerprint===null&&lead){const other=pool.find(e=>e.offset<3&&e.story.fingerprint!==lead.fingerprint&&!used.has(e.story.id));if(other)supporting.push(take(other));}
-    while(supporting.length<3){const next=pool.find(e=>!used.has(e.story.id));if(!next)break;supporting.push(take(next));}
-    const headlines=[];while(headlines.length<6){const next=pool.find(e=>!used.has(e.story.id));if(!next)break;headlines.push(take(next));}
+    if(fingerprint===null&&lead){const other=next(e=>e.offset<3&&e.story.fingerprint!==lead.fingerprint,1);if(other&&other.offset<3)supporting.push(take(other));}
+    while(supporting.length<3){const e=next(()=>true,1);if(!e)break;supporting.push(take(e));}
+    const headlines=[],inList=new Map();while(headlines.length<6){const e=next(()=>true,2,inList);if(!e)break;const f=family(e.story);inList.set(f,(inList.get(f)||0)+1);headlines.push(take(e));}
     const sections=[];
-    const addSection=(label,filter,limit)=>{const items=pool.filter(e=>!used.has(e.story.id)&&filter(e.story)).slice(0,limit).map(take);if(items.length)sections.push({label,items});};
+    const addSection=(label,filter,limit)=>{const own=new Map(),items=[];
+      while(items.length<limit){const e=next(e=>filter(e.story),2,own);if(!e)break;const f=family(e.story);own.set(f,(own.get(f)||0)+1);items.push(take(e));}
+      if(items.length)sections.push({label,items});};
     if(fingerprint!==null)addSection(`More from ${known.get(fingerprint)?.name||'the league'}`,()=>true,8);
     else{
       addSection('Pro Basketball',s=>known.get(s.fingerprint)?.leagueType===0,4);
@@ -66,5 +89,5 @@
     const sentence=text.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim()||text;
     return sentence.length>180?sentence.slice(0,177).replace(/\s+\S*$/,'')+'…':sentence;
   }
-  return {buildEdition,leagueInfo,summary};
+  return {buildEdition,leagueInfo,summary,family};
 });
