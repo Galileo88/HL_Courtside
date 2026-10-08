@@ -612,7 +612,7 @@
         const ranking=league.leagueType===1?(poll&&poll<=25?`No. ${poll} in the poll`:poll?'unranked':null):`No. ${powerRank} in the power rankings`;
         const swing=change!==null&&Math.abs(change)>=8?`${[8,11,18].includes(Math.abs(change))||String(Math.abs(change)).startsWith('8')?'an':'a'} ${C.num(Math.abs(change))}-win ${change>0?'jump':'drop'} from last season`:null;
         const review=text=>`${T.nickname} review: ${text}`,finalRound=exit&&['Finals','title game'].includes(exit.label);
-        const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
+        const field=league.leagueType===1?'tournament':'playoffs',deep=exit&&run.some(x=>x.won)&&(finalRound||exit.index>0),bracketSet=entrants.size>0;
         const headline=title?review(record.W>record.L?`${mark} and a championship`:`${mark}, then a championship`):
           winPct>=.7?review(exit?`${a} ${mark} season that ended in the ${exit.label}`:`${a} ${mark} season that set the standard`):
           record.W>record.L?review(finalRound?`${mark} and a run to the ${exit.label}`:exit?`${mark}, then out in the ${exit.label}`:alive?`${mark} and still playing`:
