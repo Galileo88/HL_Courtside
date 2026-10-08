@@ -17,7 +17,7 @@
       if(lead)body.append(element('p','wire-summary',N.summary(story,paragraphs(story))),element('div','wire-byline','HoopWire Staff'),element('span','wire-read','Read story →'));
       a.append(body);return a;
     };
-    const scores=edition.editions.filter(e=>e.games.length);
+    const scores=edition.editions.filter(e=>e.games.length&&!e.scoresStale);
     if(scores.length){
       const strip=element('section','wire-scores');strip.setAttribute('aria-label','Latest final scores');strip.tabIndex=0;
       for(const e of scores)for(const game of e.games){
@@ -28,7 +28,7 @@
       target.append(strip);
     }
     const header=element('header','wire-heading');header.append(element('span','landing-kicker','HOOPWIRE NEWS'),element('h1','',edition.title));
-    const dates=edition.editions.map(e=>`${e.league.shortName||e.league.name} · ${e.season} · Day ${e.day}`);header.append(element('p','muted',dates.join('  /  ')));
+    if(edition.date){const only=edition.editions.length===1?edition.editions[0].league:null;header.append(element('p','muted',`${only?`${only.shortName||only.name} · `:''}${edition.date.season} · Day ${edition.date.day}`));}
     target.append(header);
     if(!edition.lead){target.append(element('div','panel muted',busy?'Preparing the latest coverage…':'No saved stories for this league yet. Load a save to create coverage.'));return;}
     const opening=element('div','wire-opening'),main=element('div','wire-main'),lead=card(edition.lead,true);

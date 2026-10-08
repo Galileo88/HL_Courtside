@@ -2,11 +2,23 @@ const test=require('node:test'),assert=require('node:assert/strict'),N=require('
 const league=(id,type)=>({id,name:id,shortName:id.toUpperCase(),leagueType:type});
 const story=(id,fingerprint,day,importance=10,season=1967)=>({id,fingerprint,day,importance,season,headline:id,paragraphs:['A basketball story. More detail.']});
 test('mixed editions prioritize each latest day, balance supporting coverage and never repeat stories',()=>{
- const stories=[];for(const [id,day] of [['pro',90],['college',35]])for(let i=0;i<14;i++)stories.push(story(id+i,id,day-(i>8?1:0),100-i));
+ const stories=[];for(const [id,day] of [['pro',90],['college',89]])for(let i=0;i<14;i++)stories.push(story(id+i,id,day-(i>8?1:0),100-i));
  stories.push(story('old','pro',80,999),story('older-year','pro',99,999,1966));
  const edition=N.buildEdition({stories,leagues:[league('pro',0),league('college',1)]});assert.equal(edition.lead.id,'college0');assert.equal(edition.supporting[0].fingerprint,'pro');
  const all=[edition.lead,...edition.supporting,...edition.headlines,...edition.sections.flatMap(s=>s.items)];assert.equal(new Set(all.map(s=>s.id)).size,all.length);assert.ok(all.every(s=>!['old','older-year'].includes(s.id)));assert.ok(edition.sections.some(s=>s.label==='Pro Basketball'));assert.ok(edition.sections.some(s=>s.label==='College Basketball'));
  assert.deepEqual(N.buildEdition({stories:[...stories].reverse(),leagues:[league('pro',0),league('college',1)]}).lead,edition.lead);
+ assert.deepEqual(edition.date,{season:1967,day:90});
+});
+test('the front page is dated by the pro league and a finished college season ranks behind it',()=>{
+ const stories=[];for(const [id,day] of [['pro',90],['college',35]])for(let i=0;i<6;i++)stories.push(story(id+i,id,day,id==='college'?500:100-i));
+ const pro=league('pro',0);pro.asOf={season:1967,day:92};
+ const college=league('college',1);college.gameResults={1967:{34:{1:{gid:1,home:{name:'A',score:70},away:{name:'B',score:60}}}}};
+ const e=N.buildEdition({stories,leagues:[college,pro]});
+ assert.equal(e.lead.fingerprint,'pro');assert.ok(e.supporting.every(s=>s.fingerprint==='pro'));
+ assert.deepEqual(e.date,{season:1967,day:92});assert.equal(e.editions.find(x=>x.league.id==='college').stale,true);assert.equal(e.editions.find(x=>x.league.id==='college').scoresStale,true);
+ assert.ok(e.sections.find(s=>s.label==='College Basketball').items.length);
+ // A league page keeps its own date.
+ assert.equal(N.buildEdition({stories,leagues:[college,pro],fingerprint:'college'}).date.day,35);
 });
 test('league editions isolate coverage, use three covered days and latest saved season',()=>{
  const stories=[story('new','p',90,1),story('back','p',80,999),story('third','p',50,999),story('fourth','p',40,999),story('other','c',99,999),story('prior','p',100,999,1966)];
