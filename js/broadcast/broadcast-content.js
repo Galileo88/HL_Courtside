@@ -1451,7 +1451,7 @@
           mip: `That's not luck. That's a summer of work.`,
           dpoy: `Defense doesn't always show up in a box score. Some of it does, and ${last}'s does.`,
           other: `Good season. Well earned.`,
-        }[a.kind] || `Leading the league over ${C.plural(s.GP, 'game')} isn't a hot streak. That's a season.`;
+        }[a.kind] || `Well deserved. Nobody did it better this year.`;
       body.push(turn(2, angle));
       if (a.kind === 'mvp' && rec && a.teamRecord[0] < a.teamRecord[1])
         body.push(turn(1, `Yes! Value doesn't care about the standings.`));

@@ -140,7 +140,7 @@ test('a bench breakout needs a line that is news on its own', () => {
   const story = P.candidates(big).find(x => x.story.playerId === 12)?.story;
   assert.ok(story);
   assert.match(story.headline, /off the bench|sparks bench/);
-  assert.match(story.paragraphs.join(' '), /come off the bench for most of the season/);
+  assert.match(story.paragraphs.join(' '), /mostly come off the bench this season/);
 });
 test('one story per team per game keeps the strongest night', () => {
   const l = fixture(),
