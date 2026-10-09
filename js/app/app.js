@@ -3,6 +3,8 @@
   'use strict';
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
+  // Raise when story wording changes, so stories from the loaded save are rewritten.
+  const PROSE_EDITION = 1;
   const el = Object.fromEntries(
     [
       'saveFile',
@@ -57,13 +59,17 @@
   };
   const imageURLs = new Map();
   const frontScroll = new Map(),
-    storyOrigins = new Map();
+    storyOrigins = new Map(),
+    profileOrigins = new Map();
+  let profileRender = 0;
   try {
     for (const [id, value] of JSON.parse(sessionStorage.getItem('hoopwire-story-origins') || '[]'))
       storyOrigins.set(id, value);
   } catch {}
   function routeData(hash = location.hash) {
     try {
+      const profile = window.HoopWireProfileView.route(hash);
+      if (profile) return { ...profile, profile: profile.kind, kind: 'profile' };
       if (hash.startsWith('#story/')) return { kind: 'story', id: decodeURIComponent(hash.slice(7)) };
       if (hash.startsWith('#league/')) return { kind: 'front', fingerprint: decodeURIComponent(hash.slice(8)) };
       const old = hash.match(/^#league-(\d+)$/);
@@ -118,7 +124,6 @@
   // background; scrolling back to it re-reads a blob URL that no longer
   // resolves. Rebuild that image once: copy the bytes into memory, or read the
   // record from the archive again, then point every reference at the copy.
-  const recovering = new WeakSet();
   async function freshBlob(blob) {
     try {
       return new Blob([await blob.arrayBuffer()], { type: blob.type || 'image/png' });
@@ -145,24 +150,45 @@
           }
     return null;
   }
+  // When the saved bytes are gone too, draw the picture again from what it showed and save the new copy.
+  async function redrawBlob(blob) {
+    for (const story of state.stories.values())
+      if (story.imageBlob === blob && story.sceneInputs) {
+        Object.assign(story, await window.HoopWireScenes.render(story.sceneInputs, story));
+        await archive.write({ stories: [story] });
+        return story.imageBlob;
+      }
+    for (const league of state.leagues)
+      for (const studio of Object.values(league.studios || {}))
+        for (const key of ['imageBlob', 'backdropBlob'])
+          if (studio[key] === blob && studio.inputs) {
+            Object.assign(studio, await window.HoopWireTV.render(studio.inputs));
+            await archive.write({ leagues: [league] });
+            return studio[key];
+          }
+    return null;
+  }
   function replaceBlob(old, copy) {
     for (const story of state.stories.values()) if (story.imageBlob === old) story.imageBlob = copy;
     for (const league of state.leagues)
       for (const studio of Object.values(league.studios || {}))
         for (const key of ['imageBlob', 'backdropBlob']) if (studio[key] === old) studio[key] = copy;
   }
+  // First failure: copy the saved bytes. Second failure on the same image: draw it again.
+  const attempts = new WeakMap();
   document.addEventListener(
     'error',
     async event => {
       const img = event.target;
-      if (!(img instanceof HTMLImageElement) || recovering.has(img)) return;
+      if (!(img instanceof HTMLImageElement)) return;
       const src = img.getAttribute('src') || '';
       if (!src.startsWith('blob:')) return;
       const entry = [...imageURLs].find(([, item]) => item.url === src);
-      if (!entry) return;
-      recovering.add(img);
+      const tries = attempts.get(img) || 0;
+      if (!entry || tries >= 2) return;
+      attempts.set(img, tries + 1);
       const [old] = entry,
-        copy = await freshBlob(old);
+        copy = (!tries && (await freshBlob(old).catch(() => null))) || (await redrawBlob(old).catch(() => null));
       if (!copy) return;
       replaceBlob(old, copy);
       imageURLs.delete(old);
@@ -350,7 +376,7 @@
     }
     options(
       el.archiveLeague,
-      leagues.map(l => [l.id, l.name]),
+      leagues.map(l => [l.id, archiveName(l)]),
       fingerprint
     );
     const stories = [...state.stories.values()].filter(s => s.fingerprint === el.archiveLeague.value);
@@ -392,7 +418,7 @@
     const expanded = new Set([...el.archiveTree.querySelectorAll('details[open]')].map(d => d.dataset.key));
     el.archiveTree.replaceChildren();
     const league = state.leagues.find(l => l.id === el.archiveLeague.value);
-    el.archiveTitle.textContent = `${league?.name || 'League'} Archive`;
+    el.archiveTitle.textContent = `${league ? archiveName(league) : 'League'} Archive`;
     const leagues = accessibleLeagues();
     el.archiveLeagueSwitch.hidden = leagues.length < 2;
     el.archiveLeagueSwitch.replaceChildren(
@@ -516,6 +542,10 @@
     el.feed.replaceChildren();
     const route = routeData();
     el.feed.classList.toggle('front-page', route.kind === 'front');
+    if (route.kind === 'profile') {
+      renderProfile(route);
+      return;
+    }
     if (route.kind === 'front') {
       renderEdition(route.fingerprint);
       pruneImageURLs();
@@ -578,11 +608,7 @@
       } else figure.remove();
       const paragraphs = window.HoopWireSeason.articleParagraphs(story);
       const reviewLists = story.type === 'Regular-season review' ? window.HoopWireSeason.seasonReviewLists(story) : [];
-      for (const text of paragraphs) {
-        const p = document.createElement('p');
-        p.textContent = text;
-        node.querySelector('.article-body').appendChild(p);
-      }
+      node.querySelector('.article-body').append(...linkedParagraphs(story, paragraphs));
       const body = node.querySelector('.article-body');
       if (story.kind === 'season' && story.type !== 'Regular-season review') {
         const graphic = tvSeasonGraphic(story, 10);
@@ -632,6 +658,7 @@
         }
         node.querySelector('.article-body').appendChild(section);
       }
+      linkBoardNames(node, story.fingerprint);
       el.feed.appendChild(node);
     }
     pruneImageURLs();
@@ -653,10 +680,32 @@
       ? ` ${count} custom court ${count === 1 ? 'image could' : 'images could'} not load; saved court layouts were used.`
       : '';
   }
+  // The archive an uploaded league belongs to. The first time a Studio ID shows up, the league takes
+  // over the archive it already had, so its earlier coverage stays with it. Commissioner, career
+  // and franchise saves of the same league never share one.
+  function archiveId(league, id) {
+    const plain = C.buildFingerprint({ ...league, commissioner: null });
+    if (!id) return plain;
+    const mode = C.gameMode(league);
+    const known =
+      state.leagues.find(l => l.studioId === id && (l.mode || null) === mode) ||
+      state.leagues.find(l => l.id === plain && !l.studioId);
+    return known?.id || (mode ? `${id}-${mode}` : id);
+  }
+  const archiveName = l =>
+    l.mode === 'career' ? `${l.name} (Career)` : l.mode === 'franchise' ? `${l.name} (Franchise)` : l.name;
   async function loadSave(file) {
     status('Loading the save and preparing the HoopWire TV studio…');
     const parsed = JSON.parse(await file.text());
     C.assertSave(parsed);
+    // Two leagues in one save never share an archive, even if they carry the same ID.
+    const claimed = new Set();
+    for (const league of parsed.seasonLeagues) {
+      const id = C.leagueId(league);
+      league.studioId = claimed.has(id) ? null : id;
+      league.archiveId = archiveId(league, league.studioId);
+      claimed.add(id);
+    }
     state.raw = parsed;
     state.leagueIndex = 0;
     state.scope = parsed.seasonLeagues.map(C.buildFingerprint);
@@ -665,7 +714,8 @@
     location.hash = '#newsroom';
     view();
     const snapshots = [],
-      leagues = [];
+      leagues = [],
+      profiles = [];
     for (const league of parsed.seasonLeagues) {
       const fingerprint = C.buildFingerprint(league);
       const previous = state.leagues.find(l => l.id === fingerprint);
@@ -692,9 +742,19 @@
           result
         );
       }
+      const people = window.HoopWireProfiles.build(league, fingerprint);
+      profiles.push(...people);
+      // Names from earlier uploads stay linkable, unless the name now belongs to someone else.
+      const index = window.HoopWireProfiles.nameIndex(people),
+        named = new Set(people.flatMap(r => [r.name, r.nickname]).filter(Boolean)),
+        known = new Set(index.map(([, id]) => id));
+      for (const entry of previous?.people || []) if (!named.has(entry[0]) && !known.has(entry[1])) index.push(entry);
       leagues.push({
         ...previous,
         id: fingerprint,
+        studioId: league.studioId,
+        mode: C.gameMode(league),
+        people: index,
         name: league.leagueName || 'League',
         shortName: league.shortName || null,
         leagueType: league.leagueType,
@@ -713,31 +773,34 @@
         );
       }
     }
-    await archive.write({ snapshots, leagues, meta: [{ id: 'active-leagues', ids: state.scope }] });
+    await archive.write({ snapshots, leagues, profiles, meta: [{ id: 'active-leagues', ids: state.scope }] });
     state.raw = parsed;
     state.leagueIndex = 0;
     el.fileName.textContent = file.name;
 
     await readArchive();
-    let total = 0;
+    const archived = [];
     for (let index = 0; index < parsed.seasonLeagues.length; index++) {
       state.leagueIndex = index;
-      total += await generate();
+      archived.push(...(await generate()));
     }
-    state.leagueIndex = 0;
+    // Open on the first league with coverage this season; a career save can start with only college news.
+    const covered = parsed.seasonLeagues.findIndex(l =>
+      [...state.stories.values()].some(
+        s => s.fingerprint === C.buildFingerprint(l) && String(s.season) === String(C.seasonYear(l))
+      )
+    );
+    state.leagueIndex = Math.max(0, covered);
     const league = selectedLeague();
     archiveNavigation(C.buildFingerprint(league), C.seasonYear(league), C.buildLookups(league).latestDay + 1);
     view();
-    status(
-      `Save loaded. Archived ${total} new or upgraded stories across ${parsed.seasonLeagues.length} leagues. Refreshed ${snapshots.length} verified player box scores from this save.`
-    );
+    status(`Save loaded.${courtWarnings(archived)}`);
   }
   async function generate() {
     const league = selectedLeague(),
       fingerprint = C.buildFingerprint(league);
     const stories = [];
     const contexts = pending();
-    status(`Composing ${contexts.length} story images…`);
     const composed = await Promise.all(
       contexts.map(async ctx => {
         const existing = state.stories.get(C.storyId(fingerprint, ctx.seasonYear, ctx.game.gId));
@@ -758,7 +821,10 @@
           for (const key of ['imageBlob', 'sceneInputs', 'imageAlt', 'imageCaption', 'customCourt'])
             if (existing[key] !== undefined) story[key] = existing[key];
         } else
-          Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league)));
+          Object.assign(
+            story,
+            await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league), story)
+          );
         return story;
       })
     );
@@ -770,11 +836,18 @@
       ...window.HoopWireNews.candidates(league, state.raw.seasonLeagues),
       ...window.HoopWireNews.offseason(league, state.raw.seasonLeagues),
       ...window.HoopWirePerformance.candidates(league),
+      ...window.HoopWireCareer.candidates(league),
     ].filter(x => {
       if (milestoneIds.has(x.story.id)) return false;
       milestoneIds.add(x.story.id);
       const existing = state.stories.get(x.story.id);
-      return !existing || Number(x.story.editorialVersion || 0) > Number(existing.editorialVersion || 0);
+      // A new prose edition rewrites stories from the loaded save in the current house style.
+      x.story.prose = PROSE_EDITION;
+      return (
+        !existing ||
+        Number(x.story.editorialVersion || 0) > Number(existing.editorialVersion || 0) ||
+        Number(existing.prose || 0) < PROSE_EDITION
+      );
     });
     // Compose in small batches to keep long season uploads responsive.
     for (let i = 0; i < milestones.length; i += 4) {
@@ -807,7 +880,8 @@
               return Object.assign(
                 story,
                 await window.HoopWireScenes.render(
-                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season)
+                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season),
+                  story
                 )
               );
             const scene = window.HoopWireScenes.inputs(context, story.id, league);
@@ -822,7 +896,7 @@
                   variant: window.HoopWireCore.choose(story.id, ['player-close-up', 'player-profile'], 'coach-framing'),
                 },
               });
-            Object.assign(story, await window.HoopWireScenes.render(scene));
+            Object.assign(story, await window.HoopWireScenes.render(scene, story));
             return story;
           })
         ))
@@ -831,10 +905,7 @@
     await archive.write({ stories });
     await readArchive();
     archiveNavigation(fingerprint, C.seasonYear(league), C.buildLookups(league).latestDay + 1);
-    status(
-      `Archived ${stories.length} new or upgraded ${stories.length === 1 ? 'story' : 'stories'}, including images and stats.${courtWarnings(stories)}`
-    );
-    return stories.length;
+    return stories;
   }
   async function refreshImages() {
     const selected = selectedStories().filter(s => s.sceneInputs);
@@ -849,7 +920,7 @@
       selected.map(async original => {
         const story = structuredClone(original);
         const scene = window.HoopWireScenes.upgrade(story.sceneInputs, story, contexts.get(story.id));
-        Object.assign(story, await window.HoopWireScenes.render(scene));
+        Object.assign(story, await window.HoopWireScenes.render(scene, story));
         return story;
       })
     );
@@ -874,8 +945,11 @@
       document.getElementById(id).classList.toggle('hidden', route.kind !== id);
     document.getElementById('newsroom').classList.add('hidden');
     document.getElementById('historicalStories').classList.toggle('hidden', route.kind !== 'stories');
-    el.feed.classList.toggle('hidden', !['front', 'story', 'stories'].includes(route.kind));
-    el.status.classList.toggle('hidden', ['tv', 'front', 'story'].includes(route.kind) || !el.status.textContent);
+    el.feed.classList.toggle('hidden', !['front', 'story', 'stories', 'profile'].includes(route.kind));
+    el.status.classList.toggle(
+      'hidden',
+      ['tv', 'front', 'story', 'profile'].includes(route.kind) || !el.status.textContent
+    );
     for (const link of document.querySelectorAll('.nav a')) {
       if (
         link.getAttribute('href') === location.hash ||
@@ -888,7 +962,64 @@
     if (route.kind === 'tv') renderTV();
     else window.HoopWireBroadcast?.stop();
     if (route.kind === 'front') requestAnimationFrame(() => scrollTo(0, frontScroll.get(location.hash) || 0));
-    else if (route.kind === 'story') requestAnimationFrame(() => scrollTo(0, 0));
+    else if (['story', 'profile'].includes(route.kind)) requestAnimationFrame(() => scrollTo(0, 0));
+  }
+  async function renderProfile(route) {
+    const token = ++profileRender,
+      back = document.createElement('a');
+    back.className = 'article-back text-action';
+    back.href = profileOrigins.get(location.hash) || leagueHref(route.fingerprint);
+    back.textContent = '← Back';
+    const page = document.createElement('div');
+    el.feed.append(back, page);
+    const shown = await window.HoopWireProfileView.render(page, route, {
+      archive,
+      state,
+      statBoard,
+      storyHref,
+    });
+    if (token !== profileRender) return;
+    if (!shown) {
+      const empty = document.createElement('div');
+      empty.className = 'panel muted';
+      empty.textContent = 'This profile is not in the archive yet. Upload a save from this league to add it.';
+      page.append(empty);
+    }
+  }
+  // Names in stat cards open the same pages as names in the story.
+  function linkBoardNames(root, fingerprint) {
+    const index = state.leagues.find(l => l.id === fingerprint)?.people;
+    if (!index?.length) return;
+    const ids = new Map(index.map(([name, id]) => [name, id]));
+    for (const cell of root.querySelectorAll('.tv-board-table tbody th.is-name')) {
+      const full = cell.querySelector('.tv-name-full'),
+        id = !cell.querySelector('a') && ids.get(full?.textContent.trim());
+      if (!id) continue;
+      const a = document.createElement('a');
+      a.href = window.HoopWireProfileView.href(id);
+      a.className = 'board-link';
+      cell.insertBefore(a, full);
+      a.append(...cell.querySelectorAll(':scope > .tv-name-full, :scope > .tv-name-short'));
+    }
+  }
+  // An article's body, with each player, coach and team linked the first time it is named.
+  function linkedParagraphs(story, paragraphs) {
+    const league = state.leagues.find(l => l.id === story.fingerprint);
+    return window.HoopWireProfiles.linkParagraphs(paragraphs, league?.people).map(parts => {
+      const p = document.createElement('p');
+      for (const part of parts) {
+        if (!part.id) {
+          p.append(document.createTextNode(part.text));
+          continue;
+        }
+        const a = document.createElement('a');
+        a.className = 'entity-link';
+        a.href = window.HoopWireProfileView.href(part.id);
+        a.textContent = part.text;
+        p.append(a);
+      }
+      return p;
+    });
   }
   function currentLeagueForStory(story) {
     return (
@@ -1108,6 +1239,7 @@
           headers: board.headers,
           rows: board.rows.slice(0, limit),
           ranked: !!board.ranked,
+          marker: board.lead !== false,
           subs: board.subs?.slice(0, limit) || null,
         })
       );
@@ -1161,8 +1293,10 @@
     subs = null,
     tags = null,
     highlight = true,
+    marker = true,
     optional = [],
     toggle = null,
+    links = null,
   }) {
     const board = document.createElement('figure');
     board.className = 'tv-board';
@@ -1196,7 +1330,7 @@
       return vals.length && top > 0 && vals.some(v => v !== top) ? top : null;
     });
     const table = document.createElement('table');
-    table.className = 'tv-board-table';
+    table.className = marker ? 'tv-board-table' : 'tv-board-table no-lead';
     const head = document.createElement('tr');
     if (ranked) {
       const th = document.createElement('th');
@@ -1243,6 +1377,14 @@
             short.className = 'tv-name-short';
             short.textContent = `${parts[0][0]}.\u00a0${parts.slice(1).join('\u00a0')}`;
             cell.append(short);
+          }
+          // A row can open a profile or a recap from its name.
+          if (links?.[r]) {
+            const a = document.createElement('a');
+            a.href = links[r];
+            a.className = 'board-link';
+            a.append(...cell.childNodes);
+            cell.append(a);
           }
           if (tags?.[r]) {
             const tag = document.createElement('span');
@@ -1661,8 +1803,11 @@
         })
       : {};
     window.HoopWireBroadcast?.mount(tvStory, studio, false, context);
-    if (tvStory) el.tvSegment.appendChild(tvStoryPanel(tvStory));
-    else el.tvSegment.textContent = 'Choose an archived day with stories to start the broadcast.';
+    if (tvStory) {
+      const panel = tvStoryPanel(tvStory);
+      linkBoardNames(panel, tvStory.fingerprint);
+      el.tvSegment.appendChild(panel);
+    } else el.tvSegment.textContent = 'Choose an archived day with stories to start the broadcast.';
     const results = new Map(
       Object.values(league?.gameResults?.[el.archiveSeason.value]?.[el.archiveDay.value] || {}).map(g => [g.gid, g])
     );
@@ -1733,7 +1878,7 @@
   el.siteMenuButton.addEventListener('click', event => {
     event.stopPropagation();
     siteMenu(el.siteMenu.hidden);
-    if (!el.siteMenu.hidden) el.siteMenu.querySelector('button:not(:disabled)')?.focus();
+    if (!el.siteMenu.hidden) el.siteMenu.querySelector('a:not([aria-disabled]), button:not(:disabled)')?.focus();
   });
   el.menuUploadSave.addEventListener('click', () => {
     siteMenu(false);
@@ -1832,6 +1977,7 @@
         } catch {}
       }
     }
+    if (window.HoopWireProfileView.route(target) && target !== location.hash) profileOrigins.set(target, location.hash);
     if (link.classList.contains('article-back')) {
       const origin = storyOrigins.get(current.id);
       if (origin) frontScroll.set(origin.route, origin.scroll);
@@ -1845,6 +1991,8 @@
     state.ready = true;
     archiveNavigation();
     view();
+    // Older archives saved images as separate files; move them inside the archive in the background.
+    archive.inlineImages().catch(() => {});
     const upgraded = [];
     for (const league of state.leagues) {
       const studios = { ...league.studios };

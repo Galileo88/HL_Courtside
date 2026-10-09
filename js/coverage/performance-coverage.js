@@ -185,7 +185,6 @@
     focus,
     changes,
     baseline,
-    playoffs,
     mine,
     opp,
     result,
@@ -222,12 +221,7 @@
     const paragraphs = [C.capitalize(lede)];
     // Who this is matters as much as the number: a bench breakout reads differently than a star's quiet night.
     if (c.qualifies && c.favorable && c.key !== 'TO') {
-      if (r.starter === false)
-        paragraphs.push(
-          `${subject} has come off the bench for most of the season, averaging ${average(c.expected)} ${c.label}, which is what makes this one stand out.`
-        );
-      else if (r.scorerRank === 1 && c.key === 'PTS')
-        paragraphs.push(`${subject} was already the team's leading scorer. This was a step beyond.`);
+      if (r.starter === false) paragraphs.push(`${subject} has mostly come off the bench this season.`);
     }
     const more = changes.filter(x => x !== c && x.mention);
     if (more.length) {
@@ -241,12 +235,6 @@
           `${c.favorable ? "It wasn't all good news" : 'There was a bright side'}: ${C.listJoin(mixed.map(phrase))}.`
         );
     }
-    const games = C.plural(baseline.GP, 'regular-season game');
-    paragraphs.push(
-      playoffs
-        ? `Those averages come from ${games} before the playoffs.`
-        : `Those averages cover ${games} before this one.`
-    );
     return paragraphs;
   }
   function candidates(league) {
@@ -312,7 +300,7 @@
     }
     const result = [];
     for (const x of kept) {
-      const { snap, player, entry, game, playoffs, baseline, comparisons, focus, coldOnly, r } = x;
+      const { snap, player, entry, game, baseline, comparisons, focus, coldOnly, r } = x;
       const name = C.playerDisplay(player),
         id = `${fingerprint}:${year}:performance:${snap.gid}:${snap.pid}`;
       const ctx = C.gameContext(game, entry.dayIndex, league, lookup, map, fingerprint);
@@ -337,7 +325,7 @@
         coach: null,
         importance: Math.round(70 + Math.min(30, x.score * 8)),
         templateVersion: 1,
-        editorialVersion: 3,
+        editorialVersion: 4,
         quotesEnabled: false,
         performanceSnapshot: {
           baseline: structuredClone(baseline),
@@ -365,7 +353,6 @@
           focus,
           changes,
           baseline,
-          playoffs,
           mine,
           opp,
           result: { won, score: `${ctx.winnerScore}-${ctx.loserScore}` },
@@ -529,19 +516,19 @@
       early
         ? `Easy, ${n[1]}. That average is from ${snapshot.baseline.GP} ${snapshot.baseline.GP === 1 ? 'game' : 'games'}. We're still learning what normal looks like.`
         : coldOnly
-          ? `${s.FGM} for ${s.FGA}. Over ${snapshot.baseline.GP} games, ${last} has been better than that. I'd call it a blip.`
+          ? `${s.FGM} for ${s.FGA}. ${last} has been better than that all year. I'd call it a blip.`
           : up
             ? pick(
                 [
-                  `It's one game, but it's a real one. ${C.capitalize(stat)} isn't a fluke number.`,
-                  `And that's not a small sample. ${snapshot.baseline.GP} games at ${avg} a night, and then this.`,
+                  "I'll believe it when I see it twice. But it's a good start.",
+                  `Now ${last} has to do it again. That's when I'll get excited.`,
                 ],
                 'perf:n-up'
               )
             : pick(
                 [
-                  `One game doesn't make a slump. ${snapshot.baseline.GP} games say ${last} is better than this.`,
-                  `I'd call it noise. ${snapshot.baseline.GP} games at ${avg} tells you more than one bad night.`,
+                  `One game doesn't make a slump. ${last} will bounce back.`,
+                  `I'd call it noise. ${last} has been better than that all year.`,
                 ],
                 'perf:n-down'
               )
@@ -633,7 +620,7 @@
       ...story,
       type: good && poor ? 'Mixed performance' : good ? 'Above expectations' : 'Below expectations',
       headline: headline(name, focus, opp, story.id, false, coldOnly),
-      editorialVersion: 3,
+      editorialVersion: 4,
       importance: Math.round(70 + Math.min(30, (coldOnly ? 1.1 : best.score) * 8)),
       performanceSnapshot: {
         ...snap,
@@ -657,7 +644,6 @@
         focus,
         changes,
         baseline,
-        playoffs: known.playoffs ?? /before the playoffs/.test((story.paragraphs || []).join(' ')),
         mine,
         opp,
         result: { won, score: `${hi}-${lo}` },

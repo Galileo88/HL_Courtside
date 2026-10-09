@@ -140,7 +140,7 @@ test('a bench breakout needs a line that is news on its own', () => {
   const story = P.candidates(big).find(x => x.story.playerId === 12)?.story;
   assert.ok(story);
   assert.match(story.headline, /off the bench|sparks bench/);
-  assert.match(story.paragraphs.join(' '), /come off the bench for most of the season/);
+  assert.match(story.paragraphs.join(' '), /mostly come off the bench this season/);
 });
 test('one story per team per game keeps the strongest night', () => {
   const l = fixture(),
@@ -215,7 +215,7 @@ test('playoff games compare against the regular season without subtracting playo
     }
   const story = P.candidates(l).find(x => x.story.playerId === 11).story;
   assert.equal(story.performanceSnapshot.baseline.PTS, 120);
-  assert.match(story.paragraphs.at(-1), /before the playoffs/);
+  assert.doesNotMatch(story.paragraphs.join(' '), /Those averages/);
 });
 test('baselines combine team stints and stay fixed when later saves are loaded', () => {
   const l = fixture(),
@@ -309,7 +309,7 @@ test('stories archived under the old rule are judged again: noise leaves, real n
     { playoffs: true, title: true, college: true }
   );
   assert.ok(craig);
-  assert.equal(craig.editorialVersion, 3);
+  assert.equal(craig.editorialVersion, 4);
   const text = [craig.headline, ...craig.paragraphs, ...B.script(craig).map(t => t.text)].join(' ');
   assert.match(craig.paragraphs[0], /in the national championship game/);
   assert.match(text, /won the national championship, 71-70/);

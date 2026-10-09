@@ -103,7 +103,7 @@ const server = http.createServer((req, res) => {
       () => document.querySelector('.article-headline')?.textContent === 'The statistical leaders'
     );
     assert.equal(await body.locator('p').count(), 3);
-    assert.match(await body.textContent(), /clean ratio for a lead playmaker/);
+    assert.match(await body.textContent(), /committing just 2\.0 turnovers a game/);
     assert.doesNotMatch(await body.textContent(), /Old statistical list/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     assert.deepEqual(errors, []);

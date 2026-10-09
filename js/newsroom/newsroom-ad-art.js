@@ -24,6 +24,81 @@
     ctx.drawImage(sprite, x, y, 32 * scale, 42 * scale);
     return sprite;
   }
+  // A bottle drawn from its silhouette: each row's half-width, with a cap, glass, label and a highlight.
+  function bottle(shape, colors) {
+    const widest = Math.max(...shape.map(r => r.w)),
+      art = document.createElement('canvas');
+    art.width = widest * 2 + 2;
+    art.height = shape.length;
+    const ctx = art.getContext('2d'),
+      mid = widest + 1;
+    shape.forEach(({ w, part }, y) => {
+      const fill = colors[part] || colors.body;
+      ctx.fillStyle = colors.outline;
+      ctx.fillRect(mid - w - 1, y, w * 2 + 2, 1);
+      ctx.fillStyle = fill[0];
+      ctx.fillRect(mid - w, y, w * 2, 1);
+      if (w >= 3 && fill[1]) {
+        ctx.fillStyle = fill[1];
+        ctx.fillRect(mid - w + 1, y, 1, 1);
+      }
+      if (w >= 3 && fill[2]) {
+        ctx.fillStyle = fill[2];
+        ctx.fillRect(mid + w - 2, y, 2, 1);
+      }
+    });
+    // Close the top and bottom with the outline.
+    ctx.fillStyle = colors.outline;
+    ctx.fillRect(mid - shape[0].w - 1, 0, shape[0].w * 2 + 2, 1);
+    ctx.fillRect(mid - shape.at(-1).w - 1, shape.length - 1, shape.at(-1).w * 2 + 2, 1);
+    return art;
+  }
+  const rows = (count, w, part) => Array.from({ length: count }, () => ({ w, part }));
+  // Sports drink: push-pull cap, a short neck and a grip label.
+  const SPORT_BOTTLE = [
+    ...rows(2, 1, 'cap'),
+    ...rows(4, 3, 'cap'),
+    { w: 2, part: 'body' },
+    { w: 3, part: 'body' },
+    { w: 4, part: 'body' },
+    ...rows(4, 5, 'body'),
+    ...rows(3, 5, 'label'),
+    ...rows(2, 5, 'stripe'),
+    ...rows(3, 5, 'label'),
+    ...rows(9, 5, 'body'),
+    { w: 4, part: 'body' },
+  ];
+  // Longneck beer: crown cap, long neck with foil, shoulders and a body label.
+  const BEER_BOTTLE = [
+    ...rows(2, 2, 'cap'),
+    { w: 2, part: 'body' },
+    ...rows(3, 2, 'foil'),
+    ...rows(8, 2, 'body'),
+    { w: 3, part: 'body' },
+    { w: 4, part: 'body' },
+    { w: 5, part: 'body' },
+    ...rows(6, 6, 'body'),
+    ...rows(3, 6, 'label'),
+    ...rows(2, 6, 'stripe'),
+    ...rows(4, 6, 'label'),
+    ...rows(5, 6, 'body'),
+    { w: 5, part: 'body' },
+  ];
+  // Softens the art's edges into the ad's own background, so no box shows around it.
+  function blend(ctx, width, height, color, size = 22) {
+    for (const [x0, y0, x1, y1, x, y, w, h] of [
+      [0, 0, 0, size, 0, 0, width, size],
+      [0, height, 0, height - size, 0, height - size, width, size],
+      [0, 0, size, 0, 0, 0, size, height],
+      [width, 0, width - size, 0, width - size, 0, size, height],
+    ]) {
+      const fade = ctx.createLinearGradient(x0, y0, x1, y1);
+      fade.addColorStop(0, color);
+      fade.addColorStop(1, color + '00');
+      ctx.fillStyle = fade;
+      ctx.fillRect(x, y, w, h);
+    }
+  }
   const burger = new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -39,7 +114,7 @@
     ctx.imageSmoothingEnabled = false;
     if (product === 'movie-drama') {
       const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-      gradient.addColorStop(0, '#351925');
+      gradient.addColorStop(0, '#221422');
       gradient.addColorStop(1, '#b36738');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 300, 180);
@@ -50,9 +125,6 @@
       ctx.beginPath();
       ctx.ellipse(150, 165, 96, 20, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = '#ffc76e';
-      ctx.fillRect(29, 14, 2, 71);
-      ctx.fillRect(269, 14, 2, 71);
       actor(ctx, hosts[1], 18, 48, 2.5, { color: 'DFA044' });
       actor(ctx, hosts[2], 79, 74, 1.8, { color: '722434', facing: 'right' });
       const lead = document.createElement('canvas');
@@ -83,6 +155,7 @@
       ball.width = ball.height = 8;
       HoopWirePlayer.drawBall(ball);
       ctx.drawImage(ball, 90, 137, 20, 20);
+      blend(ctx, 300, 180, '#221422', 14);
     } else if (product === 'movie-thriller') {
       ctx.fillStyle = '#080f22';
       ctx.fillRect(0, 0, 300, 180);
@@ -99,8 +172,6 @@
           ctx.fillRect(i * 26 + 7, y, 3, 3);
         }
       }
-      ctx.fillStyle = '#a62945';
-      ctx.fillRect(0, 147, 300, 4);
       actor(ctx, hosts[2], 172, 32, 3.1, { suit: true, color: '38202F', facing: 'right' });
       const portrait = document.createElement('canvas');
       portrait.width = 32;
@@ -112,8 +183,6 @@
       };
       HoopWirePlayer.draw(portrait, lead, null, 0, 0, 'suit-standing');
       ctx.drawImage(portrait, 4, 4, 24, 27, -8, 10, 156, 175.5);
-      ctx.fillStyle = '#f0bf70';
-      ctx.fillRect(146, 55, 2, 79);
     } else if (product === 'airways') {
       const sky = ctx.createLinearGradient(0, 0, 0, 180);
       sky.addColorStop(0, '#235275');
@@ -129,13 +198,7 @@
         ctx.fillRect(180 + i * 16, 112 - ((i * 19) % 43), 14, 80);
       }
       ctx.fillStyle = '#17314b';
-      ctx.fillRect(0, 145, 300, 35);
-      ctx.strokeStyle = '#b4ccd4';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, 140);
-      ctx.lineTo(300, 140);
-      ctx.stroke();
+      ctx.fillRect(0, 141, 300, 39);
       actor(ctx, hosts[1], 43, 0, 4, { suit: true, color: '394353' });
       ctx.fillStyle = '#302f36';
       ctx.fillRect(187, 116, 34, 39);
@@ -143,6 +206,7 @@
       ctx.strokeRect(197, 109, 13, 8);
       ctx.fillStyle = '#ba9c5c';
       ctx.fillRect(199, 116, 3, 39);
+      blend(ctx, 300, 180, '#17314b', 16);
     } else if (product === 'streaming') {
       ctx.fillStyle = '#091423';
       ctx.fillRect(0, 0, 300, 180);
@@ -181,8 +245,6 @@
       glow.addColorStop(1, 'rgba(255,205,96,0)');
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, 300, 180);
-      ctx.fillStyle = '#e1ad41';
-      ctx.fillRect(0, 12, 300, 4);
       ctx.fillStyle = '#dca458';
       ctx.fillRect(0, 136, 300, 44);
       ctx.fillStyle = '#c48c45';
@@ -191,7 +253,6 @@
       [
         [64, 158, 34],
         [236, 158, 34],
-        [150, 157, 34],
       ].forEach(([x, y, w]) => {
         ctx.beginPath();
         ctx.ellipse(x, y, w, 5, 0, 0, Math.PI * 2);
@@ -199,7 +260,8 @@
       });
       actor(ctx, hosts[0], 12, 24, 3.4, { color: 'C39224', facing: 'right' });
       actor(ctx, hosts[1], 180, 24, 3.4, { color: 'C39224' });
-      await burger.then(image => ctx.drawImage(image, 118, 53, 64, 104)).catch(() => {});
+      // The sprite's top five rows are the burger; the rest is its stand.
+      await burger.then(image => ctx.drawImage(image, 0, 0, 8, 5, 114, 64, 72, 45)).catch(() => {});
       ctx.fillStyle = '#ffe6a3';
       [
         [110, 46],
@@ -216,13 +278,6 @@
       light.addColorStop(1, '#101a17');
       ctx.fillStyle = light;
       ctx.fillRect(0, 0, 300, 180);
-      ctx.strokeStyle = '#71935c';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 157);
-      ctx.lineTo(300, 157);
-      ctx.ellipse(231, 169, 64, 14, 0, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.fillStyle = '#ceff69';
       ctx.font = '900 30px Arial';
       ctx.textAlign = 'left';
@@ -255,6 +310,7 @@
         'shooting'
       );
       ctx.drawImage(sprite, 162, 0, 128, 168);
+      blend(ctx, 300, 180, '#101a17', 14);
     } else if (product === 'automotive') {
       canvas.height = 285;
       const night = ctx.createLinearGradient(0, 0, 0, 285);
@@ -264,10 +320,8 @@
       ctx.fillStyle = night;
       ctx.fillRect(0, 0, 300, 285);
       // Arena lights and the open road frame the truck.
-      for (const [x, y] of [
-        [29, 100],
-        [267, 87],
-      ]) {
+      // One light, on the right, clear of the headline.
+      for (const [x, y] of [[267, 87]]) {
         ctx.fillStyle = '#5c6c77';
         ctx.fillRect(x, y, 2, 75);
         const glow = ctx.createRadialGradient(x, y, 1, x, y, 35);
@@ -285,14 +339,6 @@
       ctx.lineTo(300, 285);
       ctx.lineTo(0, 285);
       ctx.fill();
-      ctx.strokeStyle = '#d6bb80';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(157, 169);
-      ctx.lineTo(174, 191);
-      ctx.moveTo(192, 214);
-      ctx.lineTo(219, 246);
-      ctx.stroke();
       ctx.textAlign = 'left';
       ctx.fillStyle = '#f3f1e7';
       ctx.font = '900 27px Arial';
@@ -312,66 +358,62 @@
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(truck, 7, 266 - height, width, height);
       ctx.restore();
+      blend(ctx, 300, 285, '#08101d', 26);
     } else if (product === 'beer') {
-      const glow = ctx.createRadialGradient(162, 81, 3, 162, 81, 167);
+      const glow = ctx.createRadialGradient(150, 86, 3, 150, 86, 150);
       glow.addColorStop(0, '#a56e33');
       glow.addColorStop(1, '#291811');
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, 300, 180);
-      ctx.fillStyle = '#321d11';
-      ctx.fillRect(0, 153, 300, 27);
-      ctx.strokeStyle = '#b4894e';
-      ctx.lineWidth = 1;
+      // A bar top for the bottles to stand on.
+      const bar = ctx.createLinearGradient(0, 152, 0, 180);
+      bar.addColorStop(0, '#4a2c18');
+      bar.addColorStop(1, '#291811');
+      ctx.fillStyle = bar;
+      ctx.fillRect(0, 152, 300, 28);
+      const amber = bottle(BEER_BOTTLE, {
+        outline: '#2a1408',
+        cap: ['#d8b25a', '#f4dc94', '#a7812f'],
+        foil: ['#e7cf8f', '#fbeec4', '#b99c55'],
+        body: ['#8a4a14', '#c47a2c', '#5f3009'],
+        label: ['#efe0bd', '#fff4d8', '#cdb88e'],
+        stripe: ['#a3262c', '#c8393f', '#7c1a1f'],
+      });
+      ctx.fillStyle = 'rgba(20,10,5,.55)';
       ctx.beginPath();
-      ctx.moveTo(0, 153);
-      ctx.lineTo(300, 153);
-      ctx.stroke();
-      const source = await HoopWireCourt.loadImage('assets/scene/bottle.png'),
-        bottle = document.createElement('canvas');
-      bottle.width = source.width;
-      bottle.height = source.height;
-      const b = bottle.getContext('2d');
-      b.drawImage(source, 0, 0);
-      const pixels = b.getImageData(0, 0, bottle.width, bottle.height);
-      for (let i = 0; i < pixels.data.length; i += 4) {
-        if (!pixels.data[i + 3]) continue;
-        const y = Math.floor(i / 4 / bottle.width),
-          shade = pixels.data[i] / 255;
-        const color = y === 0 ? [233, 205, 155] : [173, 102, 34];
-        color.forEach((v, k) => (pixels.data[i + k] = Math.round(v * shade)));
-      }
-      b.putImageData(pixels, 0, 0);
-      ctx.fillStyle = '#24150c';
-      ctx.beginPath();
-      ctx.ellipse(152, 155, 84, 9, 0, 0, Math.PI * 2);
+      ctx.ellipse(150, 156, 82, 7, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.save();
-      ctx.translate(102, 150);
-      ctx.rotate(-0.12);
-      ctx.drawImage(bottle, -24, -96, 48, 96);
-      ctx.restore();
-      ctx.drawImage(bottle, 150, 9, 72, 144);
+      // Two bottles, one a step behind the other.
+      ctx.drawImage(amber, 92, 156 - amber.height * 3, amber.width * 3, amber.height * 3);
+      ctx.drawImage(amber, 150, 156 - amber.height * 3.6, amber.width * 3.6, amber.height * 3.6);
+      blend(ctx, 300, 180, '#291811', 18);
     } else if (product === 'shoes') {
-      const spotlight = ctx.createRadialGradient(150, 90, 8, 150, 90, 155);
+      const spotlight = ctx.createRadialGradient(150, 84, 8, 150, 84, 150);
       spotlight.addColorStop(0, '#33566d');
       spotlight.addColorStop(1, '#0a1823');
       ctx.fillStyle = spotlight;
       ctx.fillRect(0, 0, 300, 180);
-      ctx.strokeStyle = '#638ba1';
-      ctx.lineWidth = 1;
+      // A lit display plinth.
+      const plinth = ctx.createRadialGradient(150, 148, 4, 150, 148, 110);
+      plinth.addColorStop(0, '#1d4560');
+      plinth.addColorStop(1, '#0a1823');
+      ctx.fillStyle = plinth;
       ctx.beginPath();
-      ctx.ellipse(150, 151, 112, 14, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.ellipse(150, 148, 112, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(2,10,16,.6)';
+      ctx.beginPath();
+      ctx.ellipse(150, 146, 92, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The supplied Stride artwork, with only its flat backdrop removed.
       const source = await HoopWireCourt.loadImage('assets/scene/shoes.png'),
         shoe = document.createElement('canvas');
       shoe.width = source.width;
       shoe.height = source.height;
       const s = shoe.getContext('2d');
       s.drawImage(source, 0, 0);
-      const pixels = s.getImageData(0, 0, shoe.width, shoe.height);
-      // Remove only the flat backdrop connected to the image edges, leaving
-      // the supplied shoe colors and interior pixels intact.
-      const bg = Array.from(pixels.data.slice(0, 3)),
+      const art = s.getImageData(0, 0, shoe.width, shoe.height);
+      const bg = Array.from(art.data.slice(0, 3)),
         visited = new Uint8Array(shoe.width * shoe.height),
         queue = [];
       for (let x = 0; x < shoe.width; x++) queue.push(x, (shoe.height - 1) * shoe.width + x);
@@ -381,8 +423,8 @@
         if (visited[n]) continue;
         visited[n] = 1;
         const offset = n * 4;
-        if (!bg.every((v, k) => pixels.data[offset + k] === v)) continue;
-        pixels.data[offset + 3] = 0;
+        if (!bg.every((v, k) => art.data[offset + k] === v)) continue;
+        art.data[offset + 3] = 0;
         const x = n % shoe.width,
           y = Math.floor(n / shoe.width);
         if (x) queue.push(n - 1);
@@ -390,18 +432,12 @@
         if (y) queue.push(n - shoe.width);
         if (y + 1 < shoe.height) queue.push(n + shoe.width);
       }
-      s.putImageData(pixels, 0, 0);
-      ctx.fillStyle = '#082031';
-      ctx.beginPath();
-      ctx.ellipse(150, 154, 62, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      const width = 144,
+      s.putImageData(art, 0, 0);
+      // Sized to stand clear of the faded edges.
+      const width = 128,
         height = (width * shoe.height) / shoe.width;
-      ctx.drawImage(shoe, 78, 1, width, height);
-      ctx.fillStyle = '#a9edff';
-      ctx.font = 'bold 11px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('COURT 01', 150, 176);
+      ctx.drawImage(shoe, 150 - width / 2, 150 - height, width, height);
+      blend(ctx, 300, 180, '#0a1823', 18);
     }
     return canvas.toDataURL('image/png');
   }
@@ -417,5 +453,5 @@
       );
     return cache.get(key);
   }
-  window.HoopWireAdArt = { render };
+  window.HoopWireAdArt = { render, bottle, blend, SPORT_BOTTLE };
 })();

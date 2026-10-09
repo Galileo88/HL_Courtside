@@ -14,7 +14,8 @@ function expectedStoryCount(save) {
     S = require('../js/coverage/season-coverage.js'),
     R = require('../js/coverage/records-coverage.js'),
     N = require('../js/coverage/news-coverage.js'),
-    P = require('../js/coverage/performance-coverage.js');
+    P = require('../js/coverage/performance-coverage.js'),
+    K = require('../js/coverage/career-coverage.js');
   const leagues = save.seasonLeagues;
   return leagues.reduce((sum, l) => {
     const snapshots = new Map(C.captureSnapshots(l).map(s => [s.id, s]));
@@ -25,6 +26,7 @@ function expectedStoryCount(save) {
       ...N.candidates(l, leagues),
       ...N.offseason(l, leagues),
       ...P.candidates(l),
+      ...K.candidates(l),
     ];
     return sum + games + new Set(milestones.map(x => x.story.id)).size;
   }, 0);

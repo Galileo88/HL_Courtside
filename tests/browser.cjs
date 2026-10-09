@@ -28,6 +28,10 @@ const server = http.createServer((req, res) => {
   );
   fs.createReadStream(file).pipe(res);
 });
+async function openArchive(page) {
+  await page.locator('#siteMenuButton').click();
+  await page.locator('#siteMenu a[href="#archive"]').click();
+}
 async function ready(page) {
   await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
 }
@@ -107,7 +111,7 @@ async function openPage(browser, url, seed) {
     assert.equal(await page.locator('#archive').isVisible(), false);
     await upload(page, sample);
     assert.deepEqual(await records(page), original);
-    await page.locator('.nav a[href="#archive"]').click();
+    await openArchive(page);
     await page.locator('#feed').waitFor({ state: 'hidden' });
     assert.equal(await page.locator('#archiveTitle').textContent(), sample.seasonLeagues[0].leagueName + ' Archive');
     assert.equal(await page.locator('#archive .controls:visible').count(), 0);
@@ -124,7 +128,7 @@ async function openPage(browser, url, seed) {
     assert.ok((await page.locator('#tvSegment .tv-story-kicker').count()) > 0);
     assert.ok((await page.locator('#tvSegment h2').textContent()).trim().length > 0);
     assert.equal(await page.locator('#archive').isVisible(), false);
-    await page.locator('.nav a[href="#archive"]').click();
+    await openArchive(page);
     await page.locator('#archive').screenshot({ path: path.join(root, 'artifacts/archive-tree.png') });
     await page.locator('#resetArchive').click();
     await page.locator('#cancelReset').click();
@@ -171,7 +175,7 @@ async function openPage(browser, url, seed) {
       (await records(page)).filter(s => s.fingerprint !== otherId),
       all
     );
-    await page.locator('.nav a[href="#archive"]').click();
+    await openArchive(page);
     assert.equal(await page.locator('#archiveTitle').textContent(), 'Separate League Archive');
     assert.equal(await page.locator('#archiveLeague option').count(), 1);
     assert.ok(
@@ -201,7 +205,7 @@ async function openPage(browser, url, seed) {
     emptyLeague.seasonLeagues[0].season.playoffs = [];
     for (const t of emptyLeague.seasonLeagues[0].teams) delete t.championships;
     await upload(page, emptyLeague);
-    assert.equal(await page.locator('.nav a[href="#archive"]').getAttribute('aria-disabled'), 'true');
+    assert.equal(await page.locator('#siteMenu a[href="#archive"]').getAttribute('aria-disabled'), 'true');
     await page.evaluate(() => (location.hash = '#archive'));
     await page.waitForFunction(() => location.hash === '#welcome');
     await upload(page, rollover);

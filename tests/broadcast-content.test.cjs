@@ -152,7 +152,7 @@ test('a poor shooting night gets criticism and a strong shooting night gets spec
   // A volume night earns a defence from Jordan, not just a verdict.
   assert.match(text(poor), /somebody had to take those shots/);
   const strong = { ...game, playerStats: { PTS: 20, REB: 2, AST: 7, FGM: 8, FGA: 10 } };
-  assert.match(text(strong), /8 for 10.*efficient scoring/);
+  assert.match(text(strong), /8 for 10.*(?:clean|wasted possession|love)/);
   assert.match(text(strong), /seven assists/);
   const legacy = {
     ...game,
@@ -172,9 +172,10 @@ test('postgame follow-ups connect efficiency, ball security and per-game context
   const turns = B.script(story),
     s = text(story);
   assert.ok(turns.length >= 6 && turns.length <= 14);
-  assert.match(s, /4 of them against 11 assists/);
+  assert.match(s, /Four turnovers against 11 assists/);
   const e = B.selectEvidence(story, require('../js/broadcast/broadcast-context.js').buildContext(story));
-  assert.equal(e.ppg, '20.0');
+  // The average the player brought into the game, without tonight.
+  assert.equal(e.ppg, '19.1');
   assert.equal(B.supportingThreads(e, B.selectAngle(e)).length, 2);
   assert.doesNotMatch(s, /next matchup|Where do the .*turnovers/);
   assert.doesNotMatch(s, /200 points|I (?:watched|rewatched|spoke|caught up)|second half|pregame|warmups/);
@@ -249,7 +250,7 @@ test('playoff, award and season segments develop basketball questions with avail
   assert.match(text(preview), /Stars score 110\.0 points a game.*Moons allow 102\.0/);
   assert.ok(B.script(preview).length >= 8);
   const season = { ...teams, type: 'Regular-season review' };
-  assert.match(text(season), /10\.0 points a game in their favor/);
+  assert.match(text(season), /10\.0 a game in their favor/);
   assert.match(text(season), /Stars.*8-2/);
   const award = {
     type: 'Award announcement',

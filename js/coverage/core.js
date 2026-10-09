@@ -13,6 +13,16 @@
     return (h >>> 0).toString(36);
   }
 
+  // "33.4 points, 15.2 rebounds and 6.2 assists", leaving out averages that round to nothing.
+  function perGameList(s, keys = ['PTS', 'REB', 'AST']) {
+    const label = { PTS: 'points', REB: 'rebounds', AST: 'assists', STL: 'steals', BLK: 'blocks' };
+    return listJoin(
+      keys
+        .filter(k => k === 'PTS' || (s[k] / s.GP).toFixed(1) !== '0.0')
+        .map(k => `${(s[k] / s.GP).toFixed(1)} ${label[k]}`)
+    );
+  }
+
   function choose(seed, values, salt = '') {
     const index = parseInt(hashString(seed + '|' + salt), 36) % values.length;
     return values[index];
@@ -198,13 +208,36 @@
     return ctx.importance + 30 + (contenders === 2 ? 15 : contenders === 1 ? 5 : 0);
   }
 
+  // The lasting ID Hoop League Studio writes into a league's commissioner tag ("hoopwire:hw-…").
+  // Hoop Land keeps it through its own saves, and it stays the same when teams are added or renamed.
+  function leagueId(league) {
+    return /^hoopwire:(hw-[a-z0-9]+)$/i.exec(league?.commissioner?.tag || '')?.[1].toLowerCase() || null;
+  }
+
+  // Hoop Land's game mode (season.mode): 1 is commissioner, 2 is career, and franchise is the only
+  // other mode, so any other number is franchise. Commissioner is the default and has no tag, so
+  // its archives keep the identity they always had.
+  function gameMode(league) {
+    const mode = league?.season?.mode;
+    if (mode == null || mode === '' || !Number.isFinite(Number(mode)) || Number(mode) === 1) return null;
+    return Number(mode) === 2 ? 'career' : 'franchise';
+  }
+
+  // A league's archive identity: the one the app pinned on an uploaded league (archiveId), then the
+  // Studio ID, then a fingerprint of the league as it stands. A career or franchise started from the
+  // same league file keeps its own archive.
   function buildFingerprint(league) {
+    if (typeof league?.archiveId === 'string') return league.archiveId;
+    const mode = gameMode(league),
+      id = leagueId(league);
+    if (id) return mode ? `${id}-${mode}` : id;
     const teams = (league.teams || [])
       .map(t => `${t.id}:${t.shortName || ''}:${t.name || ''}`)
       .sort()
       .join('|');
     const season = league.season || {};
-    return hashString(`${league.leagueName}|${season.startingYear}|${teams}`);
+    const hash = hashString(`${league.leagueName}|${season.startingYear}|${teams}`);
+    return mode ? `${hash}-${mode}` : hash;
   }
 
   function coverageThreshold(level) {
@@ -385,9 +418,8 @@
             stats: snap.stats,
           });
       }
-    const slate = lookups.completed
-      .filter(x => x.dayIndex === dayIndex)
-      .map(x => Math.abs(x.game.homeScore - x.game.awayScore));
+    const day = lookups.completed.filter(x => x.dayIndex === dayIndex),
+      slate = day.map(x => Math.abs(x.game.homeScore - x.game.awayScore));
     const season = league.season || {};
     const form = formFacts(game, dayIndex, lookups);
     const titles =
@@ -411,6 +443,18 @@
       winnerLastSeason: priorSeason(winner, league),
       loserLastSeason: priorSeason(loser, league),
       dayGames: slate.length,
+      // Which close game, blowout or regular win this is on the day, so each draws its own quote.
+      daySlot: Math.max(
+        0,
+        day
+          .filter(
+            (x, i) =>
+              (slate[i] <= 3 ? 'close' : slate[i] >= 12 ? 'blowout' : 'normal') ===
+              (close ? 'close' : blowout ? 'blowout' : 'normal')
+          )
+          .findIndex(x => x.game.gId === game.gId)
+      ),
+      rout: blowout && margin >= 0.18 * winnerScore,
       widestOfDay: slate.length >= 3 && slate.filter(m => m >= margin).length === 1,
       gameBall: structuredClone(
         league.gameballs?.[Number(league.settings?.gameBall) || 0] || {
@@ -477,9 +521,44 @@
   function possessive(name) {
     return /s$/i.test(name) ? `${name}'` : `${name}'s`;
   }
+  // Saves store positions on a 0-8 scale: the five positions on even values, hybrids between them.
+  const POSITIONS = [
+    'point guard',
+    'combo guard',
+    'shooting guard',
+    'wing',
+    'small forward',
+    'forward',
+    'power forward',
+    'forward-center',
+    'center',
+  ];
+  function positionName(pos) {
+    return (Number.isInteger(pos) && POSITIONS[pos]) || '';
+  }
+  // The award settings' position flags a player falls under: one for a position, both neighbors for a hybrid.
+  function positionKeys(pos) {
+    const keys = ['pg', 'sg', 'sf', 'pf', 'c'];
+    if (!Number.isInteger(pos) || pos < 0 || pos > 8) return [];
+    return pos % 2 ? [keys[(pos - 1) / 2], keys[(pos + 1) / 2]] : [keys[pos / 2]];
+  }
   // Hoop Land records gender 0 for men and 1 for women; anything else keeps the name.
   function pronoun(person) {
     return person?.gender === 0 ? 'he' : person?.gender === 1 ? 'she' : null;
+  }
+  // Subject, object and possessive forms for a person, or their name when the save gives no gender.
+  function pronouns(person, name = '') {
+    const he = pronoun(person);
+    return {
+      he: he || name,
+      him: he === 'she' ? 'her' : he === 'he' ? 'him' : name,
+      his: he === 'she' ? 'her' : he === 'he' ? 'his' : possessive(name),
+    };
+  }
+  // What a coach or teammate calls the group: "guys" on a men's roster, "players" on a women's.
+  function squad(team) {
+    const roster = team?.roster || [];
+    return roster.length && roster.filter(p => p.gender === 1).length > roster.length / 2 ? 'players' : 'guys';
   }
   // Accepts a native team, a snapshot team or an archived score summary.
   function teamRef(team) {
@@ -506,7 +585,9 @@
       full: `the ${display}`,
       nick: `the ${nickname}`,
       short: city || `the ${nickname}`,
-      plural: /s$/i.test(nickname) && !/(?:ss|us)$/i.test(nickname),
+      plural:
+        (/s$/i.test(nickname) && !/(?:ss|us)$/i.test(nickname)) ||
+        /(?:men|bison|moose|sheep|deer|elk|geese|mice|people|folk|cattle)$/i.test(nickname),
     };
   }
   // Present-tense verb for a bare nickname: "Wolverines stun", "Thunder stuns".
@@ -724,7 +805,7 @@
       return choose(
         seed,
         [
-          `${w} ${v('rout')} ${l} ${score}`,
+          ctx.rout ? `${w} ${v('rout')} ${l} ${score}` : `${w} ${v('pull')} away from ${l}, ${score}`,
           `${w} ${v('roll')} past ${l} ${score}${star ? ` behind ${star.last}` : ''}`,
           star
             ? `${star.last} powers ${w} to ${ctx.margin}-point win over ${l}`
@@ -754,11 +835,12 @@
 
   function quoteBank(ctx, seed, salt) {
     const pick = options => choose(seed, options, salt),
-      S = ctx.series;
+      S = ctx.series,
+      guys = squad(ctx.winner);
     if (S && salt === 'quote-coach') {
       if (S.title)
         return pick([
-          'Nobody can ever take this away from these guys. They earned every bit of it.',
+          `Nobody can ever take this away from these ${guys}. They earned every bit of it.`,
           "I've been dreaming about this since I got into coaching. I'm so happy for this group.",
           "This is what we built all year for. Champions. I still can't believe I get to say it.",
         ]);
@@ -766,11 +848,11 @@
         return pick([
           "Closing out a series is the hardest thing to do in this league. I'm proud of how we finished it.",
           "We'll enjoy it tonight. Tomorrow we get to work on the next one.",
-          "That's a good team we just beat. Our guys earned this.",
+          `That's a good team we just beat. Our ${guys} earned this.`,
         ]);
       if (S.savedSeason)
         return pick([
-          "Our guys weren't ready to go home. That was a team that refused to quit.",
+          `Our ${guys} weren't ready to go home. That was a team that refused to quit.`,
           'We had our backs against the wall and responded. Now we have to do it again.',
         ]);
       if (S.tied)
@@ -795,7 +877,7 @@
       if (S.title)
         return pick([
           "We're champions. I don't even know what to say right now. This group deserved it.",
-          'All the work, all those nights, it was all for this. I love these guys.',
+          `All the work, all those nights, it was all for this. I love these ${guys}.`,
           "I've wanted this my whole life. To do it with this team, it means everything.",
         ]);
       if (S.clinched)
@@ -820,45 +902,65 @@
         "Good win, but we haven't done anything yet.",
       ]);
     }
+    // Regular-season quotes rotate through the day's slate, so two games on one day never share a line.
+    const daily = options =>
+      options[
+        (parseInt(hashString(`${ctx.seasonYear}|${ctx.dayIndex}|${salt}`), 36) + (ctx.daySlot || 0)) % options.length
+      ];
     if (salt === 'quote-coach') {
       if (ctx.close)
-        return pick([
+        return daily([
           "That was a grind. Neither team gave an inch, and I'm proud of how our group competed.",
           "Those are the ones that test you. We didn't play perfect, but we were good enough at the end.",
           "Give them credit, they made it hard on us. I'll take a win like that every time.",
-          "Games like that grow you up. I'm happy for our guys.",
+          `Games like that grow you up. I'm happy for our ${guys}.`,
+          'We got the stops we needed down the stretch. That was the difference.',
+          "We'll take it. Ugly or not, a win's a win.",
+          'I thought our poise late was the story. Nobody flinched.',
         ]);
       if (ctx.upset)
-        return pick([
-          "There's a lot of respect in our locker room for that team. But our guys believed they could win this game, and they played like it.",
-          "We don't look at the standings. We came in with a plan and our guys trusted it.",
+        return daily([
+          `There's a lot of respect in our locker room for that team. But our ${guys} believed they could win this game, and they played like it.`,
+          `We don't look at the standings. We came in with a plan and our ${guys} trusted it.`,
           "That's a quality opponent. Beating a team like that tells our group what it's capable of.",
-          "I told our guys before the game that the records don't matter once the ball goes up. They believed it.",
+          `I told our ${guys} before the game that the records don't matter once the ball goes up. They believed it.`,
+          "Nobody's going to give us anything. We went out and took it.",
         ]);
       if (ctx.blowout)
-        return pick([
+        return daily([
           "That's about as complete as we've been. Now the challenge is doing it again.",
           "I liked our focus from the start. When we play with that kind of edge, we're a tough out.",
           "Good night for us. We'll enjoy it, then get back to work tomorrow.",
           "We were sharp. I don't want to make too much of one night, but that's the standard.",
+          'We defended, we rebounded and we moved the ball. That travels.',
+          "Everybody who checked in gave us something. That's what I'm proudest of.",
+          'We were locked in from the opening tip and never let up.',
+          "Our bench was terrific. That's what depth looks like.",
+          'We took care of the basketball and made them work for everything.',
+          "That's the most complete defensive game we've played.",
         ]);
-      return pick([
+      return daily([
         "Good win. There's stuff we have to clean up, but I'll take it.",
-        "It wasn't always pretty. Our guys found a way, and that's what good teams do.",
-        "We handled our business. That's what I want to see from this group.",
+        `It wasn't always pretty. Our ${guys} found a way, and that's what good teams do.`,
+        "We guarded and we shared it. That's what I want to see from this group.",
         'I thought we were the more connected team tonight. Still plenty to work on.',
+        "We made the extra pass tonight. When we do that, we're tough to guard.",
+        'Solid night. We came out with a purpose and kept it.',
+        "We'll watch the film, fix a few things and move on to the next one.",
       ]);
     }
     if (ctx.close)
-      return pick([
+      return daily([
         'Those are the games you want to be in. We stayed together and did just enough.',
         'That one was a fight. Credit to them, they made us earn every bucket.',
         "Close games, you can't get rattled. We stayed level and got the win.",
         "My heart's still racing a little bit. That's a good team, and we'll take it.",
         "We didn't make it easy on ourselves. But we got the stops when we had to, and that's what matters.",
+        'I wanted the ball late. Coach trusted me, and my teammates found me.',
+        "Down the stretch it's about who gets the stop. Tonight that was us.",
       ]);
     if (ctx.upset)
-      return pick([
+      return daily([
         'People can look at the records all they want. Nobody in here was surprised.',
         'We knew what kind of team they were. We just wanted to go out and play our game.',
         "That's a good team. Beating them, that's a confidence thing for us.",
@@ -866,19 +968,26 @@
         "I don't think anybody outside our locker room gave us a chance. That's fine with us.",
       ]);
     if (ctx.blowout)
-      return pick([
+      return daily([
         "When we're playing together like that, we're hard to beat. Everybody was locked in.",
         'We just wanted to come out and set the tone. It felt good to put a full game together.',
         "That's the version of us we want to see every night.",
         "We were sharing it, getting stops, having fun. That's when we're at our best.",
         "We've been waiting on a game like that. Now we've got to keep it going.",
+        'The ball was moving and everybody ate. That was fun.',
+        "Our defense got us going. Once we got out in transition, it's hard to stop us.",
+        'Shots were falling early, and that opened everything up.',
+        'Coach told us to keep our foot on the gas. Nobody let up.',
+        "That's what we're capable of when everybody's on the same page.",
       ]);
-    return pick([
-      "We came in and handled our business. That's all you can ask.",
+    return daily([
+      "We came in and took care of business. That's all you can ask.",
       "It wasn't perfect, but a win's a win. We'll look at the film and get better.",
       'Just trying to make the right plays. My teammates put me in good spots tonight.',
       'I just took what the defense gave me. Shots were falling, so I kept shooting.',
       'Good team win. We did what we came here to do.',
+      'I felt good out there. Got a rhythm early and stayed aggressive.',
+      "We've got a lot of season left. This is just one step.",
     ]);
   }
 
@@ -924,7 +1033,7 @@
       else if (a >= 0.55 && a - b >= 0.1)
         options.push({
           score: (a - b) * 3,
-          text: `${capitalize(W.short)} shot ${Math.round(a * 100)}% from the field, making ${w.FGM} of ${w.FGA} attempts.`,
+          text: `${capitalize(W.short)} shot ${Math.round(a * 100)}% (${w.FGM}-of-${w.FGA}) from the field.`,
         });
     }
     if (w.REB !== null && l.REB !== null && Math.abs(w.REB - l.REB) >= Math.max(4, 0.3 * Math.min(w.REB, l.REB))) {
@@ -982,7 +1091,7 @@
     const score = `${ctx.winnerScore}-${ctx.loserScore}`,
       star = p?.onWinner && p.headliner ? p : null,
       clause = seriesClause(ctx, ctx.series);
-    const beat = ctx.close ? 'edged' : ctx.blowout ? 'routed' : 'beat';
+    const beat = ctx.close ? 'edged' : ctx.rout ? 'routed' : ctx.blowout ? 'pulled away from' : 'beat';
     return capitalize(
       star
         ? choose(
@@ -1098,7 +1207,7 @@
         ]);
       if (ctx.blowout)
         return pick([
-          `${Name} ${did}, and ${W.full} routed ${L.full} ${score}.`,
+          `${Name} ${did}, and ${W.full} ${ctx.rout ? 'routed' : 'pulled away from'} ${L.full} ${score}.`,
           `${W.full} rolled past ${L.full} ${score} behind ${Name}, who ${did}.`,
         ]);
       return pick([
@@ -1119,7 +1228,7 @@
       ]);
     if (ctx.blowout)
       return pick([
-        `${capitalize(W.full)} routed ${L.full} ${score}.`,
+        `${capitalize(W.full)} ${ctx.rout ? 'routed' : 'pulled away from'} ${L.full} ${score}.`,
         `${capitalize(W.full)} rolled past ${L.full} ${score}.`,
       ]);
     return pick([
@@ -1152,21 +1261,9 @@
       );
       return `${capitalize(L.short)} came in ${recordText(ctx.loserPre)}${gap ? `, ${gap} better than ${W.short},` : ''} ${turn}. ${records}`.trim();
     }
-    if (ctx.close) {
-      return `${choose(
-        seed,
-        [
-          `Only ${plural(ctx.margin, 'point')} separated the teams at the finish.`,
-          `It was a ${ctx.margin}-point game at the end, about as close as they come.`,
-          `The final margin was a single possession.`,
-        ],
-        'close-context'
-      )} ${records}`.trim();
-    }
-    if (ctx.blowout) {
-      const widest = ctx.widestOfDay ? ` It was the most lopsided result on a ${num(ctx.dayGames)}-game slate.` : '';
-      return `The ${ctx.margin}-point margin left little room for debate.${widest} ${records}`.trim();
-    }
+    if (ctx.close) return records;
+    if (ctx.blowout)
+      return `${ctx.widestOfDay ? `It was the most lopsided result on a ${num(ctx.dayGames)}-game slate. ` : ''}${records}`.trim();
     const better =
       hasRecords &&
       ctx.winnerPre[0] + ctx.winnerPre[1] >= 5 &&
@@ -1185,19 +1282,21 @@
         ? `, including ${s.TPM === 1 ? 'a 3-pointer' : `${num(s.TPM)} 3-pointers`}`
         : '';
     const shooting = fg !== null ? `${s.FGM}-of-${s.FGA} shooting${threes}` : '';
-    const share = p.teamScore > 0 && s.PTS >= 4 && s.PTS / p.teamScore >= 0.3;
+    const ratio = p.teamScore > 0 && s.PTS >= 4 ? s.PTS / p.teamScore : 0,
+      share = ratio >= 0.3,
+      portion = `${ratio > 0.5 ? 'more than half' : ratio === 0.5 ? 'half' : ratio >= 0.42 ? 'nearly half' : ratio >= 1 / 3 ? 'more than a third' : 'nearly a third'} of ${possessive(team)} points`;
     if (!p.onWinner)
       return `${p.name} was the best player on the floor in a losing effort for ${L.short}, finishing with ${lineSummary(s)}${shooting ? ` on ${shooting}` : ''}.`;
     if (!p.headliner)
       return `${p.name} earned player of the game honors with ${lineSummary(s)}${shooting ? ` on ${shooting}` : ''}.`;
     let first = '';
     if (fg !== null && s.FGA >= 6 && fg <= 0.35)
-      first = `It wasn't efficient. ${last} needed ${plural(s.FGA, 'shot')} to get there, going ${s.FGM}-of-${s.FGA}${share ? `, but still supplied ${num(s.PTS)} of ${possessive(team)} ${p.teamScore} points` : ''}.`;
+      first = `It wasn't efficient. ${last} went ${s.FGM}-of-${s.FGA}${share ? `, but that was still ${portion}` : ''}.`;
     else if (fg !== null && fg >= 0.6 && s.FGA >= 4)
       first = choose(
         seed,
         [
-          `${last} barely wasted a possession, going ${s.FGM}-of-${s.FGA} from the field${threes}${share ? `${threes ? ',' : ''} and accounting for ${num(s.PTS)} of ${possessive(team)} ${p.teamScore} points` : ''}.`,
+          `${last} barely wasted a possession, going ${s.FGM}-of-${s.FGA} from the field${threes}${ratio >= 0.42 ? `${threes ? ',' : ''} and scoring ${portion}` : ''}.`,
           `${last} needed just ${plural(s.FGA, 'shot')} to get there, making ${num(s.FGM)}${threes}.`,
         ],
         'star-efficient'
@@ -1206,13 +1305,13 @@
       first = choose(
         seed,
         [
-          `${last} accounted for ${num(s.PTS)} of ${possessive(team)} ${p.teamScore} points on ${shooting}.`,
-          `${last} carried the scoring load on ${shooting}, supplying ${num(s.PTS)} of the team's ${p.teamScore} points.`,
+          `${last} scored ${portion} on ${shooting}.`,
+          `${last} carried the scoring load, going ${shooting.replace(' shooting', '')}.`,
         ],
         'star-share'
       );
     else if (shooting) first = `${last} got there on ${shooting}.`;
-    else if (share) first = `${last} supplied ${num(s.PTS)} of ${possessive(team)} ${p.teamScore} points.`;
+    else if (share) first = `${last} scored ${portion}.`;
     const extras = ['REB', 'AST', 'STL', 'BLK']
       .filter(k => !p.doubles.includes(k) && Number.isInteger(s[k]) && s[k] >= { REB: 4, AST: 3, STL: 2, BLK: 2 }[k])
       .map(k => plural(s[k], statLabels[k].replace(/s$/, ''), statLabels[k]));
@@ -1288,7 +1387,7 @@
       headline: headline(ctx, seed),
       paragraphs: paragraphs.filter(Boolean),
       templateVersion: 3,
-      editorialVersion: 2,
+      editorialVersion: 3,
       leagueName: ctx.leagueName,
       playerStats: ctx.potgStats ? structuredClone(ctx.potgStats) : null,
       playerId: ctx.potg?.id ?? null,
@@ -1333,7 +1432,7 @@
       (existing.templateVersion === 3 &&
         ((!existing.playerStats && ctx.potgStatsTrusted) ||
           (!existing.coach && !!ctx.coach) ||
-          (existing.editorialVersion || 0) < 2))
+          (existing.editorialVersion || 0) < 3))
     );
   }
   function coachParagraph(ctx, seed) {
@@ -1350,6 +1449,9 @@
     teamDisplay,
     playerDisplay,
     buildFingerprint,
+    leagueId,
+    gameMode,
+    perGameList,
     isCompleted,
     buildLookups,
     captureSnapshots,
@@ -1369,6 +1471,10 @@
     surname,
     possessive,
     pronoun,
+    pronouns,
+    squad,
+    positionName,
+    positionKeys,
     teamRef,
     verb,
     quoteParagraph,

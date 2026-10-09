@@ -117,12 +117,20 @@ test('MVP race uses configured weights, eligibility, total calculation and recor
   snapshot.reviewPlayers[2].mvpWins = [1967];
   assert.equal(S.mvpRace(snapshot)[0].name, 'Third');
   delete snapshot.reviewPlayers[2].mvpWins;
-  snapshot.reviewPlayers[1].position = 4;
+  snapshot.reviewPlayers[1].position = 8;
   snapshot.mvpAward.c = false;
   assert.deepEqual(
     S.mvpRace(snapshot).map(p => p.name),
     ['Scorer', 'Third']
   );
+  snapshot.reviewPlayers[1].position = 7;
+  assert.equal(S.mvpRace(snapshot)[0].name, 'All-around');
+  snapshot.mvpAward.pf = false;
+  assert.deepEqual(
+    S.mvpRace(snapshot).map(p => p.name),
+    ['Scorer', 'Third']
+  );
+  delete snapshot.mvpAward.pf;
   delete snapshot.mvpAward.c;
   snapshot.mvpAward.calculation = 1;
   snapshot.reviewPlayers[0].s.GP = 8;
@@ -264,9 +272,9 @@ test('leader prose uses saved age, experience and resolved college without inven
       ],
       leaderProfiles: [
         { name: 'Alex', position: 1, bio },
-        { name: 'Sam', position: 4, bio: { age: 29 } },
+        { name: 'Sam', position: 8, bio: { age: 29 } },
         { name: 'Pat', position: 0, bio: { yearsPro: 11, college: 'Duke' } },
-        { name: 'Lee', position: 2, bio: { age: 23 } },
+        { name: 'Lee', position: 4, bio: { age: 23 } },
         { name: 'Ray', position: 4, bio: { proSeason: 1, college: 'Ohio' } },
       ],
     },
@@ -399,10 +407,7 @@ test('awards require recorded winner, correct league/year and milestone; zero st
   const l = fixture(),
     c = S.candidates(l);
   assert.equal(c.filter(x => x.story.type === 'Award announcement').length, 1);
-  assert.match(
-    c.find(x => x.story.type === 'Award announcement').story.paragraphs[1],
-    /0\.0 points, 0\.0 rebounds and 0\.0 assists/
-  );
+  assert.match(c.find(x => x.story.type === 'Award announcement').story.paragraphs[1], /averaged 0\.0 points per game/);
   assert.equal(c.find(x => x.story.eventKey === 'leaders').story.seasonSnapshot.rows.length, 10);
   l.teams[0].roster[0].awards[0].league = 1;
   assert.equal(S.candidates(l).filter(x => x.story.type === 'Award announcement').length, 0);

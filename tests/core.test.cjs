@@ -165,7 +165,8 @@ test('identities separate seasons and leagues and upgrade only current template 
   assert.equal(C.shouldGenerate({ templateVersion: 3, playerStats: null }, ctx), true);
   assert.equal(C.shouldGenerate({ templateVersion: 2 }, ctx), false);
   assert.equal(C.shouldGenerate({ templateVersion: 3, playerStats: ctx.potgStats }, ctx), true, 'older prose upgrades');
-  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), false);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), true);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 3, playerStats: ctx.potgStats }, ctx), false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient', () => {
   const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
@@ -211,3 +212,50 @@ test('recaps read like wire copy: short references, AP numbers and box-score con
   assert.equal(C.gamesBetter([21, 8], [20, 8]), 'a half-game');
 });
 module.exports = { league };
+test('positions read on the save 0-8 scale, with hybrids between the five positions', () => {
+  assert.equal(C.positionName(0), 'point guard');
+  assert.equal(C.positionName(3), 'wing');
+  assert.equal(C.positionName(4), 'small forward');
+  assert.equal(C.positionName(8), 'center');
+  assert.equal(C.positionName(9), '');
+  assert.equal(C.positionName('PG'), '');
+  assert.deepEqual(C.positionKeys(2), ['sg']);
+  assert.deepEqual(C.positionKeys(7), ['pf', 'c']);
+  assert.deepEqual(C.positionKeys(null), []);
+});
+test('career and franchise saves of a league never share the commissioner archive', () => {
+  const league = { leagueName: 'Hoop League', season: { startingYear: 2026, mode: 1 }, teams: [{ id: 1, name: 'A' }] };
+  const career = { ...league, season: { ...league.season, mode: 2 } };
+  const tagged = { ...league, commissioner: { tag: 'hoopwire:hw-a10d6139c4b6' } };
+  assert.equal(C.gameMode(league), null);
+  assert.equal(C.gameMode({ ...league, season: {} }), null);
+  assert.equal(C.gameMode(career), 'career');
+  for (const mode of [0, 3]) assert.equal(C.gameMode({ ...league, season: { mode } }), 'franchise');
+  const franchise = { ...league, season: { ...league.season, mode: 0 } };
+  assert.equal(C.buildFingerprint(franchise), C.buildFingerprint(league) + '-franchise');
+  assert.notEqual(C.buildFingerprint(franchise), C.buildFingerprint(career));
+  assert.equal(C.buildFingerprint(league), C.buildFingerprint({ ...league, season: { startingYear: 2026 } }));
+  assert.equal(C.buildFingerprint(career), C.buildFingerprint(league) + '-career');
+  assert.equal(C.buildFingerprint(tagged), 'hw-a10d6139c4b6');
+  assert.equal(C.buildFingerprint({ ...tagged, season: career.season }), 'hw-a10d6139c4b6-career');
+});
+test('a Hoop League Studio ID in the commissioner tag is the league identity, and a pinned archive wins', () => {
+  const league = {
+    leagueName: 'Hoop League',
+    season: { startingYear: 2026 },
+    commissioner: { tag: 'hoopwire:HW-a10d6139c4b6' },
+    teams: [{ id: 1, name: 'A' }],
+  };
+  const expanded = { ...league, teams: [...league.teams, { id: 2, name: 'Expansion' }] };
+  assert.equal(C.leagueId(league), 'hw-a10d6139c4b6');
+  assert.equal(C.buildFingerprint(league), 'hw-a10d6139c4b6');
+  assert.equal(C.buildFingerprint(expanded), C.buildFingerprint(league));
+  assert.equal(C.buildFingerprint({ ...expanded, archiveId: 'kept' }), 'kept');
+  for (const tag of ['', 'Railers', 'hoopwire:', 'hoopwire:hw-1 extra'])
+    assert.equal(C.leagueId({ ...league, commissioner: { tag } }), null);
+  assert.equal(C.leagueId({ ...league, commissioner: undefined }), null);
+  assert.notEqual(
+    C.buildFingerprint({ ...league, commissioner: null }),
+    C.buildFingerprint({ ...expanded, commissioner: null })
+  );
+});

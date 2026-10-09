@@ -529,11 +529,6 @@ button:disabled {
   font-weight: 900;
   letter-spacing: 2px;
 }
-.landing h1 {
-  font-size: clamp(36px, 6vw, 64px);
-  letter-spacing: -2px;
-  margin-top: 18px;
-}
 .landing .file-row {
   border: 2px dashed #bbc3ce;
   padding: 24px;
@@ -739,6 +734,16 @@ body.entry-screen {
   margin: 0 auto;
   padding: 28px 0 40px;
 }
+@media (min-width: 801px) {
+  .entry-screen .shell {
+    box-sizing: border-box;
+    min-height: 100svh;
+    padding: 34px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
 .entry-screen .landing {
   padding: 0;
   border: 0;
@@ -756,16 +761,6 @@ body.entry-screen {
   width: min(520px, 100%);
   height: auto;
   margin: 0 auto;
-}
-.entry-screen .landing h1 {
-  font-size: 30px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 800;
-  font-style: normal;
-  margin: 0 0 10px;
-  color: #f0f7ff;
-  text-shadow: 3px 3px #03101c;
 }
 .menu-intro p {
   color: #abc8e6;
@@ -929,9 +924,6 @@ body.entry-screen {
   }
   .menu-card > p {
     min-height: 0;
-  }
-  .entry-screen .landing h1 {
-    font-size: 25px;
   }
 }
 
@@ -1209,15 +1201,21 @@ select {
 .site-menu-panel[hidden] {
   display: none;
 }
-.site-menu-panel button {
+.site-menu-panel :is(a, button) {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   text-align: left;
   background: none;
   border: 0;
   padding: 11px 12px;
   font-size: 14px;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
 }
+.site-menu-panel a:hover,
+.site-menu-panel a:focus-visible,
 .site-menu-panel button:hover:not(:disabled),
 .site-menu-panel button:focus-visible {
   background: #1455a5;
@@ -1851,7 +1849,7 @@ a[aria-disabled='true']:hover {
   font-weight: 900;
   text-align: left;
 }
-.tv-board-table tbody tr:first-child > :first-child {
+.tv-board-table:not(.no-lead) tbody tr:first-child > :first-child {
   box-shadow: inset 3px 0 #ee3546;
 }
 .tv-name-short {

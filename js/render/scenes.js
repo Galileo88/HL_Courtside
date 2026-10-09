@@ -301,9 +301,10 @@
       league: { name: league.leagueName || ctx.leagueName, logoURL: league.logoURL || null },
       attackDirection: action.side,
       action,
-      interview: interviewDesign(id),
+      interview: interviewDesign(id, ctx.interviewVariant),
       ball: structuredClone(ctx.gameBall),
-      kind: ctx.injury ? 'action' : sceneKind(id, ctx.potgStatsTrusted),
+      kind: ctx.injury ? 'action' : ctx.sceneKind || sceneKind(id, ctx.potgStatsTrusted),
+      event: ctx.event || null,
       pose: action.pose,
       player: playerSnapshot(ctx.potg || ctx.scenePlayer),
       team: teamSnapshot(team),
@@ -362,8 +363,9 @@
       const group =
         participants.length > 1 ? participants.slice(0, -1).join(', ') + ' and ' + participants.at(-1) : name;
       const plural = participants.length > 1;
-      description =
-        story.kind === 'season'
+      description = scene.event
+        ? `${group} ${plural ? 'meet' : 'meets'} the press before the ${scene.event}.`
+        : story.kind === 'season'
           ? `${group} ${plural ? 'discuss' : 'discusses'} ${story.type === 'Award announcement' ? 'the award announcement' : 'the season'}.`
           : `${group} ${plural ? 'answer' : 'answers'} postgame questions${result === 'win' ? ' after a win' : result === 'loss' ? ' after a loss' : result === 'tie' ? ' after a tied game' : ''}.`;
     } else {
@@ -406,7 +408,7 @@
     window.HoopWirePlayer.draw(tile, data, team, uniform, frame, pose, facing, ball);
     ctx.drawImage(tile, x, y, size, (size * 42) / 32);
   }
-  async function render(scene) {
+  async function render(scene, story = {}) {
     await load();
     const canvas = document.createElement('canvas');
     canvas.width = 768;
@@ -562,7 +564,8 @@
     const blob = await new Promise((resolve, reject) =>
       canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not compose the article image.'))), 'image/png')
     );
-    return { imageBlob: blob, sceneInputs, customCourt, imageAlt: caption(scene), imageCaption: caption(scene) };
+    const text = caption(scene, story);
+    return { imageBlob: blob, sceneInputs, customCourt, imageAlt: text, imageCaption: text };
   }
   async function refreshFraming(stories, leagues = []) {
     const pending = stories.filter(
@@ -587,7 +590,7 @@
                 logoURL: league.logoURL || scene.league?.logoURL || null,
               };
             }
-            const rendered = await render(scene);
+            const rendered = await render(scene, story);
             // Retain a saved custom court if its source is unavailable on this visit.
             if (
               story.imageBlob &&
