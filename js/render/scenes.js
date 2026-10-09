@@ -408,7 +408,7 @@
     window.HoopWirePlayer.draw(tile, data, team, uniform, frame, pose, facing, ball);
     ctx.drawImage(tile, x, y, size, (size * 42) / 32);
   }
-  async function render(scene) {
+  async function render(scene, story = {}) {
     await load();
     const canvas = document.createElement('canvas');
     canvas.width = 768;
@@ -564,7 +564,8 @@
     const blob = await new Promise((resolve, reject) =>
       canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not compose the article image.'))), 'image/png')
     );
-    return { imageBlob: blob, sceneInputs, customCourt, imageAlt: caption(scene), imageCaption: caption(scene) };
+    const text = caption(scene, story);
+    return { imageBlob: blob, sceneInputs, customCourt, imageAlt: text, imageCaption: text };
   }
   async function refreshFraming(stories, leagues = []) {
     const pending = stories.filter(
@@ -589,7 +590,7 @@
                 logoURL: league.logoURL || scene.league?.logoURL || null,
               };
             }
-            const rendered = await render(scene);
+            const rendered = await render(scene, story);
             // Retain a saved custom court if its source is unavailable on this visit.
             if (
               story.imageBlob &&

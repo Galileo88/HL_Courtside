@@ -761,7 +761,10 @@
           for (const key of ['imageBlob', 'sceneInputs', 'imageAlt', 'imageCaption', 'customCourt'])
             if (existing[key] !== undefined) story[key] = existing[key];
         } else
-          Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league)));
+          Object.assign(
+            story,
+            await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league), story)
+          );
         return story;
       })
     );
@@ -811,7 +814,8 @@
               return Object.assign(
                 story,
                 await window.HoopWireScenes.render(
-                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season)
+                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season),
+                  story
                 )
               );
             const scene = window.HoopWireScenes.inputs(context, story.id, league);
@@ -826,7 +830,7 @@
                   variant: window.HoopWireCore.choose(story.id, ['player-close-up', 'player-profile'], 'coach-framing'),
                 },
               });
-            Object.assign(story, await window.HoopWireScenes.render(scene));
+            Object.assign(story, await window.HoopWireScenes.render(scene, story));
             return story;
           })
         ))
@@ -850,7 +854,7 @@
       selected.map(async original => {
         const story = structuredClone(original);
         const scene = window.HoopWireScenes.upgrade(story.sceneInputs, story, contexts.get(story.id));
-        Object.assign(story, await window.HoopWireScenes.render(scene));
+        Object.assign(story, await window.HoopWireScenes.render(scene, story));
         return story;
       })
     );
