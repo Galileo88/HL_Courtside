@@ -1,4 +1,5 @@
-/* A league keeps its archive when it gains a Hoop League Studio ID, an expansion team or a renamed team. */
+/* A league keeps its archive when it gains a Hoop League Studio ID, an expansion team or a renamed team,
+   and a career save of the same league never shares it. */
 const { launchBrowser, samplePath } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -17,9 +18,12 @@ const archived = page =>
     const a = await new HoopWireArchive().open();
     try {
       const [leagues, stories] = await Promise.all([a.all('leagues'), a.all('stories')]);
+      const counts = {};
+      for (const s of stories) counts[s.fingerprint] = (counts[s.fingerprint] || 0) + 1;
       return {
         leagues: leagues.map(l => ({ id: l.id, name: l.name })),
         fingerprints: [...new Set(stories.map(s => s.fingerprint))],
+        counts,
       };
     } finally {
       a.db.close();
@@ -65,9 +69,21 @@ const archived = page =>
     await upload(page, save, 'OTHER_SAVE_FILE_02');
     assert.equal((await ids()).length, 3);
     assert.ok((await ids()).includes('hw-000000000001'));
+
+    // A career started from the same league file gets archives of its own; the commissioner ones are untouched.
+    const commissioner = await archived(page);
+    for (const league of save.seasonLeagues) league.season.mode = 2;
+    await upload(page, save, 'HL_CAREER_SAVE_FILE_01');
+    const career = await archived(page);
+    assert.equal(career.leagues.length, commissioner.leagues.length + 2);
+    assert.ok(career.leagues.some(l => l.id === 'hw-000000000001-career'));
+    for (const [id, count] of Object.entries(commissioner.counts)) assert.equal(career.counts[id], count);
+    assert.ok(career.counts['hw-000000000001-career'] > 0);
+    const labels = await page.$$eval('#archiveLeague option', o => o.map(x => x.textContent));
+    assert.ok(labels.some(l => l.endsWith('(Career)')));
     assert.deepEqual(errors, []);
     console.log(
-      'League identity checks passed: a new ID, expansion and renamed teams keep the archive; another ID gets its own.'
+      'League identity checks passed: a new ID, expansion and renamed teams keep the archive; another ID and a career save get their own.'
     );
   } finally {
     await browser.close();
