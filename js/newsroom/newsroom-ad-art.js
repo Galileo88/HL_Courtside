@@ -24,44 +24,6 @@
     ctx.drawImage(sprite, x, y, 32 * scale, 42 * scale);
     return sprite;
   }
-  // Pixel art from rows of palette keys: one canvas pixel per character, scaled up without smoothing.
-  function pixels(rows, palette) {
-    const art = document.createElement('canvas');
-    art.width = Math.max(...rows.map(r => r.length));
-    art.height = rows.length;
-    const ctx = art.getContext('2d');
-    rows.forEach((row, y) =>
-      [...row].forEach((key, x) => {
-        if (!palette[key]) return;
-        ctx.fillStyle = palette[key];
-        ctx.fillRect(x, y, 1, 1);
-      })
-    );
-    return art;
-  }
-  const SNEAKER = [
-    '........oooooooooooo.ooooo..................',
-    '.......owwwwwwwwwwwwoowwwwo.................',
-    '.......owbbbbbbbbbbbwowbbwo.................',
-    '......owbbbbbbbbbbbbwwbbbwo.................',
-    '......owbbbbbbbbbbbbbwbbbbwo................',
-    '......owbbbbbbbbbbbbbbwlwlwoo...............',
-    '......owbbbbbbbbbbbbbbbwlwlwwoo.............',
-    '.....owbbbbbbbbbbbbbbbbbwlwlwwwoo...........',
-    '.....owbbbbbbbbbbbbbbbbbbwlwlwwwwoo.........',
-    '.....owbbbbbbbbbbbbbbbbbbbwlwlwwwwwoo.......',
-    '.....owbbbbbbbbbbbbbbbbbbbbwwwwwwwbbbo......',
-    '.....owbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo.....',
-    '.....owbbbbsbbbbbbbbbbbbbbbbbbbbbbbbbbbo....',
-    '.....owbbbbssbbbbbbbbbbbbbbbbbbbbbbbbbbbo...',
-    '.....owbbbbbsssbbbbbbbbbbbbbbbsssssbbbbbo...',
-    '.....owbbbbbbbsssssssssssssssssbbbbbbbbbo...',
-    '....owwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwo..',
-    '....owwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwo..',
-    '....oggggggggggggggggggggggggggggggggggggo..',
-    '.....oggGgggGgggGgggGgggGgggGgggGgggGggo....',
-    '......oooooooooooooooooooooooooooooooooo....',
-  ];
   // A bottle drawn from its silhouette: each row's half-width, with a cap, glass, label and a highlight.
   function bottle(shape, colors) {
     const widest = Math.max(...shape.map(r => r.w)),
@@ -443,16 +405,39 @@
       ctx.beginPath();
       ctx.ellipse(150, 146, 92, 7, 0, 0, Math.PI * 2);
       ctx.fill();
-      const shoe = pixels(SNEAKER, {
-        o: '#0b1520',
-        w: '#f4f8fc',
-        b: '#268ce2',
-        s: '#ffffff',
-        l: '#96aabe',
-        g: '#1f2a35',
-        G: '#465868',
-      });
-      ctx.drawImage(shoe, 40, 152 - shoe.height * 5, shoe.width * 5, shoe.height * 5);
+      // The supplied Stride artwork, with only its flat backdrop removed.
+      const source = await HoopWireCourt.loadImage('assets/scene/shoes.png'),
+        shoe = document.createElement('canvas');
+      shoe.width = source.width;
+      shoe.height = source.height;
+      const s = shoe.getContext('2d');
+      s.drawImage(source, 0, 0);
+      const art = s.getImageData(0, 0, shoe.width, shoe.height);
+      const bg = Array.from(art.data.slice(0, 3)),
+        visited = new Uint8Array(shoe.width * shoe.height),
+        queue = [];
+      for (let x = 0; x < shoe.width; x++) queue.push(x, (shoe.height - 1) * shoe.width + x);
+      for (let y = 0; y < shoe.height; y++) queue.push(y * shoe.width, y * shoe.width + shoe.width - 1);
+      for (let i = 0; i < queue.length; i++) {
+        const n = queue[i];
+        if (visited[n]) continue;
+        visited[n] = 1;
+        const offset = n * 4;
+        if (!bg.every((v, k) => art.data[offset + k] === v)) continue;
+        art.data[offset + 3] = 0;
+        const x = n % shoe.width,
+          y = Math.floor(n / shoe.width);
+        if (x) queue.push(n - 1);
+        if (x + 1 < shoe.width) queue.push(n + 1);
+        if (y) queue.push(n - shoe.width);
+        if (y + 1 < shoe.height) queue.push(n + shoe.width);
+      }
+      s.putImageData(art, 0, 0);
+      // Sized to stand clear of the faded edges.
+      const width = 128,
+        height = (width * shoe.height) / shoe.width;
+      ctx.drawImage(shoe, 150 - width / 2, 150 - height, width, height);
+      blend(ctx, 300, 180, '#0a1823', 18);
     }
     return canvas.toDataURL('image/png');
   }
