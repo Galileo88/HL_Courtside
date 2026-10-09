@@ -198,7 +198,18 @@
     return ctx.importance + 30 + (contenders === 2 ? 15 : contenders === 1 ? 5 : 0);
   }
 
+  // The lasting ID Hoop League Studio writes into a league's commissioner tag ("hoopwire:hw-…").
+  // Hoop Land keeps it through its own saves, and it stays the same when teams are added or renamed.
+  function leagueId(league) {
+    return /^hoopwire:(hw-[a-z0-9]+)$/i.exec(league?.commissioner?.tag || '')?.[1].toLowerCase() || null;
+  }
+
+  // A league's archive identity: the one the app pinned on an uploaded league (archiveId), then the
+  // Studio ID, then a fingerprint of the league as it stands.
   function buildFingerprint(league) {
+    if (typeof league?.archiveId === 'string') return league.archiveId;
+    const id = leagueId(league);
+    if (id) return id;
     const teams = (league.teams || [])
       .map(t => `${t.id}:${t.shortName || ''}:${t.name || ''}`)
       .sort()
@@ -1386,6 +1397,7 @@
     teamDisplay,
     playerDisplay,
     buildFingerprint,
+    leagueId,
     isCompleted,
     buildLookups,
     captureSnapshots,

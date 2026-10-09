@@ -653,10 +653,26 @@
       ? ` ${count} custom court ${count === 1 ? 'image could' : 'images could'} not load; saved court layouts were used.`
       : '';
   }
+  // The archive an uploaded league belongs to. The first time a Studio ID shows up, the league takes
+  // over the archive it already had, so its earlier coverage stays with it.
+  function archiveId(league, id) {
+    const plain = C.buildFingerprint({ ...league, commissioner: null });
+    if (!id) return plain;
+    const known = state.leagues.find(l => l.studioId === id) || state.leagues.find(l => l.id === plain && !l.studioId);
+    return known?.id || id;
+  }
   async function loadSave(file) {
     status('Loading the save and preparing the HoopWire TV studio…');
     const parsed = JSON.parse(await file.text());
     C.assertSave(parsed);
+    // Two leagues in one save never share an archive, even if they carry the same ID.
+    const claimed = new Set();
+    for (const league of parsed.seasonLeagues) {
+      const id = C.leagueId(league);
+      league.studioId = claimed.has(id) ? null : id;
+      league.archiveId = archiveId(league, league.studioId);
+      claimed.add(id);
+    }
     state.raw = parsed;
     state.leagueIndex = 0;
     state.scope = parsed.seasonLeagues.map(C.buildFingerprint);
@@ -695,6 +711,7 @@
       leagues.push({
         ...previous,
         id: fingerprint,
+        studioId: league.studioId,
         name: league.leagueName || 'League',
         shortName: league.shortName || null,
         leagueType: league.leagueType,
