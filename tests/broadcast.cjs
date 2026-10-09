@@ -142,6 +142,7 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
     await p.waitForFunction(() => !document.getElementById('saveFile').disabled);
     await p.route('**/samples.wav', r => r.abort());
     await p.locator('.nav a[href="#tv"]').click();
+    await p.locator('#tvIntro').waitFor();
     assert.equal(await p.locator('.tv-live-host').count(), 4, await p.locator('#status').textContent());
     assert.equal(await p.locator('#tvIntro').isVisible(), true);
     assert.equal(await p.locator('.tv-speech').count(), 0);

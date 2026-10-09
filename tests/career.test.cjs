@@ -112,24 +112,28 @@ test('a career opens with a player profile and a showcase preview before the gam
   assert.match(preview.paragraphs.join(' '), /players from Slovenia, Türkiye and Finland/);
   assert.ok(stories.every(s => s.day === 1 && s.season === 1967));
 });
-test('the ceiling story names the potential and where the growth has to come from', () => {
+test('the goal story quotes how the player wants to be remembered, with no ratings behind it', () => {
   const { story, context } = K.candidates(league())[1];
-  assert.equal(story.headline, "Tavish Berlin's ceiling: perennial All-Star");
+  assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star every year');
   const text = story.paragraphs.join(' ');
-  assert.match(text, /with the ceiling of a perennial All-Star/);
-  assert.match(text, /most room to grow is in his finishing at the rim and three-point shooting\./);
-  assert.match(text, /His strength and stamina are already fully developed/);
-  assert.deepEqual(story.seasonSnapshot.rows, [
-    ['Most room to grow', 'Finishing and three-point'],
-    ['Room to grow', 'Passing'],
-    ['Fully developed', 'Strength and stamina'],
-  ]);
-  assert.doesNotMatch(JSON.stringify([story.headline, story.paragraphs, story.seasonSnapshot.rows]), /\d/);
+  assert.match(text, /^“I want to be an All-Star every year,” Tavish Berlin said ahead of the Koality Showcase\./);
+  assert.match(text, /a bold goal for a 17-year-old .+ who hasn't played a college minute yet/);
+  assert.doesNotMatch(text, /ceiling|potential|room to grow|developed|rating/i);
+  assert.deepEqual(story.seasonSnapshot.headers, ['Player', 'Pos', 'Ht', 'From']);
+  assert.equal(story.seasonSnapshot.rows[0][0], 'Tavish Berlin');
+  assert.equal(story.seasonSnapshot.goal.goal, 'an All-Star every year');
   assert.equal(context.sceneKind, 'interview');
   assert.equal(context.event, 'Koality Showcase');
-  const low = league();
-  low.starTeams[0].roster[0].pot = 7;
-  assert.equal(K.candidates(low)[1].story.headline, "Tavish Berlin's ceiling is still an open question");
+  const greatest = league();
+  greatest.starTeams[0].roster[0].pot = 10;
+  assert.equal(K.candidates(greatest)[1].story.headline, 'Tavish Berlin wants to be the greatest of all time');
+  // An answer the game never offered gets no story.
+  const other = league();
+  other.starTeams[0].roster[0].pot = 7;
+  assert.deepEqual(
+    K.candidates(other).map(x => x.story.eventKey),
+    ['career-showcase-10', 'showcase-preview']
+  );
 });
 test('no story is illustrated with a game that has not happened', () => {
   const contexts = K.candidates(league()).map(x => x.context);

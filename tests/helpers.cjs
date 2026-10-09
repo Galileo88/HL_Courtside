@@ -1,6 +1,11 @@
 const path = require('node:path');
 
-const samplePath = path.join(__dirname, 'fixtures', 'sample_save');
+// Browser tests use a small league (five teams) so they run in seconds: a few days into the season,
+// or the same league with its whole season played for tests that need season reviews, leaders,
+// awards and a champion. Unit tests check facts from the larger full sample.
+const samplePath = path.join(__dirname, 'fixtures', 'small_save');
+const seasonSamplePath = path.join(__dirname, 'fixtures', 'season_save');
+const fullSamplePath = path.join(__dirname, 'fixtures', 'sample_save');
 
 // Browser scripts use Playwright from NODE_PATH. HOOPWIRE_BROWSER picks the channel (default: msedge).
 function launchBrowser() {
@@ -32,4 +37,4 @@ function expectedStoryCount(save) {
   }, 0);
 }
 
-module.exports = { samplePath, launchBrowser, expectedStoryCount };
+module.exports = { samplePath, seasonSamplePath, fullSamplePath, launchBrowser, expectedStoryCount };

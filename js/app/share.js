@@ -92,16 +92,16 @@
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
   const ready = new WeakMap();
-  // Touch screens get the phone's share sheet; a share that comes too long after the tap is refused,
-  // so the image stays ready and the next tap shares it at once.
-  async function share(button, article, headline) {
+  // Hands a file over: the share sheet on a touch screen, a download on a computer. A phone refuses a
+  // share that comes too long after the tap, so the file stays ready and the next tap shares it at once.
+  async function deliver(button, make, title, label) {
     if (button.getAttribute('aria-busy') === 'true') return;
     const touch = matchMedia('(pointer: coarse)').matches;
     let file = ready.get(button);
     if (!file) {
       button.setAttribute('aria-busy', 'true');
       try {
-        file = new File([await image(article)], fileName(headline), { type: 'image/png' });
+        file = await make();
       } finally {
         button.removeAttribute('aria-busy');
       }
@@ -112,21 +112,28 @@
       return;
     }
     try {
-      await navigator.share({ files: [file], title: headline });
+      await navigator.share({ files: [file], title });
       ready.delete(button);
     } catch (error) {
       if (error.name === 'NotAllowedError') {
         ready.set(button, file);
         button.classList.add('is-ready');
-        button.setAttribute('aria-label', 'Share image ready. Tap to share.');
+        button.setAttribute('aria-label', 'Ready. Tap to share.');
         return;
       }
       ready.delete(button);
       if (error.name !== 'AbortError') download(file);
     }
     button.classList.remove('is-ready');
-    button.setAttribute('aria-label', 'Share story');
+    button.setAttribute('aria-label', label);
   }
+  const share = (button, article, headline) =>
+    deliver(
+      button,
+      async () => new File([await image(article)], fileName(headline), { type: 'image/png' }),
+      headline,
+      'Share story'
+    );
   function button(article, headline) {
     const node = document.createElement('button');
     node.type = 'button';
@@ -143,5 +150,5 @@
     );
     return node;
   }
-  window.HoopWireShare = { button, image };
+  window.HoopWireShare = { button, image, deliver };
 })();

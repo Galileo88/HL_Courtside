@@ -80,7 +80,17 @@ const server = http.createServer((req, res) => {
         await a.write({
           stories,
           leagues: [{ id: 'editorial-test', name: 'Test League' }],
-          meta: [{ id: 'active-leagues', ids: ['editorial-test'] }],
+          saves: [
+            {
+              id: 'save-test',
+              name: 'Test League',
+              mode: 1,
+              tags: ['hw-editorialtest'],
+              leagueIds: ['editorial-test'],
+              leagueNames: ['Test League'],
+            },
+          ],
+          meta: [{ id: 'active-save', save: 'save-test' }],
         });
       } finally {
         a.db.close();

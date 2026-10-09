@@ -35,7 +35,8 @@
         </button>
         <div id="siteMenu" class="site-menu-panel" hidden>
           <a href="#archive">Archive</a>
-          <button id="menuUploadSave" type="button">Upload new save</button>
+          <button id="menuUploadSave" type="button">Update save</button>
+          <a href="#welcome">Your saves</a>
         </div>
       </div>
     </header>
@@ -59,14 +60,32 @@
             <svg class="menu-icon" viewBox="0 0 32 32" aria-hidden="true">
               <path d="M5 21v7h22v-7M16 23V4M9 11l7-7 7 7" />
             </svg>
-            <h2>Load save</h2>
-            <p>Upload your latest save to open the newsroom. Full coverage is created automatically.</p>
+            <h2 id="loadTitle">New save</h2>
+            <p id="loadText">
+              Name your save, then choose your Hoop Land save file. Full coverage is created automatically.
+            </p>
+            <label id="saveNameField" class="save-name"
+              ><span>Save name</span
+              ><input
+                id="saveName"
+                type="text"
+                maxlength="40"
+                placeholder="My league"
+                autocomplete="off"
+                enterkeyhint="done"
+            /></label>
             <div class="file-row">
               <label class="file-button"
                 >Choose save <span aria-hidden="true">↑</span
                 ><input id="saveFile" type="file" accept=".json,*/*" disabled /></label
               ><span id="fileName">No save loaded</span>
             </div>
+            <button id="cancelNewSave" class="text-action" type="button" hidden>Cancel</button>
+          </article>
+          <article id="savesCard" class="menu-card saves-card" hidden>
+            <h2>Your saves</h2>
+            <ul id="savesList" class="saves-list"></ul>
+            <button id="newSaveButton" class="new-save" type="button">+ New save</button>
           </article>
         </div>
       </section>
@@ -119,6 +138,11 @@
         </div>
         <a class="text-action" href="#archive">Back to archive</a>
       </section>
+      <dialog id="noticeDialog">
+        <h2 id="noticeTitle">That file can’t be used</h2>
+        <p id="noticeText"></p>
+        <div class="actions"><button id="noticeOk" class="primary">OK</button></div>
+      </dialog>
       <dialog id="resetDialog">
         <h2 id="resetTitle">Reset the archive?</h2>
         <p id="resetDescription"></p>

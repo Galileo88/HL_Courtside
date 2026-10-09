@@ -1,4 +1,4 @@
-const { samplePath } = require('./helpers.cjs');
+const { fullSamplePath } = require('./helpers.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -169,7 +169,7 @@ test('identities separate seasons and leagues and upgrade only current template 
   assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 3, playerStats: ctx.potgStats }, ctx), false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient', () => {
-  const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+  const save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
   const counts = [];
   for (const l of save.seasonLeagues) {
     const fp = C.buildFingerprint(l),

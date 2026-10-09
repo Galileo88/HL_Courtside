@@ -1,7 +1,7 @@
 const test = require('node:test'),
   assert = require('node:assert/strict'),
   fs = require('node:fs');
-const { samplePath } = require('./helpers.cjs');
+const { fullSamplePath } = require('./helpers.cjs');
 const C = require('../js/coverage/core.js'),
   S = require('../js/coverage/season-coverage.js'),
   R = require('../js/coverage/records-coverage.js'),
@@ -19,7 +19,7 @@ test('pronoun helpers follow the save and fall back to the name', () => {
 });
 
 test("a women's league is covered without male pronouns or men's wording", () => {
-  const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+  const save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
   const names = new Set();
   const walk = o => {
     if (!o || typeof o !== 'object') return;

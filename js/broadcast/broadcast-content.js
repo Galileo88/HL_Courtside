@@ -3038,52 +3038,44 @@
   function showcaseScript(story, n) {
     const career = story.seasonSnapshot.career,
       show = story.seasonSnapshot.showcase,
-      potential = story.seasonSnapshot.potential,
+      goal = story.seasonSnapshot.goal,
       [, J, A, N] = n;
-    if (potential) {
-      const he = potential.pronoun || potential.last,
-        his = potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'his' : `${potential.last}'s`;
-      const body = [
-        turn(
-          3,
-          `${potential.ceiling ? `The ceiling is ${potential.ceiling}.` : "Nobody knows the ceiling yet, and that's fine."}${
-            potential.ceiling
-              ? {
-                  none: ' Nobody else in this showcase can say that.',
-                  few: ' Only a few others in this showcase can say that.',
-                  many: ' Plenty of prospects in this field share it, though.',
-                }[potential.shared] || ''
-              : ''
-          }`
-        ),
-        turn(
-          1,
-          pick(
-            story,
-            /greatest/.test(potential.ceiling || '')
-              ? [
-                  "The greatest of all time. Say it with your chest. I'm not laughing.",
-                  "The greatest of all time? Laugh now. I'm buying.",
-                ]
-              : [
-                  `Ceiling? I'm taking the over. Put ${potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'him' : potential.last} in the conversation now.`,
-                  "That's the floor for me. I've seen enough. I'm taking the over.",
-                ],
-            'potential:take'
-          )
-        ),
-      ];
-      if (potential.room?.length)
-        body.push(turn(2, `Here's where the work is: ${join(potential.room)}. Get those up and ${he}'s a problem.`));
+    if (goal) {
+      const he = goal.pronoun || goal.last,
+        his = goal.pronoun === 'she' ? 'her' : goal.pronoun === 'he' ? 'his' : `${goal.last}'s`;
       return frame(
         story,
-        'potential',
+        'goal',
         [
-          `Before ${potential.name} plays a minute in the ${potential.event}, the question is how high ${he} can go. ${N}?`,
-          `${potential.name} has a ceiling, and we're going to argue about it. ${N}, start us off.`,
+          `${goal.name} hasn't played a college minute, and ${he} already told everyone how ${he} wants to be remembered. ${N}?`,
+          `Big words from ${goal.name} before the ${goal.event}. ${N}, you heard them.`,
         ],
-        [`The climb starts at the ${potential.event}.`, `We'll check back on ${his} climb.`],
-        body
+        [`First chance to back it up: the ${goal.event}.`, `We'll see if ${he} backs it up.`],
+        [
+          turn(3, `${goal.goal.charAt(0).toUpperCase() + goal.goal.slice(1)}. That's the goal, in ${his} own words.`),
+          turn(
+            1,
+            pick(
+              story,
+              {
+                10: [
+                  "The greatest of all time. Say it with your chest. I'm not laughing.",
+                  "The greatest of all time? Laugh now. I'm buying.",
+                ],
+                9: [
+                  'Hall of Fame talk before a college game? I respect it.',
+                  'First ballot. I like a kid who sets the bar out loud.',
+                ],
+                8: [
+                  "An All-Star every year. That's a plan, not a dream.",
+                  "Every year? That's the hard part. I like it.",
+                ],
+              }[goal.level] || ['I like a kid who says it out loud.'],
+              'goal:take'
+            )
+          ),
+          turn(2, `Now ${he} has to earn it, and that starts with ${his} teammates on the ${goal.team}.`),
+        ]
       );
     }
     if (career) {
@@ -3175,7 +3167,7 @@
   }
   function baseScript(story, context, n) {
     if (story.performanceSnapshot) return Performance.script(story, n);
-    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase || story.seasonSnapshot?.potential)
+    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase || story.seasonSnapshot?.goal)
       return showcaseScript(story, n);
     if (story.seasonSnapshot?.roundup) return roundupScript(story, n);
     if (story.type === 'Season leaders') return leadersScript(story, n);
