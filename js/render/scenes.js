@@ -365,9 +365,11 @@
       const plural = participants.length > 1;
       description = scene.event
         ? `${group} ${plural ? 'meet' : 'meets'} the press before the ${scene.event}.`
-        : story.kind === 'season'
-          ? `${group} ${plural ? 'discuss' : 'discusses'} ${story.type === 'Award announcement' ? 'the award announcement' : 'the season'}.`
-          : `${group} ${plural ? 'answer' : 'answers'} postgame questions${result === 'win' ? ' after a win' : result === 'loss' ? ' after a loss' : result === 'tie' ? ' after a tied game' : ''}.`;
+        : story.type === 'Hoop Gram reply'
+          ? `${group} ${plural ? 'answer' : 'answers'} fans on Hoop Gram${result === 'win' ? ' after a win' : result === 'loss' ? ' after a loss' : ''}.`
+          : story.kind === 'season'
+            ? `${group} ${plural ? 'discuss' : 'discusses'} ${story.type === 'Award announcement' ? 'the award announcement' : 'the season'}.`
+            : `${group} ${plural ? 'answer' : 'answers'} postgame questions${result === 'win' ? ' after a win' : result === 'loss' ? ' after a loss' : result === 'tie' ? ' after a tied game' : ''}.`;
     } else {
       const actions = {
         drive: 'drives to the basket',

@@ -3034,6 +3034,86 @@
       ? [turn(0, `Here's what ${who} had to say: “${words}”`), turn(pick(story, [1, 2], 'quote:reactor'), response)]
       : [];
   }
+  // Career mode: the player answered a post on Hoop Gram, and the desk reacts to how.
+  function replyScript(story, n) {
+    const r = story.seasonSnapshot.reply,
+      N = n[3];
+    const he = r.pronoun || r.last,
+      him = r.pronoun === 'she' ? 'her' : r.pronoun === 'he' ? 'him' : r.last,
+      his = r.pronoun === 'she' ? 'her' : r.pronoun === 'he' ? 'his' : `${r.last}'s`;
+    const result = r.won === true ? 'win' : r.won === false ? 'loss' : null;
+    const what =
+      r.score && r.opponent ? `${r.score} ${result === 'win' ? 'win over' : 'loss to'} the ${r.opponent}` : null;
+    // The game's post kinds (3 recruitment; 1-2 showcase; 7-8 rival fans) and reply kinds.
+    const take =
+      r.post === 3
+        ? r.reply === 1
+          ? [
+              `${he.charAt(0).toUpperCase() + he.slice(1)} gave the ${r.opponent} ${r.pronoun === 'she' ? 'her' : r.pronoun === 'he' ? 'his' : 'a'} word. That's a big get for them.`,
+              2,
+            ]
+          : [`The ${r.opponent} move on to the next name on the board.`, 2]
+        : r.reply >= 7
+          ? [
+              pick(
+                story,
+                [
+                  "Calling it out in public? Bold. I'd have kept that in the locker room.",
+                  "That's a locker room conversation, and now everybody's in it.",
+                ],
+                'reply:callout'
+              ),
+              1,
+            ]
+          : r.reply >= 3
+            ? [
+                pick(
+                  story,
+                  ['Winners share the credit. Good look.', "That's somebody who notices the work."],
+                  'reply:credit'
+                ),
+                2,
+              ]
+            : r.post === 7 || r.post === 8
+              ? [
+                  r.reply === 1
+                    ? 'Respect goes a long way with the other side.'
+                    : 'Trash talk only works if you back it up on the floor.',
+                  1,
+                ]
+              : r.post === 1 || r.post === 2
+                ? [
+                    r.reply === 1
+                      ? "Embrace it. That's what the showcase is for."
+                      : "Brushing off the hype. Locked in. I'll take it.",
+                    1,
+                  ]
+                : result === 'loss'
+                  ? r.reply === 1
+                    ? ['Owning it is the first step. Then you fix it.', 3]
+                    : ['Out of your control? I want the ball, not an excuse.', 1]
+                  : r.reply === 1
+                    ? ['Enjoy it tonight. The next one comes fast.', 3]
+                    : ['Answering the critics after a win? I love it.', 1];
+    return frame(
+      story,
+      'reply',
+      what
+        ? [
+            `${r.name} had something to say on Hoop Gram after the ${what}. ${N}?`,
+            `Hoop Gram lit up after the ${what}. ${N}, what did ${r.name} say?`,
+          ]
+        : [`${r.name} had something to say on Hoop Gram. ${N}?`],
+      r.post === 3
+        ? ['Recruiting never sleeps.', `${r.name}'s recruitment just got clearer.`]
+        : [`We'll see if it carries into the next one.`, `Everybody's watching ${him} now.`],
+      [
+        ...(r.post === 3 ? [] : [turn(3, `${he.charAt(0).toUpperCase() + he.slice(1)} ${r.did}.`)]),
+        turn(take[1], take[0]),
+        ...(take[1] === 1 ? [turn(2, `The question is how it lands with ${his} teammates.`)] : []),
+      ]
+    );
+  }
   // Career mode, before the first game: the desk meets the player and sizes up the showcase.
   function showcaseScript(story, n) {
     const career = story.seasonSnapshot.career,
@@ -3167,6 +3247,7 @@
   }
   function baseScript(story, context, n) {
     if (story.performanceSnapshot) return Performance.script(story, n);
+    if (story.seasonSnapshot?.reply) return replyScript(story, n);
     if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase || story.seasonSnapshot?.goal)
       return showcaseScript(story, n);
     if (story.seasonSnapshot?.roundup) return roundupScript(story, n);

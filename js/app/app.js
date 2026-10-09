@@ -1373,6 +1373,8 @@
     if (story.type === 'Draft watch' || story.type === 'Draft class') return 'DRAFT WATCH';
     if (story.type === 'Preseason poll') return 'PRESEASON';
     if (story.type === 'College offseason') return 'COLLEGE OFFSEASON';
+    if (story.type === 'Hoop Gram reply') return 'HOOP GRAM';
+    if (story.type === 'Career' || story.type === 'Showcase preview') return 'CAREER WATCH';
     if (story.performanceSnapshot) return 'PLAYER WATCH';
     if (/record|milestone/i.test(story.type || '')) return 'RECORD BOOK';
     if (story.gameSummary) return 'POSTGAME';
