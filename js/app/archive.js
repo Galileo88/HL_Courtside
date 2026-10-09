@@ -2,6 +2,38 @@
 (() => {
   'use strict';
   const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles'];
+  // iOS Safari keeps Blobs stored in IndexedDB as separate files and can lose them while the app sits
+  // idle, which leaves broken images after a reload. Image bytes are stored inside the record instead
+  // and come back as Blobs when read.
+  async function packImage(blob) {
+    try {
+      return { packedImage: await blob.arrayBuffer(), type: blob.type || 'image/png' };
+    } catch {
+      return blob; // An unreadable image is left as it was; the app redraws it on display.
+    }
+  }
+  const unpackImage = value =>
+    value?.packedImage instanceof ArrayBuffer ? new Blob([value.packedImage], { type: value.type }) : value;
+  // The objects in a record that hold images: the story itself, or each season's studio.
+  function holders(name, record) {
+    if (name === 'stories') return [record];
+    if (name === 'leagues') return Object.values(record?.studios || {});
+    return [];
+  }
+  async function pack(name, record) {
+    if (!['stories', 'leagues'].includes(name)) return record;
+    const copy = name === 'leagues' ? { ...record, studios: { ...record.studios } } : { ...record };
+    if (name === 'leagues') for (const k of Object.keys(copy.studios || {})) copy.studios[k] = { ...copy.studios[k] };
+    for (const holder of holders(name, copy))
+      for (const key of ['imageBlob', 'backdropBlob'])
+        if (holder[key] instanceof Blob) holder[key] = await packImage(holder[key]);
+    return copy;
+  }
+  function unpack(name, record) {
+    for (const holder of holders(name, record))
+      for (const key of ['imageBlob', 'backdropBlob']) if (holder?.[key]) holder[key] = unpackImage(holder[key]);
+    return record;
+  }
   const request = req =>
     new Promise((resolve, reject) => {
       req.onsuccess = () => resolve(req.result);
@@ -30,10 +62,22 @@
       return this;
     }
     async all(name) {
-      return request(this.db.transaction(name).objectStore(name).getAll());
+      return (await request(this.db.transaction(name).objectStore(name).getAll())).map(r => unpack(name, r));
     }
     async get(name, id) {
-      return request(this.db.transaction(name).objectStore(name).get(id));
+      return unpack(name, await request(this.db.transaction(name).objectStore(name).get(id)));
+    }
+    // Rewrites images saved as separate files (before they were stored inline), once.
+    async inlineImages() {
+      if (await this.get('meta', 'images-inline')) return;
+      for (const name of ['stories', 'leagues']) {
+        const raw = await request(this.db.transaction(name).objectStore(name).getAll());
+        const old = raw.filter(r =>
+          holders(name, r).some(h => h.imageBlob instanceof Blob || h.backdropBlob instanceof Blob)
+        );
+        for (let i = 0; i < old.length; i += 20) await this.write({ [name]: old.slice(i, i + 20) });
+      }
+      await this.write({ meta: [{ id: 'images-inline', date: new Date().toISOString() }] });
     }
     async reset(fingerprint) {
       if (typeof fingerprint !== 'string' || !fingerprint) throw new Error('Choose a league archive to reset.');
@@ -70,6 +114,10 @@
     async write(records) {
       const names = Object.keys(records).filter(name => records[name].length);
       if (!names.length) return;
+      // Images are read into bytes before the transaction opens; IndexedDB closes a transaction that waits.
+      const packed = {};
+      for (const name of names) packed[name] = await Promise.all(records[name].map(r => pack(name, r)));
+      records = packed;
       await new Promise((resolve, reject) => {
         const tx = this.db.transaction(names, 'readwrite');
         tx.oncomplete = resolve;

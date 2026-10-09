@@ -124,7 +124,6 @@
   // background; scrolling back to it re-reads a blob URL that no longer
   // resolves. Rebuild that image once: copy the bytes into memory, or read the
   // record from the archive again, then point every reference at the copy.
-  const recovering = new WeakSet();
   async function freshBlob(blob) {
     try {
       return new Blob([await blob.arrayBuffer()], { type: blob.type || 'image/png' });
@@ -151,24 +150,45 @@
           }
     return null;
   }
+  // When the saved bytes are gone too, draw the picture again from what it showed and save the new copy.
+  async function redrawBlob(blob) {
+    for (const story of state.stories.values())
+      if (story.imageBlob === blob && story.sceneInputs) {
+        Object.assign(story, await window.HoopWireScenes.render(story.sceneInputs, story));
+        await archive.write({ stories: [story] });
+        return story.imageBlob;
+      }
+    for (const league of state.leagues)
+      for (const studio of Object.values(league.studios || {}))
+        for (const key of ['imageBlob', 'backdropBlob'])
+          if (studio[key] === blob && studio.inputs) {
+            Object.assign(studio, await window.HoopWireTV.render(studio.inputs));
+            await archive.write({ leagues: [league] });
+            return studio[key];
+          }
+    return null;
+  }
   function replaceBlob(old, copy) {
     for (const story of state.stories.values()) if (story.imageBlob === old) story.imageBlob = copy;
     for (const league of state.leagues)
       for (const studio of Object.values(league.studios || {}))
         for (const key of ['imageBlob', 'backdropBlob']) if (studio[key] === old) studio[key] = copy;
   }
+  // First failure: copy the saved bytes. Second failure on the same image: draw it again.
+  const attempts = new WeakMap();
   document.addEventListener(
     'error',
     async event => {
       const img = event.target;
-      if (!(img instanceof HTMLImageElement) || recovering.has(img)) return;
+      if (!(img instanceof HTMLImageElement)) return;
       const src = img.getAttribute('src') || '';
       if (!src.startsWith('blob:')) return;
       const entry = [...imageURLs].find(([, item]) => item.url === src);
-      if (!entry) return;
-      recovering.add(img);
+      const tries = attempts.get(img) || 0;
+      if (!entry || tries >= 2) return;
+      attempts.set(img, tries + 1);
       const [old] = entry,
-        copy = await freshBlob(old);
+        copy = (!tries && (await freshBlob(old).catch(() => null))) || (await redrawBlob(old).catch(() => null));
       if (!copy) return;
       replaceBlob(old, copy);
       imageURLs.delete(old);
@@ -1964,6 +1984,8 @@
     state.ready = true;
     archiveNavigation();
     view();
+    // Older archives saved images as separate files; move them inside the archive in the background.
+    archive.inlineImages().catch(() => {});
     const upgraded = [];
     for (const league of state.leagues) {
       const studios = { ...league.studios };
