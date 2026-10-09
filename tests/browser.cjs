@@ -44,10 +44,9 @@ async function upload(page, data) {
   assert.match(await page.locator('#status').textContent(), /^Save loaded/);
 }
 // Starts another named save from the welcome screen.
-async function newSave(page, data, name) {
+async function newSave(page, data) {
   await page.evaluate(() => (location.hash = '#welcome'));
   await page.locator('#newSaveButton').click();
-  await page.locator('#saveName').fill(name);
   await upload(page, data);
 }
 async function openSave(page, name) {
@@ -193,7 +192,7 @@ async function openPage(browser, url, seed) {
     different.seasonLeagues[0].leagueName = 'Separate League';
     different.seasonLeagues[0].commissioner.tag = 'hoopwire:hw-separate';
     const otherId = C.buildFingerprint(different.seasonLeagues[0]);
-    await newSave(page, different, 'Separate');
+    await newSave(page, different);
     assert.deepEqual(
       (await records(page)).filter(s => s.fingerprint !== otherId),
       all
@@ -228,12 +227,12 @@ async function openPage(browser, url, seed) {
     emptyLeague.seasonLeagues[0].season.totalGames = 0;
     emptyLeague.seasonLeagues[0].season.playoffs = [];
     for (const t of emptyLeague.seasonLeagues[0].teams) delete t.championships;
-    await newSave(page, emptyLeague, 'Empty');
+    await newSave(page, emptyLeague);
     assert.equal(await page.locator('#siteMenu a[href="#archive"]').getAttribute('aria-disabled'), 'true');
     await page.evaluate(() => (location.hash = '#archive'));
     await page.waitForFunction(() => location.hash === '#welcome');
     // Back to the first save, opened from the list, then updated.
-    await openSave(page, `${sample.seasonLeagues[0].shortName} Franchise`);
+    await openSave(page, `${sample.seasonLeagues[0].leagueName}, Franchise`);
     await upload(page, rollover);
     all = await records(page);
     await page.reload();

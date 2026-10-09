@@ -114,19 +114,29 @@ test('a career opens with a player profile and a showcase preview before the gam
 });
 test('the goal story quotes how the player wants to be remembered, with no ratings behind it', () => {
   const { story, context } = K.candidates(league())[1];
-  assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star every year');
+  assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star year in and year out');
   const text = story.paragraphs.join(' ');
-  assert.match(text, /^“I want to be an All-Star every year,” Tavish Berlin said ahead of the Koality Showcase\./);
+  assert.match(
+    text,
+    /^“I will be known as an All-Star year in and year out,” Tavish Berlin said ahead of the Koality Showcase\./
+  );
   assert.match(text, /a bold goal for a 17-year-old .+ who hasn't played a college minute yet/);
   assert.doesNotMatch(text, /ceiling|potential|room to grow|developed|rating/i);
   assert.deepEqual(story.seasonSnapshot.headers, ['Player', 'Pos', 'Ht', 'From']);
   assert.equal(story.seasonSnapshot.rows[0][0], 'Tavish Berlin');
-  assert.equal(story.seasonSnapshot.goal.goal, 'an All-Star every year');
+  assert.equal(story.seasonSnapshot.goal.goal, 'an All-Star year in and year out');
   assert.equal(context.sceneKind, 'interview');
   assert.equal(context.event, 'Koality Showcase');
   const greatest = league();
   greatest.starTeams[0].roster[0].pot = 10;
   assert.equal(K.candidates(greatest)[1].story.headline, 'Tavish Berlin wants to be the greatest of all time');
+  assert.match(
+    K.candidates(greatest)[1].story.paragraphs[0],
+    /^“I will be known as the greatest player to ever play the game of basketball,”/
+  );
+  const famer = league();
+  famer.starTeams[0].roster[0].pot = 9;
+  assert.match(K.candidates(famer)[1].story.paragraphs[0], /one of the best Hall of Famers of all time,”/);
   // An answer the game never offered gets no story.
   const other = league();
   other.starTeams[0].roster[0].pot = 7;

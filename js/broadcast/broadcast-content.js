@@ -3064,11 +3064,11 @@
                 ],
                 9: [
                   'Hall of Fame talk before a college game? I respect it.',
-                  'First ballot. I like a kid who sets the bar out loud.',
+                  'One of the best ever? I like a kid who sets the bar out loud.',
                 ],
                 8: [
-                  "An All-Star every year. That's a plan, not a dream.",
-                  "Every year? That's the hard part. I like it.",
+                  "An All-Star year in and year out. That's a plan, not a dream.",
+                  "Year in and year out? That's the hard part. I like it.",
                 ],
               }[goal.level] || ['I like a kid who says it out loud.'],
               'goal:take'

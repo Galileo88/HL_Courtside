@@ -33,23 +33,24 @@
       return null;
     }
   }
-  // Before a career starts, the game asks how the player wants to be remembered; the answer is saved as
-  // the player's potential. Coverage quotes the answer, the way a reporter would.
+  // Before a career starts, the game asks how the player wants to be remembered and saves the answer as
+  // the player's potential. These are the game's three answers, word for word (with the word the game's
+  // Hall of Fame line drops), so coverage quotes exactly what the player said.
   const goals = {
     10: {
-      quote: 'I want to be remembered as the greatest player of all time.',
-      goal: 'the greatest player of all time',
+      quote: 'I will be known as the greatest player to ever play the game of basketball.',
+      goal: 'the greatest player to ever play the game',
       headline: n => `${n} wants to be the greatest of all time`,
     },
     9: {
-      quote: 'I want to be a first-ballot Hall of Famer.',
-      goal: 'a first-ballot Hall of Famer',
+      quote: 'I will be known as one of the best Hall of Famers of all time.',
+      goal: 'one of the best Hall of Famers of all time',
       headline: n => `${n} sets sights on the Hall of Fame`,
     },
     8: {
-      quote: 'I want to be an All-Star every year.',
-      goal: 'an All-Star every year',
-      headline: n => `${n} wants to be an All-Star every year`,
+      quote: 'I will be known as an All-Star year in and year out.',
+      goal: 'an All-Star year in and year out',
+      headline: n => `${n} wants to be an All-Star year in and year out`,
     },
   };
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
