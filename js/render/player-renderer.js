@@ -366,25 +366,34 @@
       'injured-leg': 'injured-leg-arms',
       running: 'running-arms',
     }[pose];
+    // The arms are their own layer so they can go over the jersey number, which is drawn later at
+    // the final size; an arm across the chest covers the number, as it does in the game.
+    let armLayer = null;
     if (arms) {
-      sceneCtx.save();
-      sceneCtx.translate(0, offsetY);
-      body(sceneCtx, frame, player, team, uniformIndex, arms, ball);
-      sceneCtx.restore();
+      armLayer = document.createElement('canvas');
+      armLayer.width = 32;
+      armLayer.height = 42;
+      const armCtx = armLayer.getContext('2d');
+      armCtx.translate(0, offsetY);
+      body(armCtx, frame, player, team, uniformIndex, arms, ball);
     }
     const scale = canvas.width / 32;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
-    ctx.save();
-    if (facing === 'right') {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(scene, 0, 0, scene.width, scene.height, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
+    const layer = source => {
+      ctx.save();
+      if (facing === 'right') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(source, 0, 0, source.width, source.height, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    };
+    layer(scene);
     // Keep digits readable when the player faces right, instead of mirroring text.
     if (bodyState && !(player.isCoach || player.wearsSuit))
       jerseyNumber(ctx, player, team, bodyState.uniform, scale, offsetY, frame, pose, facing);
+    if (armLayer) layer(armLayer);
   }
   function drawPortrait(canvas, player, team, uniformIndex) {
     const source = document.createElement('canvas');
