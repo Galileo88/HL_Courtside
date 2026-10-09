@@ -232,7 +232,7 @@
     return Number.isFinite(s?.[m]) && s[a] > 0 ? `${((100 * s[m]) / s[a]).toFixed(1)}%` : '—';
   }
   function line(s) {
-    return `${avg(s, 'PTS')} points, ${avg(s, 'REB')} rebounds and ${avg(s, 'AST')} assists per game${Number.isFinite(s.MIN) ? ` in ${avg(s, 'MIN')} minutes a night` : ''}${s.FGA > 0 ? `, shooting ${pct(s, 'FGM', 'FGA')} from the field` : ''}${s.TPA > 0 ? ` and ${pct(s, 'TPM', 'TPA')} from three` : ''}`;
+    return `${C.perGameList(s)} per game${s.FGA > 0 ? ` on ${pct(s, 'FGM', 'FGA')} shooting` : ''}`;
   }
   function teamLine(name, s) {
     return s?.GP > 0 && Number.isFinite(s.PTS) && Number.isFinite(s.OPP)
@@ -468,8 +468,6 @@
     const m = margin(first);
     if (m !== null)
       lead += ` ${m > 0 ? `${leaders.length > 1 ? cap(R(first).nick) : 'They'} outscored opponents by ${m.toFixed(1)} points a night, scoring ${avg(s, 'PTS')} and allowing ${avg(s, 'OPP')}.` : `Oddly, ${leaders.length > 1 ? R(first).nick : 'they'} did it while being outscored by ${Math.abs(m).toFixed(1)} points a night.`}`;
-    if (leaders.length === 1 && winPct >= 0.75 && m !== null && m > 0)
-      lead += ' That is a team that spent the season controlling games, not surviving them.';
     paragraphs.push(lead);
     const chasers = teams.slice(1, 3).filter(t => !leaders.includes(t));
     if (chasers.length) {
@@ -511,7 +509,7 @@
         const fg = s.FGM / s.FGA;
         text +=
           fg >= 0.5
-            ? ` ${last} did it on ${pct(s, 'FGM', 'FGA')} shooting, the kind of efficiency that turns good production into a real case.`
+            ? ` ${last} did it on ${pct(s, 'FGM', 'FGA')} shooting.`
             : fg < 0.4
               ? ` The knock is efficiency: ${pct(s, 'FGM', 'FGA')} from the field.`
               : ` ${last} shot ${pct(s, 'FGM', 'FGA')} from the field.`;
@@ -661,7 +659,7 @@
         const rate = scorer.s.FGM / scorer.s.FGA;
         text +=
           rate >= 0.5
-            ? ` ${g.PTS.last} did it efficiently, too, on ${fg} shooting from the field. That is not volume for its own sake.`
+            ? ` ${g.PTS.last} did it on ${fg} shooting from the field.`
             : rate < 0.4
               ? ` The volume came at a price: ${fg} shooting from the field.`
               : ` ${g.PTS.last} shot ${fg} from the field.`;
@@ -674,7 +672,6 @@
       interior.push(
         `${subject(g.REB, true)} ${g.REB.tied ? 'shared' : 'swept'} the rebounding and shot-blocking titles, averaging ${g.REB.rate} rebounds and ${g.BLK.rate} blocks a night.`
       );
-      interior.push('Owning both categories is the kind of two-way season that changes how a player is remembered.');
       const p = !g.REB.tied ? profile(g.REB.names[0]) : null;
       if (p?.s?.GP > 0 && p.s.PTS / p.s.GP >= 10 && Number(g.REB.rate) >= 10)
         interior.push(
@@ -707,7 +704,7 @@
       if (s?.GP > 0 && Number.isFinite(s.TO) && s.TO >= 0) {
         perimeter.push(
           s.AST > s.TO * 2
-            ? `${g.AST.last} did it while committing just ${avg(s, 'TO')} turnovers a game, a clean ratio for a lead playmaker.`
+            ? `${g.AST.last} did it while committing just ${avg(s, 'TO')} turnovers a game.`
             : s.TO > s.AST
               ? `The ${avg(s, 'TO')} turnovers a game are the one blemish on the passing title.`
               : `${g.AST.last} also turned it over ${avg(s, 'TO')} times a game, a manageable cost for that much playmaking.`
@@ -864,22 +861,31 @@
         `This group earned every one of those ${wins} wins. I'm proud of what we built together.`,
         `That's an outstanding regular season. Our players deserve a lot of credit for ${wins} wins.`,
         "We had a tremendous season. I'm proud of this team and the way we earned it.",
+        "We were the hunted all year and we handled it. I'm proud of how this group earned it.",
       ],
       winning: [
         "This was a successful season, and our players deserve the credit. I'm proud of this group.",
         "We earned those wins together. There's a lot to be proud of here.",
+        'We took a step this year. Now the expectations go up, and that is a good thing.',
+        'We were a tough out most nights. I like where this group is headed.',
       ],
       balanced: [
         'We had some good stretches. Consistency is where we have to take the next step.',
         'We showed what we can do. Now we need to bring that level more often.',
+        'We were right there in a lot of games. Closing them out is the next step.',
+        "Some nights we looked like a playoff team, some nights we didn't. We have to fix that.",
       ],
       losing: [
         "We didn't win enough games. We have to be more consistent at both ends of the floor.",
         'There are things we can build on, but the results have to get better.',
+        'We lost too many close games. That comes down to execution, and we will work on it.',
+        "I like the effort. I don't like the record. Both of those things are true.",
       ],
       struggling: [
         "The results weren't good enough, and I take responsibility for that. We have to get better.",
         'It was a tough season. We owe it to this group to turn the work into wins.',
+        'We have to be better, starting with me. That record is not good enough.',
+        'It was a tough year, and nobody in this building is happy with it. We have a lot of work to do this summer.',
       ],
     };
     const playerQuotes = {
@@ -906,31 +912,42 @@
       dominant: [
         `Winning ${wins} games is something we're proud of. We earned that together.`,
         "We had a great season. I'm proud of this group and what we accomplished.",
+        'We came in every night expecting to win, and we earned it.',
       ],
       winning: [
         'We put together a good year. I want us to keep building on it.',
         "There's a lot to be proud of. We earned those wins as a group.",
+        "We proved a lot of people wrong this year. We're not done.",
+        'Good season, but we left some wins out there. That motivates me.',
       ],
       balanced: [
         'We had good nights and tough nights. We have to find more consistency.',
         'We know we can play better. The next step is doing it more often.',
+        "We showed flashes. Now it's about doing it every night.",
+        'Close games went both ways on us. We have to win more of those.',
       ],
       losing: [
         'We wanted more wins than this. We have to turn those lessons into better basketball.',
         "The record isn't where we wanted it. We have to keep working and get better.",
+        "It's frustrating. We were better than our record, but the record is what counts.",
+        "I'm already thinking about next season. This one's going to drive me.",
       ],
       struggling: [
         'It was a tough year. None of us are satisfied with that record.',
         'We have to be honest about how this season went and come back better.',
+        "It was a tough year, and that's not who we want to be. It starts with how we work this summer.",
+        'Losing like that is tough. We have to use it.',
       ],
     };
+    // Teams rotate through the lines by id, so a day of season reviews doesn't repeat one quote.
+    const pick = (options, salt) =>
+      Number.isInteger(team?.id)
+        ? options[(parseInt(C.hashString(`${tone}|${salt}`), 36) + team.id) % options.length]
+        : C.choose(id, options, salt);
     const lines = [];
     if (coach)
-      lines.push(
-        C.quoteParagraph(C.choose(id, coachQuotes[tone], 'season-coach'), `head coach ${C.playerDisplay(coach)}`)
-      );
-    if (player)
-      lines.push(C.quoteParagraph(C.choose(id, playerQuotes[tone], 'season-player'), C.playerDisplay(player)));
+      lines.push(C.quoteParagraph(pick(coachQuotes[tone], 'season-coach'), `head coach ${C.playerDisplay(coach)}`));
+    if (player) lines.push(C.quoteParagraph(pick(playerQuotes[tone], 'season-player'), C.playerDisplay(player)));
     return lines;
   }
   function awardQuoteLines(id, player, coach, kind) {
@@ -1519,7 +1536,10 @@
         const T = C.teamRef(r.team),
           cap = C.capitalize,
           teamCount = records.length,
-          winPct = record.W / Math.max(1, record.W + record.L);
+          winPct = record.W / Math.max(1, record.W + record.L),
+          pctOf = x => x.year.seasonStats.W / Math.max(1, x.year.seasonStats.W + x.year.seasonStats.L),
+          // Only the team with the league's best record dominated it.
+          dominant = winPct >= 0.7 && records.every(x => pctOf(x) <= winPct);
         const rankText = (n, what) =>
           n === 1
             ? `the league's ${what === 'scoring' ? 'top offense' : 'stingiest defense'}`
@@ -1568,7 +1588,7 @@
           bracketSet = entrants.size > 0;
         const headline = title
           ? review(record.W > record.L ? `${mark} and a championship` : `${mark}, then a championship`)
-          : winPct >= 0.7
+          : winPct >= 0.7 && (exit || dominant)
             ? review(
                 exit
                   ? `${a} ${mark} season that ended in the ${exit.label}`
@@ -1624,13 +1644,13 @@
               : playoff
                 ? ', good for a place in the playoff field'
                 : '';
-        const opener = `${cap(T.full)} ${winPct >= 0.7 ? 'dominated the regular season, finishing' : record.W > record.L ? 'closed the regular season at' : record.W === record.L ? 'split the regular season at' : 'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change !== null && Math.abs(change) >= 5 ? ` That is ${C.plural(Math.abs(change), 'win')} ${change > 0 ? 'better' : 'worse'} than last season's ${prior.W}-${prior.L}.` : ''}`;
+        const opener = `${cap(T.full)} ${dominant ? 'dominated the regular season, finishing' : record.W > record.L ? 'closed the regular season at' : record.W === record.L ? 'split the regular season at' : winPct >= 0.45 ? 'finished the regular season at' : 'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change !== null && Math.abs(change) >= 5 ? ` That is ${C.plural(Math.abs(change), 'win')} ${change > 0 ? 'better' : 'worse'} than last season's ${prior.W}-${prior.L}.` : ''}`;
         const profile =
           margin === null
             ? ''
             : `${
                 identity === 'defense'
-                  ? `Defense was the calling card. ${cap(T.short)} ${defendingRank === 1 ? `had the league's stingiest defense` : `ranked ${ordinal(defendingRank)} in points allowed`} at ${avg(record, 'OPP')} points allowed a night`
+                  ? `Defense was the calling card. ${cap(T.short)} ${defendingRank === 1 ? `had the league's stingiest defense, allowing` : `ranked ${ordinal(defendingRank)} in defense, allowing`} ${avg(record, 'OPP')} points a night`
                   : identity === 'offense'
                     ? `The offense carried them. ${cap(T.short)} ${scoringRank === 1 ? `had the league's top offense` : `ranked ${ordinal(scoringRank)} in scoring`} at ${avg(record, 'PTS')} points a night`
                     : identity === 'both'

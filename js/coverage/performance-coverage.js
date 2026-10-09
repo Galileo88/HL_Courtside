@@ -221,12 +221,7 @@
     const paragraphs = [C.capitalize(lede)];
     // Who this is matters as much as the number: a bench breakout reads differently than a star's quiet night.
     if (c.qualifies && c.favorable && c.key !== 'TO') {
-      if (r.starter === false)
-        paragraphs.push(
-          `${subject} has come off the bench for most of the season, averaging ${average(c.expected)} ${c.label}, which is what makes this one stand out.`
-        );
-      else if (r.scorerRank === 1 && c.key === 'PTS')
-        paragraphs.push(`${subject} was already the team's leading scorer. This was a step beyond.`);
+      if (r.starter === false) paragraphs.push(`${subject} has mostly come off the bench this season.`);
     }
     const more = changes.filter(x => x !== c && x.mention);
     if (more.length) {
@@ -521,19 +516,19 @@
       early
         ? `Easy, ${n[1]}. That average is from ${snapshot.baseline.GP} ${snapshot.baseline.GP === 1 ? 'game' : 'games'}. We're still learning what normal looks like.`
         : coldOnly
-          ? `${s.FGM} for ${s.FGA}. Over ${snapshot.baseline.GP} games, ${last} has been better than that. I'd call it a blip.`
+          ? `${s.FGM} for ${s.FGA}. ${last} has been better than that all year. I'd call it a blip.`
           : up
             ? pick(
                 [
-                  `It's one game, but it's a real one. ${C.capitalize(stat)} isn't a fluke number.`,
-                  `And that's not a small sample. ${snapshot.baseline.GP} games at ${avg} a night, and then this.`,
+                  "I'll believe it when I see it twice. But it's a good start.",
+                  `Now ${last} has to do it again. That's when I'll get excited.`,
                 ],
                 'perf:n-up'
               )
             : pick(
                 [
-                  `One game doesn't make a slump. ${snapshot.baseline.GP} games say ${last} is better than this.`,
-                  `I'd call it noise. ${snapshot.baseline.GP} games at ${avg} tells you more than one bad night.`,
+                  `One game doesn't make a slump. ${last} will bounce back.`,
+                  `I'd call it noise. ${last} has been better than that all year.`,
                 ],
                 'perf:n-down'
               )

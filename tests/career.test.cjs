@@ -93,7 +93,7 @@ test('a career opens with a player profile and a showcase preview before the gam
   const [profile, , preview] = stories;
   assert.equal(profile.headline, 'Tavish Berlin opens his career at the Koality Showcase');
   const text = profile.paragraphs.join(' ');
-  assert.match(text, /Tavish Berlin, a 17-year-old wing from Slovenia, opens his career/);
+  assert.match(text, /Tavish Berlin, a 17-year-old wing from Slovenia, takes the floor at the Koality Showcase/);
   assert.match(
     text,
     /No\. 12 and starts for the Western All-Americans against the Eastern All-Americans at Monarchs Arena West/

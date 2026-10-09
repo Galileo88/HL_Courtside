@@ -407,10 +407,7 @@ test('awards require recorded winner, correct league/year and milestone; zero st
   const l = fixture(),
     c = S.candidates(l);
   assert.equal(c.filter(x => x.story.type === 'Award announcement').length, 1);
-  assert.match(
-    c.find(x => x.story.type === 'Award announcement').story.paragraphs[1],
-    /0\.0 points, 0\.0 rebounds and 0\.0 assists/
-  );
+  assert.match(c.find(x => x.story.type === 'Award announcement').story.paragraphs[1], /averaged 0\.0 points per game/);
   assert.equal(c.find(x => x.story.eventKey === 'leaders').story.seasonSnapshot.rows.length, 10);
   l.teams[0].roster[0].awards[0].league = 1;
   assert.equal(S.candidates(l).filter(x => x.story.type === 'Award announcement').length, 0);

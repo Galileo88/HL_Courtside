@@ -183,7 +183,11 @@
             Number(a.history.streak.won) - Number(b.history.streak.won)
         )[0];
     const scale = Math.min(1, Math.max(0.15, (winner.score + loser.score) / policy.fullGame));
-    const ppg = average?.average?.GP >= policy.averageGames ? rate(average.average, 'PTS') : null;
+    const before = average?.average,
+      ppg =
+        before?.GP > policy.averageGames && validCount(s.PTS) && before.PTS >= s.PTS
+          ? ((before.PTS - s.PTS) / (before.GP - 1)).toFixed(1)
+          : null;
     // Share of the scoring needs to know which side the player was on.
     const side = me ? (me.team.id === winner.id ? 'winner' : me.team.id === loser.id ? 'loser' : null) : null;
     const teamScore = side === 'winner' ? winner.score : side === 'loser' ? loser.score : null;
@@ -286,8 +290,9 @@
     const streakLead = !sf
       ? ''
       : sf.ended
-        ? `${cap(sf.t.nick)}' ${sf.length}-game ${sf.won ? 'winning' : 'losing'} streak is over`.replace(/s' /, m =>
-            sf.t.nick.endsWith('s') ? m : "'s "
+        ? `${cap(sf.t.nick)}' ${C.num(sf.length)}-game ${sf.won ? 'winning' : 'losing'} streak is over`.replace(
+            /s' /,
+            m => (sf.t.nick.endsWith('s') ? m : "'s ")
           )
         : `That's ${sf.length} straight ${sf.won ? 'wins' : 'losses'} for ${sf.t.nick}`;
     const leads = {
@@ -301,10 +306,12 @@
         `${score}. A ${e.margin}-point game, ${J}. About as tight as it gets.`,
         `${W.nickname} by ${e.margin}, ${ws}-${ls}. ${J}, a win's a win?`,
         `Tight one. ${score}. ${J}, who should feel better about that game?`,
-        `${score}. ${J}, ${L.nick} were right there.`,
+        `${score}. ${J}, ${L.nick} ${C.verb(L, 'were')} right there.`,
       ],
       blowout: [
-        `${score}. That's a ${e.margin}-point beatdown, ${J}.`,
+        e.margin >= 0.18 * ws
+          ? `${score}. That's a ${e.margin}-point beatdown, ${J}.`
+          : `${score}. ${cap(W.nick)} by ${e.margin}, ${J}.`,
         `It wasn't close. ${score}. ${J}, where do you even start?`,
         `${cap(W.nick)} ${C.verb(W, 'roll')}, ${ws}-${ls}. ${J}?`,
         `${score}. ${J}, ${L.nick} have some answering to do.`.replace(
@@ -328,7 +335,7 @@
         `${e.player?.full} went off. ${cap(achievement(e))}, and ${W.nick} beat ${L.nick} ${ws}-${ls}. ${J}?`,
         `We have to start with ${e.player?.full}: ${achievement(e)}. ${score}. ${J}, your reaction.`,
         `${score}, but the story is ${e.player?.full}. ${cap(achievement(e))}. ${J}?`,
-        `${e.player?.full} finishes with ${achievement(e)}. ${score}. ${J}, where does that rank?`,
+        `${e.player?.full} finishes with ${achievement(e)}. ${score}. ${J}?`,
       ],
       ...seriesOpenings(e, score, J),
       championship: [
@@ -460,7 +467,7 @@
               2,
               `Embarrassed is strong. ${cap(L.nick)} ${rec(e.loser) ? `won ${rec(e.loser).split('-')[0]} games this year` : 'had a season'}. But a sweep is a statement, no question.`,
             ],
-            [3, `And ${W.nick} get rest before the ${S.nextRound || 'next round'}. That matters.`],
+            [3, `And ${W.nick} ${C.verb(W, 'get')} rest before the ${S.nextRound || 'next round'}. That matters.`],
           ],
           [
             [1, `I said ${W.nick} in four, and I want my flowers.`],
@@ -631,7 +638,9 @@
           ],
           [
             2,
-            `I'm with Jordan. You can't win them all by 20. Handle the games in front of you and the rest takes care of itself.`,
+            goodLoser
+              ? `Agreed. Wins over good teams are the ones that matter come tiebreaker time.`
+              : `That's the job. Handle the games in front of you and the rest takes care of itself.`,
           ],
         ],
         [
@@ -701,16 +710,12 @@
         [
           [
             1,
-            `That was a beatdown. ${m} points. ${cap(L.nick)} need answers, and they need them fast.`.replace(
-              ` ${L.nick} need`,
-              ` ${L.nick} ${C.verb(L, 'need')}`
-            ),
+            (m >= 0.18 * ws
+              ? `Not close at all. ${m} points. ${cap(L.nick)} need answers, and they need them fast.`
+              : `Never in doubt. ${cap(L.nick)} need a better answer than that.`
+            ).replace(` ${L.nick} need`, ` ${L.nick} ${C.verb(L, 'need')}`),
           ],
           [2, `Credit to ${W.nick}, though. You don't win by ${m} by accident.`],
-          [
-            3,
-            `${cap(L.nick)} scored ${ls}. In a game where the other side put up ${ws}, that's just not enough offense.`,
-          ],
         ],
         [
           [
@@ -791,9 +796,9 @@
                 : [
                     [
                       1,
-                      `Finally! ${sf.length} straight losses, and ${sf.t.nick} finally get one. You could feel the weight lifting off that group.`.replace(
-                        ` ${sf.t.nick} finally get`,
-                        ` ${sf.t.nick} finally ${C.verb(sf.t, 'get')}`
+                      `Finally! ${cap(C.num(sf.length))} straight losses, and ${sf.t.nick} get one. You could feel the weight lifting off that group.`.replace(
+                        ` ${sf.t.nick} get`,
+                        ` ${sf.t.nick} ${C.verb(sf.t, 'get')}`
                       ),
                     ],
                     [
@@ -840,7 +845,7 @@
                       [1, `Is it wrong, though?`],
                       [
                         3,
-                        `It's not right yet. ${sf.length} games is a rough stretch, not a verdict. But they need to stop it soon.`,
+                        `Too early for that. ${sf.length} games is a rough stretch, not a verdict. But they need to stop it soon.`,
                       ],
                     ],
           ]
@@ -920,7 +925,7 @@
         speaker: 3,
         question: `And ${N}, what does this do to the streak?`,
         detail: sf.ended
-          ? `${cap(possessive(sf.t.nick))} ${sf.length}-game ${sf.won ? 'winning' : 'losing'} streak ends here. ${sf.won ? "Good run. One loss doesn't erase it." : "They finally get one. It's been a while."}`
+          ? `${cap(possessive(sf.t.nick))} ${C.num(sf.length)}-game ${sf.won ? 'winning' : 'losing'} streak ends here. ${sf.won ? "Good run. One loss doesn't erase it." : "They finally get one. It's been a while."}`
           : `That's ${sf.length} straight ${sf.won ? 'wins' : 'losses'} for ${sf.t.nick}. ${sf.won ? 'They keep stacking them.' : "That's a hole they have to climb out of."}`,
         response: sf.ended
           ? sf.won
@@ -949,15 +954,15 @@
           : `${N}, how was ${p.last} shooting it?`,
         detail: poor
           ? say('poor', [
-              `Not efficiently. ${p.last} went ${line} from the field. That's a rough shooting night, and you can't just look past it.`,
-              `Volume. ${line} from the field. That's a rough shooting night, I don't care how many went in.`,
+              `${p.last} went ${line} from the field. Rough shooting night, and you can't look past it.`,
+              `Volume. ${line} from the field. I don't care how many went in, that's a rough shooting night.`,
               `The hard way. ${line}. If we're being honest, that's a rough shooting night.`,
             ])
           : strong
             ? say('strong', [
-                `Efficiently. ${p.last} went ${line} from the field. That's efficient scoring, about as clean as it gets.`,
-                `${line} from the field. That's efficient scoring. Barely a wasted possession.`,
-                `On ${line} shooting. That's efficient scoring, and that's the part I love.`,
+                `${p.last} went ${line} from the field. About as clean as it gets.`,
+                `${line} from the field. Barely a wasted possession.`,
+                `On ${line} shooting. That's the part I love.`,
               ])
             : say('fine', [
                 `${p.last} went ${line} from the field. Nothing crazy, nothing to complain about.`,
@@ -972,12 +977,15 @@
                   ? [
                       `${s.FGA} shots, ${s.FGM} makes. That's not normal. That's a player in a zone.`,
                       `That's volume and efficiency. You almost never get both.`,
-                      `Professional. That's a pro's night right there.`,
+                      `That's somebody who knew he was hot and kept firing.`.replace(
+                        'he was',
+                        `${p.he || 'they'} ${p.he ? 'was' : 'were'}`
+                      ),
                     ]
                   : [
                       `That's a bucket-getter. Didn't need volume. Just cashed in.`,
                       `Give me that every night. You don't need a ton of shots when you're making them.`,
-                      `Professional. That's a pro's night right there.`,
+                      `Shot selection. Good looks, and they went down.`,
                     ]
               )
             : say('fine-r', [
@@ -1010,10 +1018,12 @@
                 `No turnovers. ${pts ? cap(pts) : 'The production'} without giving a single possession away. I love that.`,
                 `Didn't turn it over once. People skip right past that, and they shouldn't.`,
               ])
-            : `My issue is the turnovers. ${s.TO} of them${validCount(s.AST) ? ` against ${count(s.AST, 'assists')}` : ''}. ${s.TO >= 4 ? "You can't be that loose with the ball." : "I'll take that balance."}`,
+            : s.TO >= 4
+              ? `My issue is the turnovers. ${count(s.TO, 'turnovers')}${validCount(s.AST) ? ` against ${count(s.AST, 'assists')}` : ''}. You can't be that loose with the ball.`
+              : `${cap(count(s.AST, 'assists'))} and just ${count(s.TO, 'turnovers')}. That's taking care of the ball.`,
         response:
           s.TO >= 4
-            ? s.AST > s.TO
+            ? s.AST >= s.TO + 3
               ? `Come on, ${A}. ${s.AST} assists, ${s.TO} turnovers. When you're making that many plays for people, some of that comes with it.`
               : `Yeah, that's too many. You can love the rest of it and still want that cleaned up.`
             : say('clean-r', [
@@ -1025,33 +1035,52 @@
     }
     if (e.ppg !== null && validCount(s.PTS)) {
       const delta = s.PTS - Number(e.ppg),
-        near = Math.abs(delta) < Math.max(1.5, 3 * e.scale);
+        near = Math.abs(delta) < Math.max(1.5, 3 * e.scale),
+        big = Math.abs(delta) >= Math.max(3, 8 * e.scale),
+        when = e.average.period === 'playoffs' ? 'in the playoffs' : 'this season';
       threads.push({
         key: 'average',
         player: true,
-        priority: Math.abs(delta) >= Math.max(3, 10 * e.scale) ? 90 : 55,
+        priority: big ? 90 : 55,
         speaker: 3,
         question: say('avg-q', [
           `${N}, what does ${p.last} usually give them?`,
           `${N}, how does that compare to the usual?`,
           `${N}, is that normal for ${p.last}?`,
         ]),
-        detail: `${p.last} is averaging ${e.ppg} points a game ${e.average.period === 'playoffs' ? 'in the playoffs' : 'this season'}. ${near ? 'So tonight was pretty much right on schedule.' : delta > 0 ? `Tonight was ${s.PTS}. Way above the norm.` : `Tonight was ${s.PTS}. Well below the norm.`}`,
+        detail: `${p.last} came in averaging ${e.ppg} points a game ${when}. ${
+          near
+            ? 'So tonight was right on schedule.'
+            : delta > 0
+              ? big
+                ? `Tonight was ${s.PTS}. That's a big jump.`
+                : `Tonight was ${s.PTS}, a few more than usual.`
+              : big
+                ? `Tonight was ${s.PTS}, well below that.`
+                : `Tonight was ${s.PTS}, a little quieter than usual.`
+        }`,
         response: near
           ? say('avg-near', [
               "That's what I love about it. You know what you're getting every night.",
               'Reliable. Coaches love reliable.',
             ])
           : delta > 0
-            ? say('avg-up', [
-                "So don't tell me it's just another night. That's a breakout, and I'm enjoying it.",
-                "That's a different gear. I want to see it again.",
-                "Somebody's been holding out on us.",
-              ])
-            : say('avg-down', [
-                "Quiet night by those standards. Happens. I'm not worried about one game.",
-                'Off night. Everybody gets one.',
-              ]),
+            ? big
+              ? say('avg-up', [
+                  "So don't tell me it's just another night. That's a breakout, and I'm enjoying it.",
+                  "That's a different gear. I want to see it again.",
+                  "Somebody's been holding out on us.",
+                ])
+              : say('avg-up-small', [
+                  'A little extra when they needed it. I like that.',
+                  'Good night. Not a breakout, but good.',
+                ])
+            : s.PTS >= Math.max(8, 25 * e.scale)
+              ? `${cap(count(s.PTS, 'points'))} and that's a quiet night? That tells you the kind of season ${p.last} is having.`
+              : say('avg-down', [
+                  "Quiet night by those standards. Happens. I'm not worried about one game.",
+                  'Off night. Everybody gets one.',
+                ]),
       });
     }
     // What counts as a notable secondary line grows with the length of the game.
@@ -1068,8 +1097,10 @@
     // it's the main story, or when we have another contribution to discuss.
     if (contribution || (validCount(s.PTS) && (angle === 'performance' || !threads.some(t => t.key === 'shooting')))) {
       const stats =
-        e.doubles.length >= 3
-          ? e.doubles.map(k => count(s[k], labels[k]))
+        e.doubles.length >= 2
+          ? [...e.doubles, ...(contribution && !e.doubles.includes(contribution) ? [contribution] : [])].map(k =>
+              count(s[k], labels[k])
+            )
           : [
               validCount(s.PTS) ? count(s.PTS, 'points') : null,
               contribution ? count(s[contribution], labels[contribution]) : null,
@@ -1088,12 +1119,12 @@
         detail:
           angle === 'performance' && e.doubles.length >= 3
             ? `Forget the points for a second. ${join(e.doubles.filter(k => k !== 'PTS').map(k => count(s[k], labels[k])))}. ${e.doubles.includes('AST') ? "I love the passing. That's somebody making the whole offense better." : "That's somebody doing everything."}`
-            : `${p.last} finished with ${join(stats)}. ${contribution === 'AST' ? "I love the passing. That's somebody making the whole offense better." : contribution === 'REB' ? "And don't skip past the rebounds. That's work." : contribution ? "That's real impact on the defensive end, too." : s.PTS === 0 ? "Couldn't buy a bucket." : share ? `That's ${share} of ${possessive(e.W.nick)} points.` : "That's where I start."}`,
+            : `${p.last} finished with ${join(stats)}. ${contribution === 'AST' ? "I love the passing. That's somebody making the whole offense better." : contribution === 'REB' ? "And don't skip past the rebounds. That's work." : contribution ? "That's real impact on the defensive end, too." : s.PTS === 0 ? "Couldn't buy a bucket." : share ? `That's ${share} of ${possessive(e.W.nick)} points.` : ''}`.trim(),
         response:
           e.doubles.length >= 2
             ? `That's a ${kinds[e.doubles.length]}. ${e.doubles.includes('AST') ? 'And those assists mean other guys are eating, too.' : "That's more than just getting buckets."}`
             : contribution === 'AST'
-              ? "Right, and that's the part people miss. The assists make everybody better."
+              ? "That's a floor general. Everybody eats when the ball moves like that."
               : contribution === 'REB'
                 ? `${s.REB} boards. Doing the dirty work and still scoring. Give me that.`
                 : contribution
@@ -1102,9 +1133,9 @@
                     ? "You've got to find a way to help somewhere else on a night like that."
                     : share
                       ? `That's carrying the load. They needed every one of them.`
-                      : shotPair(s, 'FGM', 'FGA')
-                        ? "How many shots did it take, though? That's my next question."
-                        : "Without the shooting numbers, I'll just say it's a solid night.",
+                      : angle === 'performance'
+                        ? 'When you can score like that, the rest takes care of itself.'
+                        : 'Steady production. Every team needs it.',
       });
     }
     const helper =
@@ -1121,7 +1152,7 @@
         priority: 60,
         speaker: 2,
         question: say('support-q', [`Who else stepped up?`, `${A}, who's the unsung name?`, `Anybody else, ${A}?`]),
-        detail: `Don't sleep on ${helper.name}. ${count(helper.stats.PTS, 'points')}${helper.stats.GS === 0 ? ' off the bench' : ''}. Every team needs a second option.`,
+        detail: `Don't sleep on ${helper.name}. ${cap(count(helper.stats.PTS, 'points'))}${helper.stats.GS === 0 ? ' off the bench' : ''}. Every team needs a second option.`,
         response: say('support-r', [
           `Good call. You can't do it alone in this league.`,
           `That's the name nobody's talking about tomorrow. They should be.`,
@@ -1147,7 +1178,7 @@
           `And ${e.L.nick}?`,
         ]),
         detail: cold
-          ? `${top.name} led ${e.L.nick} with ${top.stats.PTS}, but it took ${top.stats.FGA} shots. ${top.stats.FGM} for ${top.stats.FGA}. That's not going to beat anybody.`
+          ? `${top.name} led ${e.L.nick} with ${top.stats.PTS}, but went ${top.stats.FGM} for ${top.stats.FGA}. That's not going to beat anybody.`
           : `Credit ${top.name}: ${count(top.stats.PTS, 'points')} for ${e.L.nick}. Just didn't have enough help.`,
         response: cold
           ? say('opp-cold', [
@@ -1178,7 +1209,7 @@
     if (w.REB !== null && l.REB !== null && w.REB - l.REB >= Math.max(4, 0.3 * l.REB))
       return `${cap(e.W.nick)} won the glass ${w.REB} to ${l.REB}. That's extra possessions all night.`;
     if (w.TO !== null && l.TO !== null && l.TO - w.TO >= 3)
-      return `${cap(e.L.nick)} turned it over ${l.TO} times. ${cap(e.W.nick)}: ${w.TO}. That's free possessions.`;
+      return `${cap(e.L.nick)} turned it over ${l.TO} times to ${possessive(e.W.nick)} ${C.num(w.TO)}. That's free possessions.`;
     return null;
   }
   function gameClosing(story, e, angle) {
@@ -1262,11 +1293,13 @@
       // Maya pivots when the subject changes; a performance opening already
       // put the player on the table, so the desk picks it up directly.
       let question =
-        index && thread.key === 'shooting'
-          ? `And ${n[3]}, the shooting?`
-          : index && thread.key === 'contribution'
-            ? `What else did ${e.player.last} give them?`
-            : thread.question;
+        !index && thread.key === 'support'
+          ? `${n[2]}, who stepped up for ${e.W.nick}?`
+          : index && thread.key === 'shooting'
+            ? `And ${n[3]}, the shooting?`
+            : index && thread.key === 'contribution'
+              ? `What else did ${e.player.last} give them?`
+              : thread.question;
       if (thread.player && !introduced) {
         question = `${pick(story, [`Let's get to ${e.player.full}, the player of the game.`, `Player of the game: ${e.player.full}.`, `${e.player.full} got player of the game.`], 'intro')} ${question}`;
         introduced = true;
@@ -1418,7 +1451,7 @@
           mip: `That's not luck. That's a summer of work.`,
           dpoy: `Defense doesn't always show up in a box score. Some of it does, and ${last}'s does.`,
           other: `Good season. Well earned.`,
-        }[a.kind] || `Leading the league over ${C.plural(s.GP, 'game')} isn't a hot streak. That's a season.`;
+        }[a.kind] || `Well deserved. Nobody did it better this year.`;
       body.push(turn(2, angle));
       if (a.kind === 'mvp' && rec && a.teamRecord[0] < a.teamRecord[1])
         body.push(turn(1, `Yes! Value doesn't care about the standings.`));
@@ -2081,15 +2114,21 @@
       body.push(
         turn(
           3,
-          `I'd look at the scoring margin. ${ppg} a game, ${opp} allowed. That's ${Math.abs(gap).toFixed(1)} points a game ${gap >= 0 ? 'in their favor' : 'in the wrong direction'}. ${gap > 0 ? "That's a team that outscored people." : gap < 0 ? "That's a team that got outscored." : 'Dead even.'}`
+          `I'd look at the scoring margin. ${ppg} a game, ${opp} allowed${
+            Math.abs(gap) < 1.5
+              ? `. Basically even. ${team.r.W > team.r.L ? 'They won the close ones.' : team.r.W < team.r.L ? 'They lost the close ones.' : ''}`
+              : `, ${Math.abs(gap).toFixed(1)} a game ${gap > 0 ? 'in their favor' : 'in the wrong direction'}.${gap > 0 && team.r.W < team.r.L ? ' Outscoring people and still finishing under .500? That is bad luck in close games.' : ''}`
+          }`.trim()
         )
       );
       body.push(
         turn(
           2,
-          gap > 0
+          gap >= 3
             ? "And that's sustainable. Margin tells you more than a couple of lucky wins."
-            : "Find a few more points or give up a few less. That's the whole offseason."
+            : gap <= -3
+              ? "Find a few more points or give up a few less. That's the whole offseason."
+              : 'A couple of bounces either way and this is a different conversation.'
         )
       );
     }
@@ -2102,7 +2141,16 @@
       body.push(
         turn(2, `${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high. That's the go-to option.`)
       );
-      body.push(turn(1, "And that's the question. Who's the second option? One player can't do it all."));
+      body.push(
+        turn(
+          1,
+          pick(
+            story,
+            ["And that's the question. Who's the second option?", 'Now they need a second option.'],
+            'review:help'
+          )
+        )
+      );
     } else if (story.type === 'Regular-season review' && teams[1]) {
       const other = teams[1];
       body.push(
@@ -2113,7 +2161,13 @@
       );
     }
     const verdict =
-      team.r.W > team.r.L ? 'a winning season' : team.r.W < team.r.L ? 'a losing season' : 'a .500 season';
+      pctW >= 0.6
+        ? 'a strong season'
+        : team.r.W > team.r.L
+          ? 'a winning season'
+          : team.r.W < team.r.L
+            ? 'a losing season'
+            : 'a .500 season';
     return frame(
       story,
       'season',
@@ -2147,7 +2201,7 @@
       body.push(
         turn(
           i ? 2 : 1,
-          `${who} ${tied.length === 1 ? 'led' : 'shared the lead'} in ${labels[k]} at ${value} a game. ${k === 'PTS' ? "Bucket-getter. That's an average, not one big night." : k === 'REB' ? 'Somebody has to do the dirty work on the glass.' : "There's more to this game than scoring."}`
+          `${who} ${tied.length === 1 ? 'led' : 'shared the lead'} in ${labels[k]} at ${value} a game. ${k === 'PTS' ? "That's your scoring champ." : k === 'REB' ? 'Somebody has to do the dirty work on the glass.' : "There's more to this game than scoring."}`
         )
       );
       const honor = (story.seasonSnapshot.leaderHonors || []).find(
@@ -2163,8 +2217,10 @@
         turn(
           3,
           i
-            ? `${tied.length > 1 ? 'They split that one.' : 'Strong season in that category.'} ${k === 'REB' ? 'Rebounding wins you possessions.' : 'Different players bring different things. You need all of it.'}`
-            : `${tied.length > 1 ? "Can't leave either name out. They split it." : `And that's over ${tied[0][3]} games, Jordan. Not a hot streak.`}`
+            ? `${tied.length > 1 ? 'They split that one. ' : ''}${k === 'REB' ? 'Rebounding wins you possessions.' : 'Different players bring different things. You need all of it.'}`
+            : tied.length > 1
+              ? "Can't leave either name out. They split it."
+              : pick(story, ['Hard to argue with that.', 'Earned every bit of it.'], 'leaders:first')
         )
       );
     }
@@ -2196,7 +2252,13 @@
     );
     // Anchors rewrite a headline into a sentence; the article's lede already is one.
     const lede = paragraphs[0] && paragraphs[0].length <= 200 ? paragraphs[0] : null;
-    const detail = paragraphs.find(p => p !== lede && !p.startsWith(String(story.headline)));
+    // Spoken, a season line drops the box-score phrasing: "He's been good for 11.4 points and 5.2 rebounds a game."
+    const detail = paragraphs
+      .find(p => p !== lede && !p.startsWith(String(story.headline)))
+      ?.replace(
+        /^(.+?) (?:is averaging|averaged) (.+?) (?:per game )?in (?:\w+|\d+) games? this season\.(.*)$/,
+        (m, who, line, rest) => `${who}'s been good for ${line.replace(/ per game$/, '')} a game this season.${rest}`
+      );
     const type = story.type || '',
       J = detail ? n[2] : n[1],
       evidence = story.seasonSnapshot?.evidence || [];
@@ -2269,7 +2331,12 @@
                                 "That's history. Put it in the books.",
                                 "That's a number that's going to stick around for a while.",
                               ]
-                            : ['Something to keep an eye on.', "Noted. We'll see where it goes."];
+                            : /poll/i.test(type)
+                              ? [
+                                  'Preseason polls are made to be wrong. Somebody has to earn that spot.',
+                                  'No. 1 in the preseason just means everybody circles your game.',
+                                ]
+                              : ["That's worth watching.", "Noted. We'll see where it goes."];
     const closings = /trade request/i.test(type)
       ? [
           "No deal yet. We'll see how the team handles it.",
@@ -2302,17 +2369,23 @@
               ? ["That's the number of the night.", 'Moving on.', "We'll see if it holds up.", 'Next topic.']
               : /record/i.test(type)
                 ? [
-                    'Put it in the books.',
                     "We'll keep watching the record book.",
                     'History made. Moving on.',
                     "That one's going in the archive.",
                   ]
-                : [
-                    "We'll keep an eye on that.",
-                    "We'll come back to it when there's more to report.",
-                    'Something to keep an eye on around the league.',
-                    'Moving on.',
-                  ];
+                : /poll/i.test(type)
+                  ? [
+                      "We'll see how long it holds.",
+                      'Now they have to play the games.',
+                      'Ask us again in a month.',
+                      'The games will sort it out.',
+                    ]
+                  : [
+                      "We'll come back to it when there's more to report.",
+                      "That's the latest.",
+                      'Moving on.',
+                      'More on that as it develops.',
+                    ];
     const body = detail
       ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
@@ -2424,7 +2497,7 @@
           turn(
             2,
             top.years
-              ? `${C.capitalize(C.num(top.years))} years, though. That's a real commitment.${top.age ? ` ${last(top)}'s ${top.age}.` : ''}`
+              ? `${C.capitalize(C.num(top.years))} years, though. That's a real commitment.${top.age && top.age <= 24 ? ` ${last(top)} is only ${top.age}, so it's a bet on what's coming.` : top.age >= 31 ? ` And ${last(top)} is ${top.age}. That's a risk at the back end.` : ''}`
               : `I want to see where ${last(top)} fits in that rotation before I start celebrating.`
           )
         );
@@ -2978,7 +3051,7 @@
               ? {
                   none: ' Nobody else in this showcase can say that.',
                   few: ' Only a few others in this showcase can say that.',
-                  many: ` ${C.capitalize(he)}'s got company in this showcase, though. That's what makes the field so good.`,
+                  many: ' Plenty of prospects in this field share it, though.',
                 }[potential.shared] || ''
               : ''
           }`
@@ -3036,13 +3109,6 @@
               )
         ),
       ];
-      if (career.countrymen?.length)
-        body.push(
-          turn(
-            2,
-            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home, ${J}.`
-          )
-        );
       body.push(
         turn(
           3,
@@ -3051,6 +3117,13 @@
             : `Easy, ${J}. It's one game, and I don't grade careers off one game.`
         )
       );
+      if (career.countrymen?.length)
+        body.push(
+          turn(
+            2,
+            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home.`
+          )
+        );
       if (career.fanPosts)
         body.push(
           turn(0, `The fans have already made up their minds. They're posting about ${career.last} on Hoop Gram.`)
@@ -3062,7 +3135,7 @@
           `Before anything else tonight, meet ${career.name}${who ? `, a ${who}` : ''}. ${J}, what do you see?`,
           `A new name for your notebook: ${career.name}${who ? `, a ${who}` : ''}, suiting up for the ${career.team} in the ${career.event}. ${J}?`,
         ],
-        [`The ${career.event}. We'll all be watching.`, `${career.name}. Remember the name.`],
+        [`All eyes on the ${career.event}.`, `${career.name}. Remember the name.`],
         body
       );
     }
@@ -3086,11 +3159,7 @@
     body.push(
       turn(
         1,
-        pick(
-          story,
-          [`Give me ${show.featured}. I'm riding with that one.`, `I'm watching ${show.featured}. Book it.`],
-          'showcase:take'
-        )
+        pick(story, [`I'm riding with ${show.featured}.`, `I'm watching ${show.featured}. Book it.`], 'showcase:take')
       )
     );
     return frame(
@@ -3148,7 +3217,13 @@
       if (last && last.speaker === t.speaker) last.text += ' ' + t.text;
       else merged.push({ ...t });
     }
-    return merged.map(t => ({ ...t, text: apCounts(t.text) }));
+    return merged.map(t => ({ ...t, text: tidy(apCounts(t.text)) }));
+  }
+  // Spelled-out counts can open a sentence ("five in a row"), and "a 18-point" reads "an 18-point".
+  function tidy(text) {
+    return text
+      .replace(/(^|[.!?]\s+)([a-z])/g, (m, before, letter) => before + letter.toUpperCase())
+      .replace(/\b([Aa]) (?=(?:8|11|18|8\d)(?!\d))/g, '$1n ');
   }
   function episode(story, names = defaultNames, context) {
     if (!story) return [];

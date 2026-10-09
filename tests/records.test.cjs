@@ -72,7 +72,7 @@ test('routine coverage uses averages while preserving league-scoped totals as ev
   const s = R.enrich({ playerId: 11, gid: 10, paragraphs: [] }, l);
   assert.equal(s.cumulativeStats.season.PTS, 1005);
   assert.equal(s.cumulativeStats.career.PTS, 2000);
-  assert.match(s.paragraphs.join(' '), /100\.5 points.*per game/);
+  assert.match(s.paragraphs.join(' '), /averaging 100\.5 points/);
   assert.doesNotMatch(s.paragraphs.join(' '), /1005|2000|season totals|career/);
 });
 test('verified game detects crossing, personal best and single-game league/team marks', () => {

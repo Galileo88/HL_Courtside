@@ -3,6 +3,8 @@
   'use strict';
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
+  // Raise when story wording changes, so stories from the loaded save are rewritten.
+  const PROSE_EDITION = 1;
   const el = Object.fromEntries(
     [
       'saveFile',
@@ -798,7 +800,13 @@
       if (milestoneIds.has(x.story.id)) return false;
       milestoneIds.add(x.story.id);
       const existing = state.stories.get(x.story.id);
-      return !existing || Number(x.story.editorialVersion || 0) > Number(existing.editorialVersion || 0);
+      // A new prose edition rewrites stories from the loaded save in the current house style.
+      x.story.prose = PROSE_EDITION;
+      return (
+        !existing ||
+        Number(x.story.editorialVersion || 0) > Number(existing.editorialVersion || 0) ||
+        Number(existing.prose || 0) < PROSE_EDITION
+      );
     });
     // Compose in small batches to keep long season uploads responsive.
     for (let i = 0; i < milestones.length; i += 4) {
