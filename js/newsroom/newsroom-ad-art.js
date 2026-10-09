@@ -182,7 +182,7 @@
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, 300, 180);
       ctx.fillStyle = '#e1ad41';
-      ctx.fillRect(0, 12, 300, 4);
+      ctx.fillRect(0, 0, 300, 4);
       ctx.fillStyle = '#dca458';
       ctx.fillRect(0, 136, 300, 44);
       ctx.fillStyle = '#c48c45';
@@ -216,13 +216,6 @@
       light.addColorStop(1, '#101a17');
       ctx.fillStyle = light;
       ctx.fillRect(0, 0, 300, 180);
-      ctx.strokeStyle = '#71935c';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 157);
-      ctx.lineTo(300, 157);
-      ctx.ellipse(231, 169, 64, 14, 0, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.fillStyle = '#ceff69';
       ctx.font = '900 30px Arial';
       ctx.textAlign = 'left';
@@ -285,14 +278,6 @@
       ctx.lineTo(300, 285);
       ctx.lineTo(0, 285);
       ctx.fill();
-      ctx.strokeStyle = '#d6bb80';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(157, 169);
-      ctx.lineTo(174, 191);
-      ctx.moveTo(192, 214);
-      ctx.lineTo(219, 246);
-      ctx.stroke();
       ctx.textAlign = 'left';
       ctx.fillStyle = '#f3f1e7';
       ctx.font = '900 27px Arial';
