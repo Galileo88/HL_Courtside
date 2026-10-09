@@ -715,3 +715,101 @@ body {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
+
+/* Share: an icon on the byline row, like a news site's. */
+.article-byline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.article-share {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -8px -8px -8px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hw-text-2);
+  cursor: pointer;
+}
+.article-share svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.article-share:hover,
+.article-share:focus-visible,
+.article-share.is-ready {
+  color: var(--hw-accent);
+  background: var(--hw-line-soft);
+}
+.article-share:focus-visible {
+  outline: 2px solid var(--hw-accent);
+  outline-offset: 1px;
+}
+.article-share[aria-busy='true'] {
+  opacity: 0.5;
+  cursor: progress;
+}
+/* The page the share image is drawn from, kept off screen. */
+.share-sheet {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  background: var(--hw-panel-deep);
+  padding: 18px;
+}
+.share-sheet .article-card {
+  margin: 0;
+  padding: 0 0 20px;
+  overflow: hidden;
+}
+.share-sheet .article-image {
+  margin: 0 0 18px;
+}
+.share-sheet .article-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.share-sheet .article-meta,
+.share-sheet .article-headline,
+.share-sheet .article-byline,
+.share-sheet .article-body {
+  margin-left: 22px;
+  margin-right: 22px;
+}
+/* The image is drawn glyph by glyph: fixed-width digits would leave gaps, and an inset shadow fills
+   the whole cell, so the leader's marker is a plain border here. */
+.share-sheet * {
+  font-variant-numeric: normal !important;
+}
+.share-sheet .tv-board-table:not(.no-lead) tbody tr:first-child > :first-child {
+  box-shadow: none;
+  border-left: 3px solid #ee3546;
+}
+.share-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 22px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--hw-line);
+  color: var(--hw-muted);
+  font: 700 11px var(--hw-font-ui);
+  letter-spacing: 0.06em;
+}
+.share-footer img {
+  width: 150px;
+  height: auto;
+}
