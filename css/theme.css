@@ -812,3 +812,20 @@ body {
   width: 150px;
   height: auto;
 }
+
+/* The welcome screen sits in the middle of the screen on phones too, its card centered like the
+   wordmark above it. */
+.entry-screen .shell {
+  box-sizing: border-box;
+  min-height: calc(100svh - env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.entry-screen .menu-card {
+  align-items: center;
+  text-align: center;
+}
+.entry-screen #fileName {
+  text-align: center;
+}
