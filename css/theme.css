@@ -900,9 +900,10 @@ body {
 }
 .saves-list li {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 12px;
   padding: 12px 0;
   border-top: 1px solid var(--hw-line);
 }
@@ -920,6 +921,7 @@ body {
 }
 .save-info {
   display: grid;
+  flex: 1 1 180px;
   gap: 3px;
   min-width: 0;
 }

@@ -42,6 +42,9 @@ Keep playing, then use **Update save** in the menu and pick your newest save fil
 the file again, or delete one you're done with. A career, a franchise and a commissioner game each get their own
 save, so their stories never mix.
 
+**Lost your game?** HoopWire keeps a copy of the last save file you gave it. Tap **Export** next to a save to get
+the file back, then load it into Hoop Land.
+
 **HoopWire tags.** Each league in your save needs a HoopWire tag, so HoopWire can tell your saves apart. Export
 your league from Hoop League Studio, start your game from that file, and the tag comes with it. If you pick a file
 that doesn't match the save you have open, HoopWire tells you why and doesn't change anything.

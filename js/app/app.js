@@ -331,7 +331,11 @@
           .join(' · '),
       };
     });
-    const signature = JSON.stringify([items.map(i => [i.save.id, i.save.name, i.meta]), state.save?.id, state.busy]);
+    const signature = JSON.stringify([
+      items.map(i => [i.save.id, i.save.name, i.meta, i.save.file?.savedAt]),
+      state.save?.id,
+      state.busy,
+    ]);
     if (el.savesList.dataset.state === signature) return;
     el.savesList.dataset.state = signature;
     el.savesList.replaceChildren(
@@ -348,8 +352,25 @@
         info.append(name, detail);
         actions.className = 'save-actions';
         const open = document.createElement('button'),
+          exporter = document.createElement('button'),
           remove = document.createElement('button');
-        open.type = remove.type = 'button';
+        open.type = exporter.type = remove.type = 'button';
+        // The latest Hoop Land file for this save, to put back into the game.
+        exporter.textContent = 'Export';
+        exporter.setAttribute('aria-label', `Export ${save.name}`);
+        exporter.title = save.file
+          ? `Download ${save.file.name} to load back into Hoop Land`
+          : 'Update this save to keep its file';
+        exporter.hidden = !save.file;
+        exporter.disabled = state.busy || !state.ready;
+        exporter.addEventListener('click', () =>
+          window.HoopWireShare.deliver(exporter, () => savedFile(save), save.name, `Export ${save.name}`).catch(
+            error => {
+              el.noticeText.textContent = error.message;
+              el.noticeDialog.showModal();
+            }
+          )
+        );
         open.textContent = 'Open';
         open.setAttribute('aria-label', `Open ${save.name}`);
         remove.textContent = 'Delete';
@@ -358,7 +379,7 @@
         open.disabled = remove.disabled = state.busy || !state.ready;
         open.addEventListener('click', () => openSave(save));
         remove.addEventListener('click', () => deleteSave(save));
-        actions.append(open, remove);
+        actions.append(open, exporter, remove);
         item.append(info, actions);
         return item;
       })
@@ -388,11 +409,12 @@
   function deleteSave(save) {
     confirmAction(
       `Delete “${save.name}”?`,
-      'This removes its stories, images, box scores, player pages and TV episodes from this browser. Export a backup first if you want to keep a copy.',
+      'This removes its stories, images, box scores, player pages, TV episodes and its copy of your Hoop Land file from this browser. Export the save first if you might want the file back.',
       'Delete save',
       async () => {
         for (const id of save.leagueIds) await archive.reset(id);
         await archive.remove('saves', [save.id]);
+        await archive.remove('savefiles', [save.id]);
         if (state.save?.id === save.id) {
           state.save = null;
           state.raw = null;
@@ -847,6 +869,23 @@
       return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from “${save.name}”.`;
     return null;
   }
+  // The exact Hoop Land file, compressed, so it can be handed back to the game byte for byte.
+  async function packSaveFile(file) {
+    const bytes = await file.arrayBuffer();
+    if (typeof CompressionStream !== 'function') return { data: bytes, gzip: false };
+    const data = await new Response(
+      new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))
+    ).arrayBuffer();
+    return { data, gzip: true };
+  }
+  async function savedFile(save) {
+    const record = await archive.get('savefiles', save.id);
+    if (!record) throw new Error(`“${save.name}” has no saved file yet. Update it once to keep a copy.`);
+    const bytes = record.gzip
+      ? await new Response(new Blob([record.data]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
+      : record.data;
+    return new File([bytes], record.name, { type: record.type || 'application/octet-stream' });
+  }
   async function loadSave(file, parsed, save) {
     status('Loading the save and preparing the HoopWire TV studio…');
     for (const league of parsed.seasonLeagues) league.studioId = C.leagueId(league);
@@ -918,8 +957,10 @@
       }
     }
     const now = new Date().toISOString(),
+      packed = await packSaveFile(file),
       record = {
         ...save,
+        file: { name: file.name, size: file.size, savedAt: now },
         mode: modeOf(parsed.seasonLeagues[0]),
         tags: parsed.seasonLeagues.map(C.leagueId),
         leagueIds: state.scope,
@@ -932,6 +973,7 @@
       leagues,
       profiles,
       saves: [record],
+      savefiles: [{ id: record.id, name: file.name, type: file.type, size: file.size, savedAt: now, ...packed }],
       meta: [{ id: 'active-save', save: record.id }],
     });
     state.save = record;

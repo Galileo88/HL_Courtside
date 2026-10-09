@@ -71,6 +71,39 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const first = await archived();
     assert.deepEqual(first.saves, [{ name: 'Test League', mode: 1, ids: ['hw-samplepro', 'hw-samplecollege'] }]);
 
+    // The save keeps the exact file, compressed, and Export hands it back byte for byte.
+    const stored = await page.evaluate(async () => {
+      const a = await new HoopWireArchive().open();
+      try {
+        const [file] = await a.all('savefiles');
+        return { name: file.name, gzip: file.gzip, bytes: file.data.byteLength };
+      } finally {
+        a.db.close();
+      }
+    });
+    const original = Buffer.from(JSON.stringify(base));
+    assert.equal(stored.name, 'league.json');
+    assert.ok(stored.gzip && stored.bytes < original.length / 5, `stored in ${stored.bytes} bytes`);
+    await page.evaluate(() => (location.hash = '#welcome'));
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('.saves-list button[aria-label="Export Test League"]'),
+    ]);
+    assert.equal(download.suggestedFilename(), 'league.json');
+    assert.ok(fs.readFileSync(await download.path()).equals(original), 'the exported file is identical');
+    // A backup carries the file too.
+    assert.equal(
+      await page.evaluate(async () => {
+        const a = await new HoopWireArchive().open();
+        try {
+          return (await a.exportData()).savefiles.length;
+        } finally {
+          a.db.close();
+        }
+      }),
+      1
+    );
+
     // The welcome screen now updates the open save, and lists it.
     await welcome();
     assert.equal(await page.locator('#loadTitle').textContent(), 'Update save');
@@ -155,7 +188,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     assert.equal(after.counts['hw-samplepro'], updated.counts['hw-samplepro']);
     assert.deepEqual(errors, []);
     console.log(
-      'Save checks passed: named saves, refused untagged, different-mode, different-league and duplicate files, updates through an expansion, open without the file, reload and delete.'
+      'Save checks passed: named saves, export of the original file, refused untagged, different-mode, different-league and duplicate files, updates through an expansion, open without the file, reload and delete.'
     );
   } finally {
     await browser.close();

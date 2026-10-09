@@ -1,7 +1,7 @@
 /* Atomic browser archive; blobs stay outside localStorage. */
 (() => {
   'use strict';
-  const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles', 'saves'];
+  const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles', 'saves', 'savefiles'];
   // iOS Safari keeps Blobs stored in IndexedDB as separate files and can lose them while the app sits
   // idle, which leaves broken images after a reload. Image bytes are stored inside the record instead
   // and come back as Blobs when read.
@@ -41,9 +41,9 @@
     });
   class Archive {
     async open() {
-      // Version 2 adds player, coach and team profiles, version 3 named saves; older archives keep
-      // everything else.
-      const req = indexedDB.open('hoopwire.daily.v1', 3);
+      // Version 2 adds player, coach and team profiles, version 3 named saves, version 4 a copy of
+      // each save's file; older archives keep everything else.
+      const req = indexedDB.open('hoopwire.daily.v1', 4);
       req.onupgradeneeded = () => {
         for (const name of STORES)
           if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name, { keyPath: 'id' });
@@ -107,7 +107,8 @@
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error || new Error('Archive reset failed.'));
         tx.onabort = () => reject(tx.error || new Error('Archive reset was aborted.'));
-        for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves']) tx.objectStore(name).clear();
+        for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves', 'savefiles'])
+          tx.objectStore(name).clear();
         tx.objectStore('meta').delete('active-save');
         // Keep the original recovery copy without re-importing reset coverage.
         tx.objectStore('meta').put({ id: 'legacy-migrated', date: new Date().toISOString() });
@@ -191,6 +192,7 @@
             delete studio.backdropBlob;
           }
         }
+      const saves = (await this.all('saves')).filter(s => !fingerprint || s.leagueIds.includes(fingerprint));
       return {
         format: 'hoopwire-daily',
         version: 1,
@@ -198,7 +200,13 @@
         snapshots: (await this.all('snapshots')).filter(s => !fingerprint || s.fingerprint === fingerprint),
         leagues,
         profiles: (await this.all('profiles')).filter(p => !fingerprint || p.fingerprint === fingerprint),
-        saves: (await this.all('saves')).filter(s => !fingerprint || s.leagueIds.includes(fingerprint)),
+        saves,
+        // The Hoop Land file behind each save, so a backup can give it back to the game.
+        savefiles: await Promise.all(
+          (await this.all('savefiles'))
+            .filter(f => saves.some(s => s.id === f.id))
+            .map(async ({ data, ...file }) => ({ ...file, data: await encodeImage(new Blob([data])) }))
+        ),
       };
     }
     async importData(data) {
@@ -278,8 +286,18 @@
         )
       )
         throw new Error('Backup contains an invalid save.');
+      data.savefiles ||= [];
+      if (
+        !Array.isArray(data.savefiles) ||
+        data.savefiles.some(
+          f => typeof f?.id !== 'string' || typeof f.name !== 'string' || !/^data:[^,]*;base64,/.test(f.data || '')
+        )
+      )
+        throw new Error('Backup contains an invalid save file.');
+      for (const file of data.savefiles)
+        file.data = Uint8Array.from(atob(file.data.split(',')[1]), c => c.charCodeAt(0)).buffer;
       const records = {};
-      for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves']) {
+      for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves', 'savefiles']) {
         const ids = new Set((await this.all(name)).map(r => r.id));
         const seen = new Set();
         records[name] = data[name].filter(r => {
