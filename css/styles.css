@@ -851,50 +851,6 @@ body.entry-screen {
   outline: 3px solid white;
   outline-offset: 5px;
 }
-.save-folder {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid #ffffff1f;
-}
-.entry-screen .save-folder .text-action {
-  padding: 0;
-  background: none;
-  border: 0;
-  color: #79fff4;
-  font-size: 14px;
-}
-.entry-screen .save-folder .text-action:hover:not(:disabled) {
-  text-decoration: underline;
-}
-.save-folder-hint {
-  margin: 6px 0 0;
-  color: #9db4cf;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.save-folder-hint code {
-  color: #d9e5f0;
-  overflow-wrap: anywhere;
-}
-.save-slots {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-}
-.entry-screen .save-slots button {
-  text-align: left;
-  font-size: 13px;
-}
-#saveFolderKnown {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
-}
-.save-folder-name {
-  color: #9db4cf;
-  font-size: 13px;
-}
 .entry-screen #fileName {
   color: #abc8e6;
   font-size: 12px;
