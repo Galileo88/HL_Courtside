@@ -26,6 +26,17 @@
       'siteMenuButton',
       'siteMenu',
       'menuUploadSave',
+      'loadTitle',
+      'loadText',
+      'saveNameField',
+      'saveName',
+      'cancelNewSave',
+      'savesCard',
+      'savesList',
+      'newSaveButton',
+      'noticeDialog',
+      'noticeText',
+      'noticeOk',
       'resetArchive',
       'resetDialog',
       'resetTitle',
@@ -49,6 +60,10 @@
   );
   const state = {
     scope: null,
+    // Named saves; the open one decides which leagues the newsroom shows.
+    saves: [],
+    save: null,
+    creating: false,
     raw: null,
     leagueIndex: 0,
     stories: new Map(),
@@ -239,6 +254,7 @@
     }
     for (const tab of el.archiveLeagueSwitch.querySelectorAll('button')) tab.disabled = state.busy || !state.ready;
     el.menuUploadSave.disabled = state.busy || !state.ready;
+    saveControls();
     options(
       el.newsroomLeague,
       (state.raw?.seasonLeagues || []).map((l, i) => [i, l.leagueName || `League ${i + 1}`]),
@@ -283,6 +299,113 @@
     for (const item of [el.archiveLeague, el.archiveSeason, el.archiveDay])
       item.disabled = state.busy || !item.options.length;
   }
+  // The welcome screen: update the open save, or name a new one; and the list of saves.
+  function saveControls() {
+    const creating = state.creating || !state.save;
+    el.loadTitle.textContent = creating ? 'New save' : 'Update save';
+    el.loadText.textContent = creating
+      ? 'Name your save, then choose your Hoop Land save file. Full coverage is created automatically.'
+      : `Upload the latest file for “${state.save.name}” to add new stories.`;
+    el.saveNameField.hidden = !creating;
+    el.cancelNewSave.hidden = !(creating && state.save);
+    el.newSaveButton.hidden = creating;
+    el.savesCard.hidden = !state.saves.length;
+    for (const button of [el.cancelNewSave, el.newSaveButton]) button.disabled = state.busy || !state.ready;
+    const counts = new Map();
+    for (const story of state.stories.values()) counts.set(story.fingerprint, (counts.get(story.fingerprint) || 0) + 1);
+    const items = state.saves.map(save => {
+      const league = state.leagues.find(l => l.id === save.leagueIds[0]),
+        stories = save.leagueIds.reduce((sum, id) => sum + (counts.get(id) || 0), 0);
+      return {
+        save,
+        meta: [
+          modeName(save.mode),
+          save.leagueIds
+            .map((id, i) => state.leagues.find(l => l.id === id)?.shortName || save.leagueNames?.[i])
+            .filter(Boolean)
+            .join(', '),
+          league?.asOf && `${league.asOf.season} · Day ${league.asOf.day}`,
+          `${stories} ${stories === 1 ? 'story' : 'stories'}`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      };
+    });
+    const signature = JSON.stringify([items.map(i => [i.save.id, i.save.name, i.meta]), state.save?.id, state.busy]);
+    if (el.savesList.dataset.state === signature) return;
+    el.savesList.dataset.state = signature;
+    el.savesList.replaceChildren(
+      ...items.map(({ save, meta }) => {
+        const item = document.createElement('li'),
+          info = document.createElement('div'),
+          name = document.createElement('strong'),
+          detail = document.createElement('span'),
+          actions = document.createElement('div');
+        item.classList.toggle('is-current', save.id === state.save?.id);
+        info.className = 'save-info';
+        name.textContent = save.name;
+        detail.textContent = meta;
+        info.append(name, detail);
+        actions.className = 'save-actions';
+        const open = document.createElement('button'),
+          remove = document.createElement('button');
+        open.type = remove.type = 'button';
+        open.textContent = 'Open';
+        open.setAttribute('aria-label', `Open ${save.name}`);
+        remove.textContent = 'Delete';
+        remove.className = 'danger';
+        remove.setAttribute('aria-label', `Delete ${save.name}`);
+        open.disabled = remove.disabled = state.busy || !state.ready;
+        open.addEventListener('click', () => openSave(save));
+        remove.addEventListener('click', () => deleteSave(save));
+        actions.append(open, remove);
+        item.append(info, actions);
+        return item;
+      })
+    );
+  }
+  function openSave(save) {
+    run(async () => {
+      state.save = save;
+      state.raw = null;
+      state.leagueIndex = 0;
+      state.creating = false;
+      el.fileName.textContent = 'No save loaded';
+      await archive.write({ meta: [{ id: 'active-save', save: save.id }] });
+      await readArchive();
+      archiveNavigation();
+      location.hash = '#newsroom';
+    });
+  }
+  let pendingConfirm = null;
+  function confirmAction(title, text, label, action) {
+    el.resetTitle.textContent = title;
+    el.resetDescription.textContent = text;
+    el.confirmReset.textContent = label;
+    pendingConfirm = action;
+    el.resetDialog.showModal();
+  }
+  function deleteSave(save) {
+    confirmAction(
+      `Delete “${save.name}”?`,
+      'This removes its stories, images, box scores, player pages and TV episodes from this browser. Export a backup first if you want to keep a copy.',
+      'Delete save',
+      async () => {
+        for (const id of save.leagueIds) await archive.reset(id);
+        await archive.remove('saves', [save.id]);
+        if (state.save?.id === save.id) {
+          state.save = null;
+          state.raw = null;
+          el.fileName.textContent = 'No save loaded';
+          await archive.remove('meta', ['active-save']);
+        }
+        await readArchive();
+        archiveNavigation();
+        view();
+        status(`Deleted “${save.name}”.`);
+      }
+    );
+  }
   async function run(action) {
     if (state.busy) return;
     state.busy = true;
@@ -292,7 +415,11 @@
       await action();
     } catch (error) {
       failed = true;
-      status(`${error.message} Nothing was confirmed as archived. Your existing archive has been retained.`);
+      if (error instanceof SaveRejected) {
+        el.noticeText.textContent = error.message;
+        el.noticeDialog.showModal();
+        el.status.classList.add('hidden');
+      } else status(`${error.message} Nothing was confirmed as archived. Your existing archive has been retained.`);
     } finally {
       state.busy = false;
       controls();
@@ -350,10 +477,13 @@
     state.stories = new Map(stories.map(s => [s.id, s]));
     state.snapshots = new Map(snapshots.map(s => [s.id, s]));
     state.leagues = leagues;
-    if (state.scope === null) {
-      const saved = await archive.get('meta', 'active-leagues');
-      if (Array.isArray(saved?.ids)) state.scope = saved.ids;
+    state.saves = (await archive.all('saves')).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    if (state.save) state.save = state.saves.find(s => s.id === state.save.id) || null;
+    else if (!state.raw) {
+      const active = await archive.get('meta', 'active-save');
+      state.save = state.saves.find(s => s.id === active?.save) || null;
     }
+    state.scope = state.save ? state.save.leagueIds : [];
   }
   function options(select, items, preferred) {
     select.replaceChildren();
@@ -682,32 +812,44 @@
       ? ` ${count} custom court ${count === 1 ? 'image could' : 'images could'} not load; saved court layouts were used.`
       : '';
   }
-  // The archive an uploaded league belongs to. The first time a Studio ID shows up, the league takes
-  // over the archive it already had, so its earlier coverage stays with it. Commissioner, career
-  // and franchise saves of the same league never share one.
-  function archiveId(league, id) {
-    const plain = C.buildFingerprint({ ...league, commissioner: null });
-    if (!id) return plain;
-    const mode = C.gameMode(league);
-    const known =
-      state.leagues.find(l => l.studioId === id && (l.mode || null) === mode) ||
-      state.leagues.find(l => l.id === plain && !l.studioId);
-    return known?.id || (mode ? `${id}-${mode}` : id);
-  }
   const archiveName = l =>
     l.mode === 'career' ? `${l.name} (Career)` : l.mode === 'franchise' ? `${l.name} (Franchise)` : l.name;
-  async function loadSave(file) {
-    status('Loading the save and preparing the HoopWire TV studio…');
-    const parsed = JSON.parse(await file.text());
-    C.assertSave(parsed);
-    // Two leagues in one save never share an archive, even if they carry the same ID.
-    const claimed = new Set();
-    for (const league of parsed.seasonLeagues) {
-      const id = C.leagueId(league);
-      league.studioId = claimed.has(id) ? null : id;
-      league.archiveId = archiveId(league, league.studioId);
-      claimed.add(id);
+  // Hoop Land's game modes, by the number a save stores in season.mode.
+  const MODES = { 0: 'Franchise', 1: 'Commissioner', 2: 'Career' };
+  const modeOf = league => (Number.isInteger(league?.season?.mode) ? league.season.mode : 1),
+    modeName = mode => MODES[mode] || 'Franchise';
+  class SaveRejected extends Error {}
+  // Why a file can't start a new save, or update the open one; nothing when it can.
+  function saveProblem(parsed, save) {
+    const leagues = parsed.seasonLeagues,
+      tags = leagues.map(C.leagueId),
+      mode = modeOf(leagues[0]);
+    const untagged = leagues.find(l => !C.leagueId(l));
+    if (untagged)
+      return `${untagged.leagueName || 'A league in this file'} has no HoopWire tag. Export the league from Hoop League Studio, start your game from that file, then upload the save here.`;
+    if (new Set(tags).size !== tags.length)
+      return 'Two leagues in this file have the same HoopWire tag. Export each league from Hoop League Studio so each gets its own.';
+    if (!save) {
+      const ids = leagues.map(l => C.buildFingerprint(l)),
+        taken = state.saves.find(s => s.leagueIds.some(id => ids.includes(id)));
+      const league = taken && leagues[ids.findIndex(id => taken.leagueIds.includes(id))];
+      return taken
+        ? `“${taken.name}” already covers ${league.leagueName || 'this league'} in ${modeName(mode)} mode. Open it from Your saves to update it, or delete it to start over.`
+        : null;
     }
+    if (mode !== save.mode)
+      return `This is a ${modeName(mode)} save, but “${save.name}” is a ${modeName(save.mode)} save.`;
+    const stranger = leagues.find(l => !save.tags.includes(C.leagueId(l)));
+    if (stranger)
+      return `${stranger.leagueName || 'A league in this file'} isn’t part of “${save.name}”. Its HoopWire tag doesn’t match, so this file is from a different save.`;
+    const missing = save.tags.findIndex(t => !tags.includes(t));
+    if (missing >= 0)
+      return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from “${save.name}”.`;
+    return null;
+  }
+  async function loadSave(file, parsed, save) {
+    status('Loading the save and preparing the HoopWire TV studio…');
+    for (const league of parsed.seasonLeagues) league.studioId = C.leagueId(league);
     state.raw = parsed;
     state.leagueIndex = 0;
     state.scope = parsed.seasonLeagues.map(C.buildFingerprint);
@@ -775,7 +917,25 @@
         );
       }
     }
-    await archive.write({ snapshots, leagues, profiles, meta: [{ id: 'active-leagues', ids: state.scope }] });
+    const now = new Date().toISOString(),
+      record = {
+        ...save,
+        mode: modeOf(parsed.seasonLeagues[0]),
+        tags: parsed.seasonLeagues.map(C.leagueId),
+        leagueIds: state.scope,
+        leagueNames: parsed.seasonLeagues.map(l => l.leagueName || 'League'),
+        createdAt: save.createdAt || now,
+        updatedAt: now,
+      };
+    await archive.write({
+      snapshots,
+      leagues,
+      profiles,
+      saves: [record],
+      meta: [{ id: 'active-save', save: record.id }],
+    });
+    state.save = record;
+    state.creating = false;
     state.raw = parsed;
     state.leagueIndex = 0;
     el.fileName.textContent = file.name;
@@ -1854,21 +2014,38 @@
     controls();
   }
   el.resetArchive.addEventListener('click', () => {
-    el.resetTitle.textContent = 'Reset the archive?';
-    el.resetDescription.textContent =
-      'This removes every league’s saved stories, images, box scores, and TV episodes from this browser, pro and college alike. Export a backup first if you want to keep a copy.';
-    el.resetDialog.showModal();
+    confirmAction(
+      'Reset the archive?',
+      'This removes every save and every league’s stories, images, box scores, and TV episodes from this browser, pro and college alike. Export a backup first if you want to keep a copy.',
+      'Reset archive',
+      async () => {
+        await archive.resetAll();
+        state.save = null;
+        state.raw = null;
+        await readArchive();
+        archiveNavigation();
+        view();
+        status('Archive reset. Every save was cleared.');
+      }
+    );
   });
   el.cancelReset.addEventListener('click', () => el.resetDialog.close());
   el.confirmReset.addEventListener('click', () => {
     el.resetDialog.close();
-    run(async () => {
-      await archive.resetAll();
-      await readArchive();
-      archiveNavigation();
-      view();
-      status('Archive reset. Every league was cleared.');
-    });
+    const action = pendingConfirm;
+    pendingConfirm = null;
+    if (action) run(action);
+  });
+  el.noticeOk.addEventListener('click', () => el.noticeDialog.close());
+  el.newSaveButton.addEventListener('click', () => {
+    state.creating = true;
+    controls();
+    el.saveName.focus();
+  });
+  el.cancelNewSave.addEventListener('click', () => {
+    state.creating = false;
+    el.saveName.value = '';
+    controls();
   });
   el.newsroomLeague.addEventListener('change', () => {
     state.leagueIndex = Number(el.newsroomLeague.value);
@@ -1886,7 +2063,11 @@
   });
   el.menuUploadSave.addEventListener('click', () => {
     siteMenu(false);
-    el.saveFile.click();
+    if (state.save) {
+      state.creating = false;
+      controls();
+      el.saveFile.click();
+    } else location.hash = '#welcome';
   });
   document.addEventListener('click', event => {
     if (!el.siteMenu.hidden && !event.target.closest('.site-menu')) siteMenu(false);
@@ -1898,10 +2079,29 @@
     }
   });
   window.addEventListener('hashchange', () => siteMenu(false));
+  // A file either starts a new save, named on the welcome screen, or updates the open one.
   el.saveFile.addEventListener('change', () => {
-    const file = el.saveFile.files[0];
-    if (file) run(() => loadSave(file));
+    const file = el.saveFile.files[0],
+      creating = state.creating || !state.save;
     el.saveFile.value = '';
+    if (!file) return;
+    run(async () => {
+      const parsed = JSON.parse(await file.text());
+      C.assertSave(parsed);
+      const problem = saveProblem(parsed, creating ? null : state.save);
+      if (problem) throw new SaveRejected(problem);
+      const first = parsed.seasonLeagues[0];
+      const save = creating
+        ? {
+            id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            name:
+              el.saveName.value.trim() ||
+              `${first.shortName || first.leagueName || 'League'} ${modeName(modeOf(first))}`,
+          }
+        : state.save;
+      await loadSave(file, parsed, save);
+      el.saveName.value = '';
+    });
   });
   el.archiveLeague.addEventListener('change', () => archiveNavigation(el.archiveLeague.value, '', ''));
   el.archiveSeason.addEventListener('change', () =>
@@ -1948,11 +2148,29 @@
         run(async () => {
           const data = JSON.parse(await file.text());
           const count = await archive.importData(data);
-          if (!state.raw) {
-            state.scope = data.leagues.map(l => l.id);
-            await archive.write({ meta: [{ id: 'active-leagues', ids: state.scope }] });
-          }
           await readArchive();
+          // A backup opens as a save; one from before saves existed becomes one.
+          if (!state.save && data.leagues.length) {
+            let save = state.saves.find(s => s.leagueIds.some(id => data.leagues.some(l => l.id === id)));
+            if (!save) {
+              const now = new Date().toISOString(),
+                kind = data.leagues[0].mode;
+              save = {
+                id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                name: data.leagues[0].shortName || data.leagues[0].name,
+                mode: kind === 'career' ? 2 : kind === 'franchise' ? 0 : 1,
+                tags: data.leagues.map(l => l.studioId || l.id),
+                leagueIds: data.leagues.map(l => l.id),
+                leagueNames: data.leagues.map(l => l.name),
+                createdAt: now,
+                updatedAt: now,
+              };
+              await archive.write({ saves: [save] });
+            }
+            await archive.write({ meta: [{ id: 'active-save', save: save.id }] });
+            state.save = save;
+            await readArchive();
+          }
           archiveNavigation();
           controls();
           status(`Imported ${count} stories. Existing archived records were preserved.`);

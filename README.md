@@ -32,10 +32,19 @@ You can also back up your archive to a file and load it again later.
 ## How to use it
 
 1. Open HoopWire.
-2. Click **Choose save** and pick your Hoop Land save file.
-3. Read the news, watch HoopWire TV, and explore the archive.
+2. Type a name for your save, like "My Dynasty".
+3. Click **Choose save** and pick your Hoop Land save file.
+4. Read the news, watch HoopWire TV, and explore the archive.
 
-Keep playing your league and load your new save whenever you want fresh stories.
+Keep playing, then use **Update save** in the menu and pick your newest save file to get fresh stories.
+
+**Your saves.** HoopWire remembers every save you start. Open any of them from the main screen without picking
+the file again, or delete one you're done with. A career, a franchise and a commissioner game each get their own
+save, so their stories never mix.
+
+**HoopWire tags.** Each league in your save needs a HoopWire tag, so HoopWire can tell your saves apart. Export
+your league from Hoop League Studio, start your game from that file, and the tag comes with it. If you pick a file
+that doesn't match the save you have open, HoopWire tells you why and doesn't change anything.
 
 ## Put HoopWire on your Home Screen
 

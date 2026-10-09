@@ -841,3 +841,119 @@ body {
 .entry-screen #fileName {
   text-align: center;
 }
+
+/* Named saves on the welcome screen. */
+.save-name {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 14px;
+  text-align: left;
+}
+.save-name span {
+  color: var(--hw-muted);
+  font: 800 11px var(--hw-font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.save-name input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--hw-line);
+  border-radius: 4px;
+  background: var(--hw-panel-deep);
+  color: var(--hw-text);
+  font: 600 16px var(--hw-font-ui);
+}
+.save-name input:focus {
+  outline: 2px solid var(--hw-accent);
+  outline-offset: 1px;
+}
+.entry-screen .load-card .text-action {
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 700;
+}
+.menu-grid:has(.saves-card:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 440px;
+  gap: 18px;
+}
+.entry-screen .saves-card {
+  min-height: 0;
+  align-items: stretch;
+  text-align: left;
+}
+.saves-card h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+.saves-list {
+  display: grid;
+  gap: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.saves-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hw-line);
+}
+.saves-list li.is-current .save-info strong::after {
+  content: 'Current';
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--hw-accent);
+  color: #062b33;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+.save-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.save-info strong {
+  color: var(--hw-text);
+  font: 800 16px var(--hw-font-ui);
+  overflow-wrap: anywhere;
+}
+.save-info span {
+  color: var(--hw-muted);
+  font: 700 11px var(--hw-font-ui);
+  letter-spacing: 0.04em;
+}
+.save-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.entry-screen .save-actions button {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.entry-screen .save-actions button.danger {
+  background: transparent;
+  border-color: #7a2a35;
+  color: #ff9aa6;
+}
+.entry-screen .new-save {
+  align-self: flex-start;
+  padding: 8px 12px;
+  font-weight: 800;
+}
+#noticeDialog p {
+  max-width: 34em;
+  line-height: 1.5;
+}

@@ -1,7 +1,7 @@
 /* Atomic browser archive; blobs stay outside localStorage. */
 (() => {
   'use strict';
-  const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles'];
+  const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles', 'saves'];
   // iOS Safari keeps Blobs stored in IndexedDB as separate files and can lose them while the app sits
   // idle, which leaves broken images after a reload. Image bytes are stored inside the record instead
   // and come back as Blobs when read.
@@ -41,8 +41,9 @@
     });
   class Archive {
     async open() {
-      // Version 2 adds player, coach and team profiles; older archives keep everything else.
-      const req = indexedDB.open('hoopwire.daily.v1', 2);
+      // Version 2 adds player, coach and team profiles, version 3 named saves; older archives keep
+      // everything else.
+      const req = indexedDB.open('hoopwire.daily.v1', 3);
       req.onupgradeneeded = () => {
         for (const name of STORES)
           if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name, { keyPath: 'id' });
@@ -106,7 +107,8 @@
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error || new Error('Archive reset failed.'));
         tx.onabort = () => reject(tx.error || new Error('Archive reset was aborted.'));
-        for (const name of ['stories', 'snapshots', 'leagues', 'profiles']) tx.objectStore(name).clear();
+        for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves']) tx.objectStore(name).clear();
+        tx.objectStore('meta').delete('active-save');
         // Keep the original recovery copy without re-importing reset coverage.
         tx.objectStore('meta').put({ id: 'legacy-migrated', date: new Date().toISOString() });
       });
@@ -196,6 +198,7 @@
         snapshots: (await this.all('snapshots')).filter(s => !fingerprint || s.fingerprint === fingerprint),
         leagues,
         profiles: (await this.all('profiles')).filter(p => !fingerprint || p.fingerprint === fingerprint),
+        saves: (await this.all('saves')).filter(s => !fingerprint || s.leagueIds.includes(fingerprint)),
       };
     }
     async importData(data) {
@@ -262,8 +265,21 @@
           }
         }
       }
+      // Backups made before named saves existed have none.
+      data.saves ||= [];
+      if (
+        !Array.isArray(data.saves) ||
+        data.saves.some(
+          s =>
+            typeof s?.id !== 'string' ||
+            typeof s.name !== 'string' ||
+            !Array.isArray(s.leagueIds) ||
+            !Array.isArray(s.tags)
+        )
+      )
+        throw new Error('Backup contains an invalid save.');
       const records = {};
-      for (const name of ['stories', 'snapshots', 'leagues', 'profiles']) {
+      for (const name of ['stories', 'snapshots', 'leagues', 'profiles', 'saves']) {
         const ids = new Set((await this.all(name)).map(r => r.id));
         const seen = new Set();
         records[name] = data[name].filter(r => {
