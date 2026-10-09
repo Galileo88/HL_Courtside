@@ -33,23 +33,24 @@
       return null;
     }
   }
-  // Before a career starts, the game asks how the player wants to be remembered; the answer is saved as
-  // the player's potential. Coverage quotes the answer, the way a reporter would.
+  // Before a career starts, the game asks how the player wants to be remembered and saves the answer as
+  // the player's potential. These are the game's three answers, word for word (with the word the game's
+  // Hall of Fame line drops), so coverage quotes exactly what the player said.
   const goals = {
     10: {
-      quote: 'I want to be remembered as the greatest player of all time.',
-      goal: 'the greatest player of all time',
+      quote: 'I will be known as the greatest player to ever play the game of basketball.',
+      goal: 'the greatest player to ever play the game',
       headline: n => `${n} wants to be the greatest of all time`,
     },
     9: {
-      quote: 'I want to be a first-ballot Hall of Famer.',
-      goal: 'a first-ballot Hall of Famer',
+      quote: 'I will be known as one of the best Hall of Famers of all time.',
+      goal: 'one of the best Hall of Famers of all time',
       headline: n => `${n} sets sights on the Hall of Fame`,
     },
     8: {
-      quote: 'I want to be an All-Star every year.',
-      goal: 'an All-Star every year',
-      headline: n => `${n} wants to be an All-Star every year`,
+      quote: 'I will be known as an All-Star year in and year out.',
+      goal: 'an All-Star year in and year out',
+      headline: n => `${n} wants to be an All-Star year in and year out`,
     },
   };
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
@@ -101,7 +102,7 @@
       .slice(0, 2);
   }
 
-  function candidates(league) {
+  function showcaseStories(league) {
     const career = careerPlayer(league),
       showcase = upcomingShowcase(league);
     if (!career || !showcase) return [];
@@ -352,5 +353,237 @@
     });
     return result;
   }
-  return { candidates, careerPlayer, upcomingShowcase };
+  // Hoop Gram replies. A post in the player's feed is about something (Hoop Land's post kinds), and
+  // when the player answers it the save keeps how (the game's reply kinds). The exact words are picked
+  // at random from a set and not saved, so coverage reports what the player did, not a quote.
+  const POST = {
+    showcase: 1,
+    showcaseResults: 2,
+    recruitment: 3,
+    playerOfTheGame: 4,
+    teamWin: 5,
+    teamLoss: 6,
+    opponentWin: 7,
+    opponentLoss: 8,
+  };
+  const REPLY = {
+    positive: 1,
+    negative: 2,
+    creditTeammate: 3,
+    creditCoach: 4,
+    creditTeam: 5,
+    creditFans: 6,
+    callOutTeammate: 7,
+    callOutCoach: 8,
+    callOutTeam: 9,
+    callOutFans: 10,
+  };
+  // The strongest reply leads when the player answered several posts about one game.
+  const weight = r => (r >= REPLY.callOutTeammate ? 3 : r >= REPLY.creditTeammate ? 2 : 1);
+  function replyStories(league) {
+    const career = careerPlayer(league);
+    if (!career) return [];
+    const { player } = career,
+      lookup = C.buildLookups(league),
+      fp = C.buildFingerprint(league),
+      year = C.seasonYear(league);
+    const answered = (league.season?.posts || []).filter(
+      x => Number.isInteger(x.responseType) && x.responseType > 0 && Object.values(POST).includes(x.contentType)
+    );
+    const name = C.playerDisplay(player),
+      last = player.ln || C.surname(name),
+      he = C.pronoun(player),
+      his = he === 'she' ? 'her' : he === 'he' ? 'his' : C.possessive(last),
+      him = he === 'she' ? 'her' : he === 'he' ? 'him' : last;
+    const groups = new Map();
+    for (const post of answered) {
+      const key = post.gid > 0 ? `game-${post.gid}` : `${post.contentType}-${post.day}-${post.team?.id ?? 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(post);
+    }
+    const result = [];
+    for (const [key, posts] of groups) {
+      const post = [...posts].sort((a, b) => weight(b.responseType) - weight(a.responseType) || a.day - b.day)[0],
+        reply = post.responseType,
+        kind = post.contentType;
+      const played = post.gid > 0 ? lookup.completed.find(x => x.game.gId === post.gid) : null,
+        game = played?.game;
+      const mine =
+        (game &&
+          [game.homeTeam, game.awayTeam]
+            .map(id => lookup.teams.get(id))
+            .find(t => t?.roster?.some(p => p.id === player.id))) ||
+        career.team;
+      const other = game ? lookup.teams.get(game.homeTeam === mine?.id ? game.awayTeam : game.homeTeam) : null;
+      const pitched = kind === POST.recruitment ? lookup.teams.get(post.team?.id) || null : null;
+      // A recruiting reply needs the school; a game reply needs the game.
+      if ((kind === POST.recruitment && !pitched) || ([4, 5, 6, 7, 8].includes(kind) && !(game && other))) continue;
+      const T = mine && C.teamRef(mine),
+        O = other && C.teamRef(other),
+        P = pitched && C.teamRef(pitched),
+        won = game ? game.winner === mine?.id : null;
+      // Winner's score first, win or lose.
+      const score = game && `${Math.max(game.homeScore, game.awayScore)}-${Math.min(game.homeScore, game.awayScore)}`;
+      const record = game && (game.homeTeam === mine?.id ? game.homeRecord : game.awayRecord);
+      const coach = C.coachForTeam(mine),
+        fan = post.author?.fanData,
+        city = mine?.city || T?.display;
+      // What the player did, as a reporter would put it: [headline verb phrase, story verb phrase].
+      const said = {
+        [REPLY.creditTeammate]: ['gives a teammate the credit', 'gave a teammate the credit'],
+        [REPLY.creditCoach]: coach
+          ? [`credits Coach ${C.playerDisplay(coach)}`, `credited Coach ${C.playerDisplay(coach)}`]
+          : [`credits ${his} coach`, `credited ${his} coach`],
+        [REPLY.creditTeam]: ['credits the whole roster', 'credited the whole roster'],
+        [REPLY.creditFans]: city
+          ? [`thanks the fans in ${city}`, `thanked the fans in ${city}`]
+          : ['thanks the fans', 'thanked the fans'],
+        [REPLY.callOutTeammate]: ['calls out a teammate', 'called out a teammate'],
+        [REPLY.callOutCoach]: ['questions the coaching staff', 'questioned the coaching staff'],
+        [REPLY.callOutTeam]: ['calls out the team', 'called out the team'],
+        [REPLY.callOutFans]: ['fires back at the fans', 'fired back at the fans'],
+      }[reply];
+      let headline, lead, label;
+      if (kind === POST.recruitment) {
+        // A school's pitch is answered with a yes, a no, thanks or a jab, whichever reply was picked.
+        const tone =
+          reply === REPLY.positive
+            ? [
+                `gives ${P.display} ${his} word`,
+                `answered ${C.possessive(P.full)} pitch on Hoop Gram and gave the program ${his} word`,
+                `gave ${his} word`,
+              ]
+            : reply === REPLY.negative
+              ? [
+                  `turns down ${P.display}`,
+                  `turned down ${P.full} on Hoop Gram and said ${he || last} would forge ${his} own path`,
+                  'turned it down',
+                ]
+              : weight(reply) === 2
+                ? [
+                    `thanks ${P.display} for the interest`,
+                    `answered ${C.possessive(P.full)} pitch on Hoop Gram with thanks but no promises`,
+                    'thanked them for the interest',
+                  ]
+                : [
+                    `fires back at ${P.display}`,
+                    `fired back at ${C.possessive(P.full)} pitch on Hoop Gram`,
+                    'fired back at the pitch',
+                  ];
+        headline = `${name} ${tone[0]}`;
+        lead = `${name} ${tone[1]}.`;
+        label = tone[2];
+      } else if (kind === POST.showcase || kind === POST.showcaseResults) {
+        const when = kind === POST.showcase ? 'ahead of the Koality Showcase' : 'after the Koality Showcase';
+        // Showcase teams are thrown together for one night, so credit goes to whoever got the player there.
+        const showcase = {
+          [REPLY.creditTeammate]: ['credits a Showcase teammate', 'credited a Showcase teammate'],
+          [REPLY.creditCoach]: [`credits the coaches who got ${him} here`, `credited the coaches who got ${him} here`],
+          [REPLY.creditTeam]: [`credits ${his} Showcase teammates`, `credited ${his} Showcase teammates`],
+          [REPLY.creditFans]: ['thanks the fans', 'thanked the fans'],
+        }[reply];
+        const tone =
+          reply === REPLY.positive
+            ? ['embraces the Koality Showcase spotlight', `embraced the Hoop Gram buzz ${when}`]
+            : reply === REPLY.negative
+              ? ['brushes off the Koality Showcase hype', `pushed back on the Hoop Gram buzz ${when}`]
+              : [`${(showcase || said)[0]} ${when}`, `${(showcase || said)[1]} on Hoop Gram ${when}`];
+        headline = `${name} ${tone[0]}`;
+        lead = `${name} ${tone[1]}.`;
+        label = tone[1].split(' on Hoop Gram')[0];
+      } else {
+        const rivals = kind === POST.opponentWin || kind === POST.opponentLoss;
+        const tone =
+          reply === REPLY.positive
+            ? rivals
+              ? [`shows ${O.display} fans respect`, 'showed the other side some respect']
+              : won
+                ? ['soaks it in', 'soaked in the win']
+                : [`keeps ${his} head up`, `kept ${his} head up`]
+            : reply === REPLY.negative
+              ? rivals
+                ? [`trades jabs with ${O.display} fans`, 'traded jabs with the other side']
+                : won
+                  ? [`answers ${his} critics`, `answered ${his} critics`]
+                  : ['deflects the blame', `said the loss was out of ${his} control`]
+              : rivals && reply === REPLY.callOutFans
+                ? [`fires back at ${O.display} fans`, 'fired back at the other side']
+                : said;
+        // The opponent is named once in a headline.
+        const after = tone[0].includes(O.display)
+          ? `${score} ${won ? 'win' : 'loss'}`
+          : `${score} ${won ? 'win over' : 'loss to'} ${O.display}`;
+        headline = `${name} ${tone[0]} after ${after}`;
+        lead = `${name} ${tone[1]} on Hoop Gram after ${C.possessive(T.full)} ${score} ${won ? 'win over' : 'loss to'} ${O.full}.`;
+        label = tone[1];
+      }
+      const also = posts.filter(x => x !== post && x.responseType !== reply).length;
+      const paragraphs = [
+        lead,
+        post.author?.type === FAN_POST && fan?.fn && fan?.ln
+          ? `${C.capitalize(he || last)} was answering a post from a fan, ${fan.fn} ${fan.ln}.`
+          : '',
+        game && Array.isArray(record) && record.length === 2 && kind !== POST.opponentWin && kind !== POST.opponentLoss
+          ? `The ${won ? 'win moved' : 'loss dropped'} ${T.full} to ${record[0]}-${record[1]}.`
+          : '',
+        also
+          ? `${C.capitalize(he || last)} also answered ${C.plural(also, 'other post')} about ${game ? 'the game' : 'it'}.`
+          : '',
+      ].filter(Boolean);
+      result.push({
+        story: {
+          id: `${fp}:${year}:season:career-reply-${key}`,
+          eventKey: `career-reply-${key}`,
+          kind: 'season',
+          type: 'Hoop Gram reply',
+          fingerprint: fp,
+          season: year,
+          day: Math.max(1, (played ? played.dayIndex : post.day) + 1),
+          templateVersion: 1,
+          editorialVersion: 1,
+          quotesEnabled: false,
+          leagueName: league.leagueName,
+          createdAt: new Date().toISOString(),
+          headline,
+          importance: weight(reply) === 3 ? 105 : 90,
+          paragraphs,
+          relatedTeams: [mine, other || pitched]
+            .filter(Boolean)
+            .map(t => ({ id: t.id, name: C.teamDisplay(t), logoURL: t.logoURL || null })),
+          seasonSnapshot: {
+            headers: ['Player', 'Team', 'Reply'],
+            rows: [[name, T ? T.display : '—', C.capitalize(label)]],
+            source: 'season.career',
+            reply: {
+              name,
+              last,
+              pronoun: he || null,
+              post: kind,
+              reply,
+              did: label,
+              team: T?.display || null,
+              opponent: O?.display || P?.display || null,
+              won,
+              score,
+            },
+          },
+        },
+        context: {
+          winner: game ? lookup.teams.get(game.winner) : mine,
+          loser: game
+            ? lookup.teams.get(game.winner === game.homeTeam ? game.awayTeam : game.homeTeam)
+            : other || pitched || mine,
+          home: game ? lookup.teams.get(game.homeTeam) : mine,
+          game: game || { homeTeam: mine?.id },
+          scenePlayer: player,
+          gameBall: league.gameballs?.[Number(league.settings?.gameBall) || 0],
+          sceneKind: 'interview',
+          interviewVariant: 'player-close-up',
+        },
+      });
+    }
+    return result;
+  }
+  const candidates = league => [...showcaseStories(league), ...replyStories(league)];
+  return { candidates, careerPlayer, upcomingShowcase, POST, REPLY };
 });

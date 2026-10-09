@@ -32,9 +32,8 @@ You can also back up your archive to a file and load it again later.
 ## How to use it
 
 1. Open HoopWire.
-2. Type a name for your save, like "My Dynasty".
-3. Click **Choose save** and pick your Hoop Land save file.
-4. Read the news, watch HoopWire TV, and explore the archive.
+2. Click **Choose save** and pick your Hoop Land save file. The save is named after your league.
+3. Read the news, watch HoopWire TV, and explore the archive.
 
 Keep playing, then use **Update save** in the menu and pick your newest save file to get fresh stories.
 

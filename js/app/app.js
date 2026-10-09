@@ -4,7 +4,7 @@
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
   // Raise when story wording changes, so stories from the loaded save are rewritten.
-  const PROSE_EDITION = 2;
+  const PROSE_EDITION = 4;
   const el = Object.fromEntries(
     [
       'saveFile',
@@ -28,8 +28,6 @@
       'menuUploadSave',
       'loadTitle',
       'loadText',
-      'saveNameField',
-      'saveName',
       'cancelNewSave',
       'savesCard',
       'savesList',
@@ -299,14 +297,13 @@
     for (const item of [el.archiveLeague, el.archiveSeason, el.archiveDay])
       item.disabled = state.busy || !item.options.length;
   }
-  // The welcome screen: update the open save, or name a new one; and the list of saves.
+  // The welcome screen: update the open save, or start a new one; and the list of saves.
   function saveControls() {
     const creating = state.creating || !state.save;
     el.loadTitle.textContent = creating ? 'New save' : 'Update save';
     el.loadText.textContent = creating
-      ? 'Name your save, then choose your Hoop Land save file. Full coverage is created automatically.'
-      : `Upload the latest file for “${state.save.name}” to add new stories.`;
-    el.saveNameField.hidden = !creating;
+      ? 'Choose your Hoop Land save file. The save takes your league’s name, and full coverage is created automatically.'
+      : `Upload the latest file for “${state.save.name}” (${modeName(state.save.mode)}) to add new stories.`;
     el.cancelNewSave.hidden = !(creating && state.save);
     el.newSaveButton.hidden = creating;
     el.savesCard.hidden = !state.saves.length;
@@ -357,25 +354,28 @@
         open.type = exporter.type = remove.type = 'button';
         // The latest Hoop Land file for this save, to put back into the game.
         exporter.textContent = 'Export';
-        exporter.setAttribute('aria-label', `Export ${save.name}`);
+        exporter.setAttribute('aria-label', `Export ${save.name}, ${modeName(save.mode)}`);
         exporter.title = save.file
           ? `Download ${save.file.name} to load back into Hoop Land`
           : 'Update this save to keep its file';
         exporter.hidden = !save.file;
         exporter.disabled = state.busy || !state.ready;
         exporter.addEventListener('click', () =>
-          window.HoopWireShare.deliver(exporter, () => savedFile(save), save.name, `Export ${save.name}`).catch(
-            error => {
-              el.noticeText.textContent = error.message;
-              el.noticeDialog.showModal();
-            }
-          )
+          window.HoopWireShare.deliver(
+            exporter,
+            () => savedFile(save),
+            save.name,
+            `Export ${save.name}, ${modeName(save.mode)}`
+          ).catch(error => {
+            el.noticeText.textContent = error.message;
+            el.noticeDialog.showModal();
+          })
         );
         open.textContent = 'Open';
-        open.setAttribute('aria-label', `Open ${save.name}`);
+        open.setAttribute('aria-label', `Open ${save.name}, ${modeName(save.mode)}`);
         remove.textContent = 'Delete';
         remove.className = 'danger';
-        remove.setAttribute('aria-label', `Delete ${save.name}`);
+        remove.setAttribute('aria-label', `Delete ${save.name}, ${modeName(save.mode)}`);
         open.disabled = remove.disabled = state.busy || !state.ready;
         open.addEventListener('click', () => openSave(save));
         remove.addEventListener('click', () => deleteSave(save));
@@ -408,7 +408,7 @@
   }
   function deleteSave(save) {
     confirmAction(
-      `Delete “${save.name}”?`,
+      `Delete the ${modeName(save.mode)} save “${save.name}”?`,
       'This removes its stories, images, box scores, player pages, TV episodes and its copy of your Hoop Land file from this browser. Export the save first if you might want the file back.',
       'Delete save',
       async () => {
@@ -424,7 +424,7 @@
         await readArchive();
         archiveNavigation();
         view();
-        status(`Deleted “${save.name}”.`);
+        status(`Deleted the ${modeName(save.mode)} save “${save.name}”.`);
       }
     );
   }
@@ -854,17 +854,17 @@
         taken = state.saves.find(s => s.leagueIds.some(id => ids.includes(id)));
       const league = taken && leagues[ids.findIndex(id => taken.leagueIds.includes(id))];
       return taken
-        ? `“${taken.name}” already covers ${league.leagueName || 'this league'} in ${modeName(mode)} mode. Open it from Your saves to update it, or delete it to start over.`
+        ? `You already have a ${modeName(mode)} save for ${league.leagueName || 'this league'}. Open it from Your saves to update it, or delete it to start over.`
         : null;
     }
     if (mode !== save.mode)
-      return `This is a ${modeName(mode)} save, but “${save.name}” is a ${modeName(save.mode)} save.`;
+      return `This is a ${modeName(mode)} save, but the open save, “${save.name}”, is a ${modeName(save.mode)} save.`;
     const stranger = leagues.find(l => !save.tags.includes(C.leagueId(l)));
     if (stranger)
-      return `${stranger.leagueName || 'A league in this file'} isn’t part of “${save.name}”. Its HoopWire tag doesn’t match, so this file is from a different save.`;
+      return `${stranger.leagueName || 'A league in this file'} has a different HoopWire tag than the open save, “${save.name}”, so this file is from a different save.`;
     const missing = save.tags.findIndex(t => !tags.includes(t));
     if (missing >= 0)
-      return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from “${save.name}”.`;
+      return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from the open save, “${save.name}”.`;
     return null;
   }
   // The exact Hoop Land file, compressed, so it can be handed back to the game byte for byte.
@@ -1373,6 +1373,8 @@
     if (story.type === 'Draft watch' || story.type === 'Draft class') return 'DRAFT WATCH';
     if (story.type === 'Preseason poll') return 'PRESEASON';
     if (story.type === 'College offseason') return 'COLLEGE OFFSEASON';
+    if (story.type === 'Hoop Gram reply') return 'HOOP GRAM';
+    if (story.type === 'Career' || story.type === 'Showcase preview') return 'CAREER WATCH';
     if (story.performanceSnapshot) return 'PLAYER WATCH';
     if (/record|milestone/i.test(story.type || '')) return 'RECORD BOOK';
     if (story.gameSummary) return 'POSTGAME';
@@ -2080,11 +2082,9 @@
   el.newSaveButton.addEventListener('click', () => {
     state.creating = true;
     controls();
-    el.saveName.focus();
   });
   el.cancelNewSave.addEventListener('click', () => {
     state.creating = false;
-    el.saveName.value = '';
     controls();
   });
   el.newsroomLeague.addEventListener('change', () => {
@@ -2119,7 +2119,7 @@
     }
   });
   window.addEventListener('hashchange', () => siteMenu(false));
-  // A file either starts a new save, named on the welcome screen, or updates the open one.
+  // A file either starts a new save, named after its pro league, or updates the open one.
   el.saveFile.addEventListener('change', () => {
     const file = el.saveFile.files[0],
       creating = state.creating || !state.save;
@@ -2130,17 +2130,14 @@
       C.assertSave(parsed);
       const problem = saveProblem(parsed, creating ? null : state.save);
       if (problem) throw new SaveRejected(problem);
-      const first = parsed.seasonLeagues[0];
+      const league = parsed.seasonLeagues.find(l => l.leagueType === 0) || parsed.seasonLeagues[0];
       const save = creating
         ? {
             id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-            name:
-              el.saveName.value.trim() ||
-              `${first.shortName || first.leagueName || 'League'} ${modeName(modeOf(first))}`,
+            name: league.leagueName || league.shortName || 'League',
           }
         : state.save;
       await loadSave(file, parsed, save);
-      el.saveName.value = '';
     });
   });
   el.archiveLeague.addEventListener('change', () => archiveNavigation(el.archiveLeague.value, '', ''));

@@ -114,19 +114,29 @@ test('a career opens with a player profile and a showcase preview before the gam
 });
 test('the goal story quotes how the player wants to be remembered, with no ratings behind it', () => {
   const { story, context } = K.candidates(league())[1];
-  assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star every year');
+  assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star year in and year out');
   const text = story.paragraphs.join(' ');
-  assert.match(text, /^“I want to be an All-Star every year,” Tavish Berlin said ahead of the Koality Showcase\./);
+  assert.match(
+    text,
+    /^“I will be known as an All-Star year in and year out,” Tavish Berlin said ahead of the Koality Showcase\./
+  );
   assert.match(text, /a bold goal for a 17-year-old .+ who hasn't played a college minute yet/);
   assert.doesNotMatch(text, /ceiling|potential|room to grow|developed|rating/i);
   assert.deepEqual(story.seasonSnapshot.headers, ['Player', 'Pos', 'Ht', 'From']);
   assert.equal(story.seasonSnapshot.rows[0][0], 'Tavish Berlin');
-  assert.equal(story.seasonSnapshot.goal.goal, 'an All-Star every year');
+  assert.equal(story.seasonSnapshot.goal.goal, 'an All-Star year in and year out');
   assert.equal(context.sceneKind, 'interview');
   assert.equal(context.event, 'Koality Showcase');
   const greatest = league();
   greatest.starTeams[0].roster[0].pot = 10;
   assert.equal(K.candidates(greatest)[1].story.headline, 'Tavish Berlin wants to be the greatest of all time');
+  assert.match(
+    K.candidates(greatest)[1].story.paragraphs[0],
+    /^“I will be known as the greatest player to ever play the game of basketball,”/
+  );
+  const famer = league();
+  famer.starTeams[0].roster[0].pot = 9;
+  assert.match(K.candidates(famer)[1].story.paragraphs[0], /one of the best Hall of Famers of all time,”/);
   // An answer the game never offered gets no story.
   const other = league();
   other.starTeams[0].roster[0].pot = 7;
@@ -151,4 +161,135 @@ test('no career stories outside career mode or once the showcase is played', () 
   const l = league();
   l.season.playerId = 99;
   assert.deepEqual(K.candidates(l), []);
+});
+// A college career a few games in, with Hoop Gram posts the player has answered, stored the way the
+// game stores them: what the post was about (contentType) and how the player replied (responseType).
+function replies() {
+  const base = league({ mode: 2 });
+  const berlin = base.starTeams[0].roster[0];
+  const coach = { id: 90, tid: 3, pos: 1, fn: 'Jackie', ln: 'Farmer' };
+  base.teams = [
+    {
+      id: 3,
+      city: 'Allegheny State',
+      name: 'Mountaineers',
+      roster: [berlin, prospect(12, 'Curtis', 'Hall')],
+      frontOffice: { staff: [coach] },
+    },
+    { id: 4, city: 'Laramie', name: 'Lassos', roster: [prospect(30, 'Matt', 'Woods')] },
+  ];
+  base.starTeams = [];
+  base.season.schedule = [
+    {
+      results: [
+        {
+          gameType: 0,
+          homeTeam: 3,
+          awayTeam: 4,
+          gId: 700,
+          homeScore: 60,
+          awayScore: 65,
+          winner: 4,
+          homeRecord: [0, 1],
+          awayRecord: [1, 0],
+        },
+      ],
+    },
+    { results: [{ gameType: 0, homeTeam: 4, awayTeam: 3, gId: 701, homeScore: 58, awayScore: 70, winner: 3 }] },
+  ];
+  const post = (day, gid, contentType, responseType, extra = {}) => ({
+    league: 1,
+    day,
+    gid,
+    contentType,
+    responseType,
+    player: { id: 10 },
+    author: { type: 4, fanData: { fn: 'Jane', ln: 'Doe' } },
+    team: { id: 3 },
+    ...extra,
+  });
+  base.season.posts = [
+    post(0, 700, K.POST.teamLoss, K.REPLY.callOutCoach),
+    post(0, 700, K.POST.teamLoss, K.REPLY.positive),
+    post(1, 701, K.POST.teamWin, K.REPLY.creditCoach),
+    post(1, 701, K.POST.opponentLoss, K.REPLY.negative),
+    // A school's pitch comes from its coach, not a fan.
+    post(0, 0, K.POST.recruitment, K.REPLY.positive, { team: { id: 4 }, author: { type: 2 } }),
+    // Unanswered posts make no story.
+    post(1, 701, K.POST.playerOfTheGame, 0),
+  ];
+  return base;
+}
+test('Hoop Gram replies become stories that report what the player did, not invented quotes', () => {
+  const stories = K.candidates(replies()).map(x => x.story);
+  const byKey = Object.fromEntries(stories.map(s => [s.eventKey, s]));
+  assert.deepEqual(Object.keys(byKey).sort(), ['career-reply-3-0-4', 'career-reply-game-700', 'career-reply-game-701']);
+  const loss = byKey['career-reply-game-700'];
+  assert.equal(loss.headline, 'Tavish Berlin questions the coaching staff after 65-60 loss to Laramie Lassos');
+  assert.match(
+    loss.paragraphs[0],
+    /questioned the coaching staff on Hoop Gram after the Allegheny State Mountaineers' 65-60 loss to the Laramie Lassos\./
+  );
+  assert.match(loss.paragraphs.join(' '), /also answered one other post about the game\./);
+  assert.match(loss.paragraphs.join(' '), /The loss dropped the Allegheny State Mountaineers to 0-1\./);
+  assert.match(loss.paragraphs.join(' '), /answering a post from a fan, Jane Doe/);
+  assert.equal(loss.day, 1);
+  const win = byKey['career-reply-game-701'];
+  assert.equal(win.headline, 'Tavish Berlin credits Coach Jackie Farmer after 70-58 win over Laramie Lassos');
+  assert.equal(win.day, 2);
+  const recruit = byKey['career-reply-3-0-4'];
+  assert.equal(recruit.headline, 'Tavish Berlin gives Laramie Lassos his word');
+  assert.match(
+    recruit.paragraphs[0],
+    /answered the Laramie Lassos' pitch on Hoop Gram and gave the program his word\./
+  );
+  assert.doesNotMatch(recruit.paragraphs.join(' '), /a fan/);
+  for (const s of stories) {
+    assert.equal(s.type, 'Hoop Gram reply');
+    assert.doesNotMatch(s.paragraphs.join(' '), /“|undefined|NaN/);
+  }
+  // A reply to a game the save can't find is skipped rather than guessed at.
+  const lost = replies();
+  lost.season.posts = [{ ...lost.season.posts[0], gid: 999 }];
+  assert.deepEqual(
+    K.candidates(lost).map(x => x.story.eventKey),
+    []
+  );
+});
+test('every Hoop Gram post and reply the game offers makes one story that reads right', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const games = { [K.POST.playerOfTheGame]: 701, [K.POST.teamWin]: 701, [K.POST.opponentLoss]: 701 };
+  for (const kind of Object.values(K.POST))
+    for (const reply of Object.values(K.REPLY)) {
+      const l = replies(),
+        pitch = kind === K.POST.recruitment;
+      l.season.posts = [
+        {
+          league: 1,
+          day: 0,
+          gid: kind <= K.POST.recruitment ? 0 : games[kind] || 700,
+          contentType: kind,
+          responseType: reply,
+          player: { id: 10 },
+          author: pitch ? { type: 2 } : { type: 4, fanData: { fn: 'Jane', ln: 'Doe' } },
+          team: { id: pitch ? 4 : 3 },
+        },
+      ];
+      const found = K.candidates(l).filter(x => x.story.type === 'Hoop Gram reply');
+      assert.equal(found.length, 1, `post ${kind}, reply ${reply}`);
+      const { story } = found[0],
+        tv = B.script(story, {})
+          .map(t => t.text)
+          .join(' ');
+      const all = [story.headline, ...story.paragraphs, tv].join(' ');
+      assert.doesNotMatch(all, /undefined|NaN|null|\$\{| {2}/, `post ${kind}, reply ${reply}`);
+      // The opponent is named once in a headline, and a win is never "a win after a win".
+      assert.ok((story.headline.match(/Laramie Lassos/g) || []).length <= 1, story.headline);
+      assert.doesNotMatch(story.headline, /win after .* win|loss after .* loss/, story.headline);
+      // Credit or a jab in reply to a school's pitch is about the school, not teammates or fans.
+      if (pitch) assert.doesNotMatch(all, /teammate|the fans|roster/, story.headline);
+      // Showcase teams are one-night teams with no home city.
+      if (kind <= K.POST.showcaseResults) assert.doesNotMatch(all, /fans in|whole roster/, story.headline);
+      if (story.seasonSnapshot.reply.won === false) assert.doesNotMatch(tv, /Winners share/);
+    }
 });

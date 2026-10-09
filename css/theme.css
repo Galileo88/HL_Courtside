@@ -843,32 +843,6 @@ body {
 }
 
 /* Named saves on the welcome screen. */
-.save-name {
-  display: grid;
-  gap: 6px;
-  width: 100%;
-  margin: 0 0 14px;
-  text-align: left;
-}
-.save-name span {
-  color: var(--hw-muted);
-  font: 800 11px var(--hw-font-ui);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.save-name input {
-  width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--hw-line);
-  border-radius: 4px;
-  background: var(--hw-panel-deep);
-  color: var(--hw-text);
-  font: 600 16px var(--hw-font-ui);
-}
-.save-name input:focus {
-  outline: 2px solid var(--hw-accent);
-  outline-offset: 1px;
-}
 .entry-screen .load-card .text-action {
   margin-top: 12px;
   padding: 6px 10px;
