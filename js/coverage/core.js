@@ -214,18 +214,30 @@
     return /^hoopwire:(hw-[a-z0-9]+)$/i.exec(league?.commissioner?.tag || '')?.[1].toLowerCase() || null;
   }
 
+  // Hoop Land's game mode (season.mode): 1 is commissioner, 2 is career, and franchise is the only
+  // other mode, so any other number is franchise. Commissioner is the default and has no tag, so
+  // its archives keep the identity they always had.
+  function gameMode(league) {
+    const mode = league?.season?.mode;
+    if (mode == null || mode === '' || !Number.isFinite(Number(mode)) || Number(mode) === 1) return null;
+    return Number(mode) === 2 ? 'career' : 'franchise';
+  }
+
   // A league's archive identity: the one the app pinned on an uploaded league (archiveId), then the
-  // Studio ID, then a fingerprint of the league as it stands.
+  // Studio ID, then a fingerprint of the league as it stands. A career or franchise started from the
+  // same league file keeps its own archive.
   function buildFingerprint(league) {
     if (typeof league?.archiveId === 'string') return league.archiveId;
-    const id = leagueId(league);
-    if (id) return id;
+    const mode = gameMode(league),
+      id = leagueId(league);
+    if (id) return mode ? `${id}-${mode}` : id;
     const teams = (league.teams || [])
       .map(t => `${t.id}:${t.shortName || ''}:${t.name || ''}`)
       .sort()
       .join('|');
     const season = league.season || {};
-    return hashString(`${league.leagueName}|${season.startingYear}|${teams}`);
+    const hash = hashString(`${league.leagueName}|${season.startingYear}|${teams}`);
+    return mode ? `${hash}-${mode}` : hash;
   }
 
   function coverageThreshold(level) {
@@ -1438,6 +1450,7 @@
     playerDisplay,
     buildFingerprint,
     leagueId,
+    gameMode,
     perGameList,
     isCompleted,
     buildLookups,

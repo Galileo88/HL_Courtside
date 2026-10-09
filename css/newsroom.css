@@ -790,7 +790,6 @@ a.wire-score:focus-visible {
   color: #7eefff;
 }
 
-.wire-movie-ad,
 .wire-shoe-ad {
   overflow: hidden;
   text-align: center;
@@ -798,34 +797,6 @@ a.wire-score:focus-visible {
   padding-top: 10px;
   color: #fff3de;
   background: #221422;
-}
-.wire-movie-ad .wire-ad-brand {
-  font:
-    900 27px Arial,
-    Helvetica,
-    sans-serif;
-  letter-spacing: -0.7px;
-  line-height: 1;
-  margin: 16px 12px 8px;
-}
-.wire-movie-ad .wire-suit-collection {
-  font-size: 8px;
-  letter-spacing: 1.5px;
-}
-.wire-movie-ad .wire-suit-tagline {
-  font-size: 17px;
-  margin-bottom: 10px;
-}
-.wire-movie-release {
-  display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  margin-bottom: 16px;
-  color: #ffc76e;
-}
-.wire-movie-thriller {
-  background: #080f22;
 }
 .wire-shoe-ad {
   background: #0b2233;
@@ -903,8 +874,7 @@ a.wire-score:focus-visible {
   .wire-airways-ad,
   .wire-streaming-ad,
   .wire-food-ad,
-  .wire-apparel-ad,
-  .wire-movie-ad
+  .wire-apparel-ad
 ) {
   display: flex;
   flex-direction: column;
@@ -923,9 +893,6 @@ a.wire-score:focus-visible {
 }
 .wire-suit-tagline {
   order: 4;
-}
-.wire-movie-release {
-  order: 5;
 }
 .wire-shoe-ad {
   text-align: left;
@@ -1049,17 +1016,6 @@ a.wire-score:focus-visible {
   color: #ffda83;
   text-transform: uppercase;
   margin: 16px 20px 20px;
-}
-.wire-movie-drama .wire-product-art {
-  order: 1;
-  margin-top: 10px;
-}
-.wire-movie-drama .wire-ad-brand {
-  order: 2;
-  margin-top: 16px;
-}
-.wire-movie-drama .wire-suit-collection {
-  order: 3;
 }
 
 .wire-auto-ad,
@@ -1248,10 +1204,47 @@ a.wire-score:focus-visible {
     margin-bottom: 10px;
     line-height: 1.1;
   }
-  .wire-sidebar .wire-ad-rotator :is(.wire-suit-collection, .wire-movie-release, .wire-ad-responsibility) {
+  .wire-sidebar .wire-ad-rotator :is(.wire-suit-collection, .wire-ad-responsibility) {
     padding-bottom: 0;
     margin-bottom: 10px;
   }
+}
+
+/* Film campaigns are one-sheet posters: the art carries the title and credits,
+   so the text stays for screen readers only. */
+.wire-movie-ad {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: center;
+  padding-top: 10px;
+  border: 1px solid #2c2734;
+  background: #04050a;
+}
+.wire-movie-ad .wire-ad-body > :not(.wire-product-art) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.wire-movie-ad .wire-ad-body {
+  position: relative;
+}
+.wire-movie-ad .wire-ad-body > .wire-product-art,
+.wire-sidebar .wire-movie-ad .wire-product-art {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  margin: 6px 0 0;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.wire-feed-ad[data-ad^='movie-'] .wire-feed-art img {
+  object-fit: cover;
+  image-rendering: auto;
 }
 
 /* In-feed sponsor tiles. Each grid ends with one, hidden unless the last row

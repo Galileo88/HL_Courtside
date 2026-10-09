@@ -376,7 +376,7 @@
     }
     options(
       el.archiveLeague,
-      leagues.map(l => [l.id, l.name]),
+      leagues.map(l => [l.id, archiveName(l)]),
       fingerprint
     );
     const stories = [...state.stories.values()].filter(s => s.fingerprint === el.archiveLeague.value);
@@ -418,7 +418,7 @@
     const expanded = new Set([...el.archiveTree.querySelectorAll('details[open]')].map(d => d.dataset.key));
     el.archiveTree.replaceChildren();
     const league = state.leagues.find(l => l.id === el.archiveLeague.value);
-    el.archiveTitle.textContent = `${league?.name || 'League'} Archive`;
+    el.archiveTitle.textContent = `${league ? archiveName(league) : 'League'} Archive`;
     const leagues = accessibleLeagues();
     el.archiveLeagueSwitch.hidden = leagues.length < 2;
     el.archiveLeagueSwitch.replaceChildren(
@@ -681,13 +681,19 @@
       : '';
   }
   // The archive an uploaded league belongs to. The first time a Studio ID shows up, the league takes
-  // over the archive it already had, so its earlier coverage stays with it.
+  // over the archive it already had, so its earlier coverage stays with it. Commissioner, career
+  // and franchise saves of the same league never share one.
   function archiveId(league, id) {
     const plain = C.buildFingerprint({ ...league, commissioner: null });
     if (!id) return plain;
-    const known = state.leagues.find(l => l.studioId === id) || state.leagues.find(l => l.id === plain && !l.studioId);
-    return known?.id || id;
+    const mode = C.gameMode(league);
+    const known =
+      state.leagues.find(l => l.studioId === id && (l.mode || null) === mode) ||
+      state.leagues.find(l => l.id === plain && !l.studioId);
+    return known?.id || (mode ? `${id}-${mode}` : id);
   }
+  const archiveName = l =>
+    l.mode === 'career' ? `${l.name} (Career)` : l.mode === 'franchise' ? `${l.name} (Franchise)` : l.name;
   async function loadSave(file) {
     status('Loading the save and preparing the HoopWire TV studio…');
     const parsed = JSON.parse(await file.text());
@@ -747,6 +753,7 @@
         ...previous,
         id: fingerprint,
         studioId: league.studioId,
+        mode: C.gameMode(league),
         people: index,
         name: league.leagueName || 'League',
         shortName: league.shortName || null,
