@@ -225,7 +225,15 @@
         );
         if (vets.length > 1)
           paragraphs.push(
-            `Also on the move: ${C.listJoin(vets.slice(1, 6).map(x => `${name(x.p)} to ${T(x.t).nick}`))}${vets.length > 6 ? `, among ${C.plural(vets.length - 6, 'other veteran')}` : ''}.`
+            `Also on the move: ${C.listJoin(
+              // Signings by one team read together: "Kemal Yildirim and Zack Jones to the Airmen".
+              [
+                ...vets
+                  .slice(1, 6)
+                  .reduce((m, x) => m.set(x.t.id, [...(m.get(x.t.id) || []), x]), new Map())
+                  .values(),
+              ].map(group => `${C.listJoin(group.map(x => name(x.p)))} to ${T(group[0].t).nick}`)
+            )}${vets.length > 6 ? `, among ${C.plural(vets.length - 6, 'other veteran')}` : ''}.`
           );
       } else {
         const top = rookies.find(x => x.p.history?.draft?.yr === year) || rookies[0],
@@ -1348,7 +1356,9 @@
             );
           if (x.elite.length)
             parts.push(
-              `${name(x.elite[0])} headlines a freshman class of ${C.num(x.fresh.length)}, one of the ${elite} highest-rated recruits in the country.`
+              x.fresh.length === 1
+                ? `${name(x.elite[0])}, the lone freshman, is one of the ${elite} highest-rated recruits in the country.`
+                : `${name(x.elite[0])} headlines a ${C.num(x.fresh.length)}-player freshman class and is one of the ${elite} highest-rated recruits in the country.`
             );
           if (lostLine && x.starters != null && x.starters <= 2) parts.push(`${cap(lostLine)}.`);
         }
@@ -1365,9 +1375,9 @@
         items: ten.filter(x => x.star).map(x => ({ ...x.star })),
         lead,
         paragraphs: [
-          `The ${year} ${short} preseason poll is out, and ${T(top.t).full} ${C.verb(T(top.t), 'open')} the season at No. 1 after going ${rec(top)} last year.`,
+          `The ${year} ${short} preseason poll is out, and ${T(top.t).full} ${C.verb(T(top.t), 'open')} the season at No. 1${rec(top) === '—' ? '' : ` after going ${rec(top)} last year`}.`,
           lineFor(top),
-          `Rounding out the top five: ${C.listJoin(polled.slice(1, 5).map(x => `${T(x.t).short} (${rec(x)})`))}.`,
+          `Rounding out the top five: ${C.listJoin(polled.slice(1, 5).map(x => `${T(x.t).short}${rec(x) === '—' ? '' : ` (${rec(x)})`}`))}.`,
           champ
             ? champ.now.poll <= 25
               ? `The defending champions, ${T(champion).full}, start at No. ${champ.now.poll}.`
@@ -1375,7 +1385,7 @@
             : '',
           deepest && deepest[0] !== top.t.id && polled.find(x => x.t.id === deepest[0])
             ? (d =>
-                `The deepest freshman class belongs to ${T(d.t).full}: ${C.plural(d.fresh.length, 'recruit')}${d.elite.length ? `, ${C.num(d.elite.length)} of them among the country's highest rated` : ''}. ${C.capitalize(T(d.t).nick)} ${C.verb(T(d.t), 'start')} at No. ${d.now.poll}.`)(
+                `The deepest freshman class belongs to ${T(d.t).full}: ${C.plural(d.fresh.length, 'recruit')}${d.elite.length ? `, ${d.elite.length === d.fresh.length ? 'all' : C.num(d.elite.length)} of them among the country's highest rated` : ''}. ${C.capitalize(T(d.t).nick)} ${C.verb(T(d.t), 'start')} at No. ${d.now.poll}.`)(
                 polled.find(x => x.t.id === deepest[0])
               )
             : '',

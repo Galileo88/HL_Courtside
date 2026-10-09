@@ -250,7 +250,7 @@ test('playoff, award and season segments develop basketball questions with avail
   assert.match(text(preview), /Stars score 110\.0 points a game.*Moons allow 102\.0/);
   assert.ok(B.script(preview).length >= 8);
   const season = { ...teams, type: 'Regular-season review' };
-  assert.match(text(season), /10\.0 points a game in their favor/);
+  assert.match(text(season), /10\.0 a game in their favor/);
   assert.match(text(season), /Stars.*8-2/);
   const award = {
     type: 'Award announcement',

@@ -232,7 +232,7 @@
     return Number.isFinite(s?.[m]) && s[a] > 0 ? `${((100 * s[m]) / s[a]).toFixed(1)}%` : '—';
   }
   function line(s) {
-    return `${avg(s, 'PTS')} points, ${avg(s, 'REB')} rebounds and ${avg(s, 'AST')} assists per game${Number.isFinite(s.MIN) ? ` in ${avg(s, 'MIN')} minutes a night` : ''}${s.FGA > 0 ? `, shooting ${pct(s, 'FGM', 'FGA')} from the field` : ''}${s.TPA > 0 ? ` and ${pct(s, 'TPM', 'TPA')} from three` : ''}`;
+    return `${C.perGameList(s)} per game${s.FGA > 0 ? ` on ${pct(s, 'FGM', 'FGA')} shooting` : ''}`;
   }
   function teamLine(name, s) {
     return s?.GP > 0 && Number.isFinite(s.PTS) && Number.isFinite(s.OPP)
@@ -468,8 +468,6 @@
     const m = margin(first);
     if (m !== null)
       lead += ` ${m > 0 ? `${leaders.length > 1 ? cap(R(first).nick) : 'They'} outscored opponents by ${m.toFixed(1)} points a night, scoring ${avg(s, 'PTS')} and allowing ${avg(s, 'OPP')}.` : `Oddly, ${leaders.length > 1 ? R(first).nick : 'they'} did it while being outscored by ${Math.abs(m).toFixed(1)} points a night.`}`;
-    if (leaders.length === 1 && winPct >= 0.75 && m !== null && m > 0)
-      lead += ' That is a team that spent the season controlling games, not surviving them.';
     paragraphs.push(lead);
     const chasers = teams.slice(1, 3).filter(t => !leaders.includes(t));
     if (chasers.length) {
@@ -511,7 +509,7 @@
         const fg = s.FGM / s.FGA;
         text +=
           fg >= 0.5
-            ? ` ${last} did it on ${pct(s, 'FGM', 'FGA')} shooting, the kind of efficiency that turns good production into a real case.`
+            ? ` ${last} did it on ${pct(s, 'FGM', 'FGA')} shooting.`
             : fg < 0.4
               ? ` The knock is efficiency: ${pct(s, 'FGM', 'FGA')} from the field.`
               : ` ${last} shot ${pct(s, 'FGM', 'FGA')} from the field.`;
@@ -661,7 +659,7 @@
         const rate = scorer.s.FGM / scorer.s.FGA;
         text +=
           rate >= 0.5
-            ? ` ${g.PTS.last} did it efficiently, too, on ${fg} shooting from the field. That is not volume for its own sake.`
+            ? ` ${g.PTS.last} did it on ${fg} shooting from the field.`
             : rate < 0.4
               ? ` The volume came at a price: ${fg} shooting from the field.`
               : ` ${g.PTS.last} shot ${fg} from the field.`;
@@ -707,7 +705,7 @@
       if (s?.GP > 0 && Number.isFinite(s.TO) && s.TO >= 0) {
         perimeter.push(
           s.AST > s.TO * 2
-            ? `${g.AST.last} did it while committing just ${avg(s, 'TO')} turnovers a game, a clean ratio for a lead playmaker.`
+            ? `${g.AST.last} did it while committing just ${avg(s, 'TO')} turnovers a game.`
             : s.TO > s.AST
               ? `The ${avg(s, 'TO')} turnovers a game are the one blemish on the passing title.`
               : `${g.AST.last} also turned it over ${avg(s, 'TO')} times a game, a manageable cost for that much playmaking.`
@@ -1519,7 +1517,10 @@
         const T = C.teamRef(r.team),
           cap = C.capitalize,
           teamCount = records.length,
-          winPct = record.W / Math.max(1, record.W + record.L);
+          winPct = record.W / Math.max(1, record.W + record.L),
+          pctOf = x => x.year.seasonStats.W / Math.max(1, x.year.seasonStats.W + x.year.seasonStats.L),
+          // Only the team with the league's best record dominated it.
+          dominant = winPct >= 0.7 && records.every(x => pctOf(x) <= winPct);
         const rankText = (n, what) =>
           n === 1
             ? `the league's ${what === 'scoring' ? 'top offense' : 'stingiest defense'}`
@@ -1568,7 +1569,7 @@
           bracketSet = entrants.size > 0;
         const headline = title
           ? review(record.W > record.L ? `${mark} and a championship` : `${mark}, then a championship`)
-          : winPct >= 0.7
+          : winPct >= 0.7 && (exit || dominant)
             ? review(
                 exit
                   ? `${a} ${mark} season that ended in the ${exit.label}`
@@ -1624,13 +1625,13 @@
               : playoff
                 ? ', good for a place in the playoff field'
                 : '';
-        const opener = `${cap(T.full)} ${winPct >= 0.7 ? 'dominated the regular season, finishing' : record.W > record.L ? 'closed the regular season at' : record.W === record.L ? 'split the regular season at' : 'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change !== null && Math.abs(change) >= 5 ? ` That is ${C.plural(Math.abs(change), 'win')} ${change > 0 ? 'better' : 'worse'} than last season's ${prior.W}-${prior.L}.` : ''}`;
+        const opener = `${cap(T.full)} ${dominant ? 'dominated the regular season, finishing' : record.W > record.L ? 'closed the regular season at' : record.W === record.L ? 'split the regular season at' : winPct >= 0.45 ? 'finished the regular season at' : 'ended a difficult regular season at'} ${record.W}-${record.L}${post}.${change !== null && Math.abs(change) >= 5 ? ` That is ${C.plural(Math.abs(change), 'win')} ${change > 0 ? 'better' : 'worse'} than last season's ${prior.W}-${prior.L}.` : ''}`;
         const profile =
           margin === null
             ? ''
             : `${
                 identity === 'defense'
-                  ? `Defense was the calling card. ${cap(T.short)} ${defendingRank === 1 ? `had the league's stingiest defense` : `ranked ${ordinal(defendingRank)} in points allowed`} at ${avg(record, 'OPP')} points allowed a night`
+                  ? `Defense was the calling card. ${cap(T.short)} ${defendingRank === 1 ? `had the league's stingiest defense, allowing` : `ranked ${ordinal(defendingRank)} in defense, allowing`} ${avg(record, 'OPP')} points a night`
                   : identity === 'offense'
                     ? `The offense carried them. ${cap(T.short)} ${scoringRank === 1 ? `had the league's top offense` : `ranked ${ordinal(scoringRank)} in scoring`} at ${avg(record, 'PTS')} points a night`
                     : identity === 'both'

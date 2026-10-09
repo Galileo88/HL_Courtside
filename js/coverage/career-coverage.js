@@ -191,7 +191,7 @@
         headline: `${name} opens ${he ? his : 'a'} career at the ${event}`,
         importance: 125,
         paragraphs: [
-          `${name}${bio ? `, ${bio},` : ''} opens ${he ? his : 'a'} career in the ${event}, the all-star game where college programs get their look at the top high school prospects.`,
+          `${name}${bio ? `, ${bio},` : ''} takes the floor at the ${event}, the high school all-star game where college coaches get their first long look at the top prospects.`,
           `${subject} wears No. ${player.num} and ${starters(team).includes(player) ? 'starts' : 'comes off the bench'} for ${T.full} against ${O.full}${arena ? ` at ${arena}` : ''}.`,
           size
             ? traits.length

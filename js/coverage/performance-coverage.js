@@ -225,8 +225,6 @@
         paragraphs.push(
           `${subject} has come off the bench for most of the season, averaging ${average(c.expected)} ${c.label}, which is what makes this one stand out.`
         );
-      else if (r.scorerRank === 1 && c.key === 'PTS')
-        paragraphs.push(`${subject} was already the team's leading scorer. This was a step beyond.`);
     }
     const more = changes.filter(x => x !== c && x.mention);
     if (more.length) {

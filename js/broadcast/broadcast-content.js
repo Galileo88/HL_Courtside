@@ -2114,15 +2114,21 @@
       body.push(
         turn(
           3,
-          `I'd look at the scoring margin. ${ppg} a game, ${opp} allowed. That's ${Math.abs(gap).toFixed(1)} points a game ${gap >= 0 ? 'in their favor' : 'in the wrong direction'}. ${gap > 0 ? "That's a team that outscored people." : gap < 0 ? "That's a team that got outscored." : 'Dead even.'}`
+          `I'd look at the scoring margin. ${ppg} a game, ${opp} allowed${
+            Math.abs(gap) < 1.5
+              ? `. Basically even. ${team.r.W > team.r.L ? 'They won the close ones.' : team.r.W < team.r.L ? 'They lost the close ones.' : ''}`
+              : `, ${Math.abs(gap).toFixed(1)} a game ${gap > 0 ? 'in their favor' : 'in the wrong direction'}.${gap > 0 && team.r.W < team.r.L ? ' Outscoring people and still finishing under .500? That is bad luck in close games.' : ''}`
+          }`.trim()
         )
       );
       body.push(
         turn(
           2,
-          gap > 0
+          gap >= 3
             ? "And that's sustainable. Margin tells you more than a couple of lucky wins."
-            : "Find a few more points or give up a few less. That's the whole offseason."
+            : gap <= -3
+              ? "Find a few more points or give up a few less. That's the whole offseason."
+              : 'A couple of bounces either way and this is a different conversation.'
         )
       );
     }
@@ -2135,7 +2141,16 @@
       body.push(
         turn(2, `${scorer[0]}. ${Number(scorer[2]).toFixed(1)} points a game, team high. That's the go-to option.`)
       );
-      body.push(turn(1, "And that's the question. Who's the second option? One player can't do it all."));
+      body.push(
+        turn(
+          1,
+          pick(
+            story,
+            ["And that's the question. Who's the second option?", 'Now they need a second option.'],
+            'review:help'
+          )
+        )
+      );
     } else if (story.type === 'Regular-season review' && teams[1]) {
       const other = teams[1];
       body.push(
@@ -2180,7 +2195,7 @@
       body.push(
         turn(
           i ? 2 : 1,
-          `${who} ${tied.length === 1 ? 'led' : 'shared the lead'} in ${labels[k]} at ${value} a game. ${k === 'PTS' ? "Bucket-getter. That's an average, not one big night." : k === 'REB' ? 'Somebody has to do the dirty work on the glass.' : "There's more to this game than scoring."}`
+          `${who} ${tied.length === 1 ? 'led' : 'shared the lead'} in ${labels[k]} at ${value} a game. ${k === 'PTS' ? "That's your scoring champ." : k === 'REB' ? 'Somebody has to do the dirty work on the glass.' : "There's more to this game than scoring."}`
         )
       );
       const honor = (story.seasonSnapshot.leaderHonors || []).find(
@@ -2196,8 +2211,10 @@
         turn(
           3,
           i
-            ? `${tied.length > 1 ? 'They split that one.' : 'Strong season in that category.'} ${k === 'REB' ? 'Rebounding wins you possessions.' : 'Different players bring different things. You need all of it.'}`
-            : `${tied.length > 1 ? "Can't leave either name out. They split it." : `And that's over ${tied[0][3]} games, Jordan. Not a hot streak.`}`
+            ? `${tied.length > 1 ? 'They split that one. ' : ''}${k === 'REB' ? 'Rebounding wins you possessions.' : 'Different players bring different things. You need all of it.'}`
+            : tied.length > 1
+              ? "Can't leave either name out. They split it."
+              : pick(story, ['Hard to argue with that.', 'Earned every bit of it.'], 'leaders:first')
         )
       );
     }
@@ -2308,7 +2325,12 @@
                                 "That's history. Put it in the books.",
                                 "That's a number that's going to stick around for a while.",
                               ]
-                            : ['Something to keep an eye on.', "Noted. We'll see where it goes."];
+                            : /poll/i.test(type)
+                              ? [
+                                  'Preseason polls are made to be wrong. Somebody has to earn that spot.',
+                                  'No. 1 in the preseason just means everybody circles your game.',
+                                ]
+                              : ["That's worth watching.", "Noted. We'll see where it goes."];
     const closings = /trade request/i.test(type)
       ? [
           "No deal yet. We'll see how the team handles it.",
@@ -2345,12 +2367,19 @@
                     'History made. Moving on.',
                     "That one's going in the archive.",
                   ]
-                : [
-                    "We'll keep an eye on that.",
-                    "We'll come back to it when there's more to report.",
-                    'Something to keep an eye on around the league.',
-                    'Moving on.',
-                  ];
+                : /poll/i.test(type)
+                  ? [
+                      "We'll see how long it holds.",
+                      'Now they have to play the games.',
+                      'Ask us again in a month.',
+                      'The games will sort it out.',
+                    ]
+                  : [
+                      "We'll come back to it when there's more to report.",
+                      "That's the latest.",
+                      'Moving on.',
+                      'More on that as it develops.',
+                    ];
     const body = detail
       ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
@@ -2462,7 +2491,7 @@
           turn(
             2,
             top.years
-              ? `${C.capitalize(C.num(top.years))} years, though. That's a real commitment.${top.age ? ` ${last(top)}'s ${top.age}.` : ''}`
+              ? `${C.capitalize(C.num(top.years))} years, though. That's a real commitment.${top.age && top.age <= 24 ? ` ${last(top)} is only ${top.age}, so it's a bet on what's coming.` : top.age >= 31 ? ` And ${last(top)} is ${top.age}. That's a risk at the back end.` : ''}`
               : `I want to see where ${last(top)} fits in that rotation before I start celebrating.`
           )
         );
@@ -3016,7 +3045,7 @@
               ? {
                   none: ' Nobody else in this showcase can say that.',
                   few: ' Only a few others in this showcase can say that.',
-                  many: ` ${C.capitalize(he)}'s got company in this showcase, though. That's what makes the field so good.`,
+                  many: ' Plenty of prospects in this field share it, though.',
                 }[potential.shared] || ''
               : ''
           }`
@@ -3074,13 +3103,6 @@
               )
         ),
       ];
-      if (career.countrymen?.length)
-        body.push(
-          turn(
-            2,
-            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home, ${J}.`
-          )
-        );
       body.push(
         turn(
           3,
@@ -3089,6 +3111,13 @@
             : `Easy, ${J}. It's one game, and I don't grade careers off one game.`
         )
       );
+      if (career.countrymen?.length)
+        body.push(
+          turn(
+            2,
+            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home.`
+          )
+        );
       if (career.fanPosts)
         body.push(
           turn(0, `The fans have already made up their minds. They're posting about ${career.last} on Hoop Gram.`)
@@ -3100,7 +3129,7 @@
           `Before anything else tonight, meet ${career.name}${who ? `, a ${who}` : ''}. ${J}, what do you see?`,
           `A new name for your notebook: ${career.name}${who ? `, a ${who}` : ''}, suiting up for the ${career.team} in the ${career.event}. ${J}?`,
         ],
-        [`The ${career.event}. We'll all be watching.`, `${career.name}. Remember the name.`],
+        [`All eyes on the ${career.event}.`, `${career.name}. Remember the name.`],
         body
       );
     }
@@ -3124,11 +3153,7 @@
     body.push(
       turn(
         1,
-        pick(
-          story,
-          [`Give me ${show.featured}. I'm riding with that one.`, `I'm watching ${show.featured}. Book it.`],
-          'showcase:take'
-        )
+        pick(story, [`I'm riding with ${show.featured}.`, `I'm watching ${show.featured}. Book it.`], 'showcase:take')
       )
     );
     return frame(
