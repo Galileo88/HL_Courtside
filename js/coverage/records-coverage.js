@@ -184,8 +184,8 @@
       };
       result.push({ story, context });
     }
-    // A record set in a league's first weeks only beats a handful of games.
-    const established = year > (Number(league.season?.startingYear) || year) || lookup.latestDay >= 20;
+    // Record books open after a league's first season; until then a record only beats that season's games.
+    const established = year > (Number(league.season?.startingYear) || year);
     // Individual milestones require a matched box score to establish when a threshold was crossed.
     for (const snap of d.snapshots) {
       const f = contextFor(d, snap);
