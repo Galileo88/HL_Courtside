@@ -27,7 +27,6 @@
         </button>
         <div id="siteMenu" class="site-menu-panel" hidden>
           <a href="#archive">Archive</a>
-          <button id="menuLoadLatest" type="button" hidden>Load latest save</button>
           <button id="menuUploadSave" type="button">Upload new save</button>
         </div>
       </div>
@@ -59,30 +58,6 @@
                 >Choose save <span aria-hidden="true">↑</span
                 ><input id="saveFile" type="file" accept=".json,*/*" disabled /></label
               ><span id="fileName">No save loaded</span>
-            </div>
-            <div id="saveFolder" class="save-folder" hidden>
-              <div id="saveFolderNew">
-                <button id="chooseSaveFolder" type="button" class="text-action" disabled>Use your save folder</button>
-                <p class="save-folder-hint">
-                  HoopWire remembers the folder and your save slot, and opens that slot's newest save.
-                </p>
-                <p class="save-folder-hint" data-platform="windows">
-                  On Windows it's <code>%USERPROFILE%\AppData\LocalLow\Koality Game\Hoop Land\Temp Files</code>
-                </p>
-                <p class="save-folder-hint" data-platform="mac">
-                  On a Mac it's <code>~/Library/Application Support/Koality Game/Hoop Land/Temp Files</code>. Press ⌘⇧G
-                  in the folder picker and paste it in.
-                </p>
-              </div>
-              <div id="saveSlotChoice" hidden>
-                <p class="save-folder-hint">Which save slot is this league?</p>
-                <div id="saveSlots" class="save-slots"></div>
-              </div>
-              <div id="saveFolderKnown" hidden>
-                <button id="loadLatestSave" type="button" class="primary" disabled>Load latest save</button>
-                <span class="save-folder-name">From <strong id="saveFolderName"></strong></span>
-                <button id="changeSaveFolder" type="button" class="text-action" disabled>Change folder</button>
-              </div>
             </div>
           </article>
         </div>
@@ -246,7 +221,6 @@
     <script src="js/coverage/performance-coverage.js"></script>
     <script src="js/coverage/career-coverage.js"></script>
     <script src="js/app/archive.js"></script>
-    <script src="js/app/save-folder.js"></script>
     <script src="js/render/player-renderer.js"></script>
     <script src="js/render/court-renderer.js"></script>
     <script src="js/render/press-backdrop.js"></script>

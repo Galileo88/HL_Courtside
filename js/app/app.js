@@ -24,16 +24,6 @@
       'siteMenuButton',
       'siteMenu',
       'menuUploadSave',
-      'menuLoadLatest',
-      'saveFolder',
-      'saveFolderNew',
-      'saveFolderKnown',
-      'saveFolderName',
-      'saveSlotChoice',
-      'saveSlots',
-      'chooseSaveFolder',
-      'loadLatestSave',
-      'changeSaveFolder',
       'resetArchive',
       'resetDialog',
       'resetTitle',
@@ -57,7 +47,6 @@
   );
   const state = {
     scope: null,
-    saveFolder: null,
     raw: null,
     leagueIndex: 0,
     stories: new Map(),
@@ -224,14 +213,6 @@
     }
     for (const tab of el.archiveLeagueSwitch.querySelectorAll('button')) tab.disabled = state.busy || !state.ready;
     el.menuUploadSave.disabled = state.busy || !state.ready;
-    for (const button of [
-      el.chooseSaveFolder,
-      el.loadLatestSave,
-      el.changeSaveFolder,
-      el.menuLoadLatest,
-      ...el.saveSlots.querySelectorAll('button'),
-    ])
-      button.disabled = state.busy || !state.ready;
     options(
       el.newsroomLeague,
       (state.raw?.seasonLeagues || []).map((l, i) => [i, l.leagueName || `League ${i + 1}`]),
@@ -1775,84 +1756,8 @@
     }
   });
   window.addEventListener('hashchange', () => siteMenu(false));
-  // Chrome and Edge can remember the game's save folder and this league's save slot, then open
-  // the newest save in that slot. Saves from other slots (other leagues) are never picked.
-  const folder = window.HoopWireSaveFolder,
-    isSave = data => Array.isArray(data?.seasonLeagues);
-  const describeSave = data => {
-    const league = data.seasonLeagues[0] || {};
-    return [league.leagueName, league.season?.mode === 2 ? 'career' : null, league.season?.currentYear]
-      .filter(Boolean)
-      .join(' · ');
-  };
-  // Show the save location for this computer; both when it can't tell.
-  const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
-  for (const hint of document.querySelectorAll('[data-platform]'))
-    hint.hidden = /mac|win/.test(platform) && !platform.includes(hint.dataset.platform.slice(0, 3));
-  function folderControls(choosing = false) {
-    const saved = state.saveFolder;
-    el.saveFolder.hidden = !folder.supported();
-    el.saveSlotChoice.hidden = !choosing;
-    el.saveFolderNew.hidden = choosing || !!saved?.slot;
-    el.saveFolderKnown.hidden = choosing || !saved?.slot;
-    el.menuLoadLatest.hidden = !saved?.slot;
-    el.saveFolderName.textContent = saved?.slot ? `${saved.folder.name} · slot ${saved.slot}` : '';
-  }
-  async function useSlot(handle, slot) {
-    state.saveFolder = { folder: handle, slot };
-    folderControls();
-    await folder.remember(state.saveFolder).catch(() => {});
-    await loadLatest();
-  }
-  async function loadLatest() {
-    const { folder: handle, slot } = state.saveFolder;
-    if (!(await folder.permitted(handle, true)))
-      throw new Error(`HoopWire needs permission to read the ${handle.name} folder.`);
-    const file = await folder.latestSave(handle, isSave, slot);
-    if (!file) throw new Error(`No save was found in slot ${slot} of the ${handle.name} folder.`);
-    await loadSave(file);
-  }
-  async function chooseFolder() {
-    let handle;
-    try {
-      handle = await window.showDirectoryPicker({ id: 'hoop-land-saves', mode: 'read' });
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      throw error;
-    }
-    if (!(await folder.permitted(handle, true)))
-      throw new Error(`HoopWire needs permission to read the ${handle.name} folder.`);
-    const found = await folder.slots(handle, isSave, describeSave);
-    if (!found.length) throw new Error(`No Hoop Land saves were found in the ${handle.name} folder.`);
-    if (found.length === 1) return useSlot(handle, found[0].slot);
-    // Several leagues share the folder: the player says which slot this one is.
-    el.saveSlots.replaceChildren(
-      ...found.map(({ slot, label }) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = `Slot ${slot} · ${label}`;
-        button.addEventListener('click', () => run(() => useSlot(handle, slot)));
-        return button;
-      })
-    );
-    folderControls(true);
-  }
-  el.chooseSaveFolder.addEventListener('click', () => run(chooseFolder));
-  el.changeSaveFolder.addEventListener('click', () => run(chooseFolder));
-  el.loadLatestSave.addEventListener('click', () => run(loadLatest));
-  el.menuLoadLatest.addEventListener('click', () => {
-    siteMenu(false);
-    run(loadLatest);
-  });
   el.saveFile.addEventListener('change', () => {
     const file = el.saveFile.files[0];
-    // A save chosen by hand from another slot becomes the slot to follow.
-    const slot = folder.slotOf(file?.name);
-    if (file && slot && state.saveFolder && slot !== state.saveFolder.slot) {
-      state.saveFolder = { ...state.saveFolder, slot };
-      folder.remember(state.saveFolder).catch(() => {});
-      folderControls();
-    }
     if (file) run(() => loadSave(file));
     el.saveFile.value = '';
   });
@@ -1944,8 +1849,6 @@
   run(async () => {
     await archive.open();
     await readArchive();
-    if (folder.supported()) state.saveFolder = await folder.recall();
-    folderControls();
     state.ready = true;
     archiveNavigation();
     view();
