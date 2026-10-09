@@ -1,5 +1,5 @@
 /* A league keeps its archive when it gains a Hoop League Studio ID, an expansion team or a renamed team,
-   and a career save of the same league never shares it. */
+   and career or franchise saves of the same league never share it. */
 const { launchBrowser, samplePath } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -81,9 +81,19 @@ const archived = page =>
     assert.ok(career.counts['hw-000000000001-career'] > 0);
     const labels = await page.$$eval('#archiveLeague option', o => o.map(x => x.textContent));
     assert.ok(labels.some(l => l.endsWith('(Career)')));
+
+    // A franchise save of the same league gets its own archives too, apart from both of the others.
+    for (const league of save.seasonLeagues) league.season.mode = 0;
+    await upload(page, save, 'HL_FRANCHISE_SAVE_FILE_01');
+    const franchise = await archived(page);
+    assert.equal(franchise.leagues.length, career.leagues.length + 2);
+    assert.ok(franchise.leagues.some(l => l.id === 'hw-000000000001-franchise'));
+    for (const [id, count] of Object.entries(career.counts)) assert.equal(franchise.counts[id], count);
+    const franchiseLabels = await page.$$eval('#archiveLeague option', o => o.map(x => x.textContent));
+    assert.ok(franchiseLabels.some(l => l.endsWith('(Franchise)')));
     assert.deepEqual(errors, []);
     console.log(
-      'League identity checks passed: a new ID, expansion and renamed teams keep the archive; another ID and a career save get their own.'
+      'League identity checks passed: a new ID, expansion and renamed teams keep the archive; another ID, a career save and a franchise save get their own.'
     );
   } finally {
     await browser.close();

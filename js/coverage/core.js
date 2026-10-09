@@ -214,16 +214,18 @@
     return /^hoopwire:(hw-[a-z0-9]+)$/i.exec(league?.commissioner?.tag || '')?.[1].toLowerCase() || null;
   }
 
-  // Hoop Land's game mode (season.mode): 1 is commissioner, 2 is career. Commissioner is the
-  // default and has no tag, so its archives keep the identity they always had.
+  // Hoop Land's game mode (season.mode): 1 is commissioner, 2 is career, and franchise is the only
+  // other mode, so any other number is franchise. Commissioner is the default and has no tag, so
+  // its archives keep the identity they always had.
   function gameMode(league) {
-    const mode = Number(league?.season?.mode);
-    return mode === 2 ? 'career' : Number.isInteger(mode) && mode > 2 ? `mode-${mode}` : null;
+    const mode = league?.season?.mode;
+    if (mode == null || mode === '' || !Number.isFinite(Number(mode)) || Number(mode) === 1) return null;
+    return Number(mode) === 2 ? 'career' : 'franchise';
   }
 
   // A league's archive identity: the one the app pinned on an uploaded league (archiveId), then the
-  // Studio ID, then a fingerprint of the league as it stands. A career started from the same league
-  // file keeps its own archive.
+  // Studio ID, then a fingerprint of the league as it stands. A career or franchise started from the
+  // same league file keeps its own archive.
   function buildFingerprint(league) {
     if (typeof league?.archiveId === 'string') return league.archiveId;
     const mode = gameMode(league),

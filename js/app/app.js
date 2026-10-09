@@ -681,8 +681,8 @@
       : '';
   }
   // The archive an uploaded league belongs to. The first time a Studio ID shows up, the league takes
-  // over the archive it already had, so its earlier coverage stays with it. A career and a
-  // commissioner save of the same league never share one.
+  // over the archive it already had, so its earlier coverage stays with it. Commissioner, career
+  // and franchise saves of the same league never share one.
   function archiveId(league, id) {
     const plain = C.buildFingerprint({ ...league, commissioner: null });
     if (!id) return plain;
@@ -692,7 +692,8 @@
       state.leagues.find(l => l.id === plain && !l.studioId);
     return known?.id || (mode ? `${id}-${mode}` : id);
   }
-  const archiveName = l => (l.mode === 'career' ? `${l.name} (Career)` : l.name);
+  const archiveName = l =>
+    l.mode === 'career' ? `${l.name} (Career)` : l.mode === 'franchise' ? `${l.name} (Franchise)` : l.name;
   async function loadSave(file) {
     status('Loading the save and preparing the HoopWire TV studio…');
     const parsed = JSON.parse(await file.text());

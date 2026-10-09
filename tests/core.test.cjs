@@ -223,13 +223,17 @@ test('positions read on the save 0-8 scale, with hybrids between the five positi
   assert.deepEqual(C.positionKeys(7), ['pf', 'c']);
   assert.deepEqual(C.positionKeys(null), []);
 });
-test('a career save of a league never shares the commissioner archive', () => {
+test('career and franchise saves of a league never share the commissioner archive', () => {
   const league = { leagueName: 'Hoop League', season: { startingYear: 2026, mode: 1 }, teams: [{ id: 1, name: 'A' }] };
   const career = { ...league, season: { ...league.season, mode: 2 } };
   const tagged = { ...league, commissioner: { tag: 'hoopwire:hw-a10d6139c4b6' } };
   assert.equal(C.gameMode(league), null);
   assert.equal(C.gameMode({ ...league, season: {} }), null);
   assert.equal(C.gameMode(career), 'career');
+  for (const mode of [0, 3]) assert.equal(C.gameMode({ ...league, season: { mode } }), 'franchise');
+  const franchise = { ...league, season: { ...league.season, mode: 0 } };
+  assert.equal(C.buildFingerprint(franchise), C.buildFingerprint(league) + '-franchise');
+  assert.notEqual(C.buildFingerprint(franchise), C.buildFingerprint(career));
   assert.equal(C.buildFingerprint(league), C.buildFingerprint({ ...league, season: { startingYear: 2026 } }));
   assert.equal(C.buildFingerprint(career), C.buildFingerprint(league) + '-career');
   assert.equal(C.buildFingerprint(tagged), 'hw-a10d6139c4b6');
