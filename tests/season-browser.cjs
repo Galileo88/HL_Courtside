@@ -1,10 +1,10 @@
-const { fullSamplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
+const { seasonSamplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   http = require('node:http'),
   path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const save = JSON.parse(fs.readFileSync(process.argv[2] || fullSamplePath, 'utf8'));
+const save = JSON.parse(fs.readFileSync(process.argv[2] || seasonSamplePath, 'utf8'));
 if (process.env.HOOPWIRE_TEST_NEWS) {
   const l = save.seasonLeagues[0],
     p = l.teams[0].roster[0];
@@ -60,11 +60,15 @@ const server = http.createServer((req, res) => {
     }
     await upload();
     const expected = expectedStoryCount(save);
+    // A repeat upload refreshes when the save was last updated; everything else must stay the same.
     const backup = () =>
       page.evaluate(async () => {
         const a = await new HoopWireArchive().open();
         try {
-          return await a.exportData();
+          const data = await a.exportData();
+          for (const save of data.saves) (delete save.updatedAt, delete save.file?.savedAt);
+          for (const file of data.savefiles) delete file.savedAt;
+          return data;
         } finally {
           a.db.close();
         }

@@ -1,10 +1,10 @@
-const { fullSamplePath, launchBrowser } = require('./helpers.cjs');
+const { seasonSamplePath, launchBrowser } = require('./helpers.cjs');
 /* Run against the local preview server. Optionally pass a real custom-league save. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const sample = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
+const sample = JSON.parse(fs.readFileSync(seasonSamplePath, 'utf8'));
 const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
 async function ready(page) {
   await page.waitForFunction(() => !document.getElementById('saveFile').disabled);

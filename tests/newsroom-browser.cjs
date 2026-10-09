@@ -1,10 +1,10 @@
-const { fullSamplePath, launchBrowser } = require('./helpers.cjs');
+const { seasonSamplePath, launchBrowser } = require('./helpers.cjs');
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
+  save = JSON.parse(fs.readFileSync(seasonSamplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const f = path.resolve(root, '.' + new URL(req.url, 'http://localhost').pathname.replace(/^\/$/, '/index.html'));
   if (!f.startsWith(root + path.sep) || !fs.existsSync(f)) {

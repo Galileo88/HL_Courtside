@@ -1,11 +1,11 @@
-const { fullSamplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
+const { samplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const C = require('../js/coverage/core.js');
-const sample = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
+const sample = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const file = path.resolve(
     root,
@@ -42,6 +42,19 @@ async function upload(page, data) {
   await ready(page);
   assert.equal(new URL(page.url()).hash, '#newsroom');
   assert.match(await page.locator('#status').textContent(), /^Save loaded/);
+}
+// Starts another named save from the welcome screen.
+async function newSave(page, data, name) {
+  await page.evaluate(() => (location.hash = '#welcome'));
+  await page.locator('#newSaveButton').click();
+  await page.locator('#saveName').fill(name);
+  await upload(page, data);
+}
+async function openSave(page, name) {
+  await page.evaluate(() => (location.hash = '#welcome'));
+  await page.locator(`.saves-list button[aria-label="Open ${name}"]`).click();
+  await page.waitForFunction(() => location.hash === '#newsroom');
+  await ready(page);
 }
 async function records(page, store = 'stories') {
   const rows = await page.evaluate(async name => {
@@ -96,14 +109,17 @@ async function openPage(browser, url, seed) {
     await page.setViewportSize({ width: 1100, height: 900 });
     await upload(page, sample);
     assert.equal(await page.locator('#newsroomLeague option').count(), sample.seasonLeagues.length);
-    await page.locator('#leagueButtons a').filter({ hasText: 'HLCA News' }).click();
+    // Both test leagues are called New League, so each league's link is found by its address.
+    const leagueLink = league =>
+      page.locator(`#leagueButtons a[href="#league/${encodeURIComponent(C.buildFingerprint(league))}"]`);
+    await leagueLink(sample.seasonLeagues[1]).click();
     assert.ok((await page.locator('.wire-card:visible').count()) > 0);
     await page.waitForFunction(
       id => [...document.querySelectorAll('[data-league-id]')].every(n => n.dataset.leagueId === id),
       C.buildFingerprint(sample.seasonLeagues[1])
     );
     assert.equal(await page.locator('.article-card:visible').count(), 0);
-    await page.locator('#leagueButtons a').filter({ hasText: 'HL News' }).click();
+    await leagueLink(sample.seasonLeagues[0]).click();
     const original = await records(page);
     const expected = expectedStoryCount(sample);
     assert.equal(original.length, expected);
@@ -135,7 +151,12 @@ async function openPage(browser, url, seed) {
     assert.deepEqual(await records(page), original);
     const later = structuredClone(sample),
       l = later.seasonLeagues[0],
-      g = structuredClone(l.season.schedule[32].results[0]);
+      g = structuredClone(
+        l.season.schedule
+          .flatMap(d => d.results || [])
+          .filter(r => r.winner && l.teams.some(t => t.id === r.winner))
+          .at(-1)
+      );
     g.gId = 90001;
     g.homeScore += 5;
     l.season.schedule.push({ results: [g] });
@@ -166,11 +187,13 @@ async function openPage(browser, url, seed) {
       all.filter(s => s.season !== 2027),
       upgraded
     );
+    // A different league is a save of its own.
     const different = structuredClone(sample);
     different.seasonLeagues = [different.seasonLeagues[0]];
     different.seasonLeagues[0].leagueName = 'Separate League';
+    different.seasonLeagues[0].commissioner.tag = 'hoopwire:hw-separate';
     const otherId = C.buildFingerprint(different.seasonLeagues[0]);
-    await upload(page, different);
+    await newSave(page, different, 'Separate');
     assert.deepEqual(
       (await records(page)).filter(s => s.fingerprint !== otherId),
       all
@@ -199,15 +222,18 @@ async function openPage(browser, url, seed) {
     assert.equal(scoped.leagues.length, 1);
     const emptyLeague = structuredClone(different);
     emptyLeague.seasonLeagues[0].leagueName = 'League Without Coverage';
+    emptyLeague.seasonLeagues[0].commissioner.tag = 'hoopwire:hw-empty';
     emptyLeague.seasonLeagues[0].season.schedule = [];
     emptyLeague.seasonLeagues[0].season.news = [];
     emptyLeague.seasonLeagues[0].season.totalGames = 0;
     emptyLeague.seasonLeagues[0].season.playoffs = [];
     for (const t of emptyLeague.seasonLeagues[0].teams) delete t.championships;
-    await upload(page, emptyLeague);
+    await newSave(page, emptyLeague, 'Empty');
     assert.equal(await page.locator('#siteMenu a[href="#archive"]').getAttribute('aria-disabled'), 'true');
     await page.evaluate(() => (location.hash = '#archive'));
     await page.waitForFunction(() => location.hash === '#welcome');
+    // Back to the first save, opened from the list, then updated.
+    await openSave(page, `${sample.seasonLeagues[0].shortName} Franchise`);
     await upload(page, rollover);
     all = await records(page);
     await page.reload();
@@ -283,11 +309,16 @@ async function openPage(browser, url, seed) {
     legacy.templateVersion = 2;
     const migrated = await openPage(browser, url, { [legacy.id]: legacy });
     assert.equal((await records(migrated.page))[0].paragraphs[0], 'Original archived wording.');
-    await migrated.page.goto(url + '/#archive');
-    await ready(migrated.page);
-    await migrated.page.locator('#resetArchive').click();
-    await migrated.page.locator('#confirmReset').click();
-    await ready(migrated.page);
+    // A reset clears the migrated stories and never brings the old copy back. (Stories from the old
+    // format belong to no named save, so this resets the archive directly.)
+    await migrated.page.evaluate(async () => {
+      const a = await new HoopWireArchive().open();
+      try {
+        await a.resetAll();
+      } finally {
+        a.db.close();
+      }
+    });
     await migrated.page.reload();
     await ready(migrated.page);
     assert.equal((await records(migrated.page)).length, 0);

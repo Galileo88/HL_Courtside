@@ -528,7 +528,7 @@
     }
     options(
       el.archiveLeague,
-      leagues.map(l => [l.id, archiveName(l)]),
+      leagues.map(l => [l.id, l.name]),
       fingerprint
     );
     const stories = [...state.stories.values()].filter(s => s.fingerprint === el.archiveLeague.value);
@@ -570,7 +570,7 @@
     const expanded = new Set([...el.archiveTree.querySelectorAll('details[open]')].map(d => d.dataset.key));
     el.archiveTree.replaceChildren();
     const league = state.leagues.find(l => l.id === el.archiveLeague.value);
-    el.archiveTitle.textContent = `${league ? archiveName(league) : 'League'} Archive`;
+    el.archiveTitle.textContent = `${league?.name || 'League'} Archive`;
     const leagues = accessibleLeagues();
     el.archiveLeagueSwitch.hidden = leagues.length < 2;
     el.archiveLeagueSwitch.replaceChildren(
@@ -834,8 +834,6 @@
       ? ` ${count} custom court ${count === 1 ? 'image could' : 'images could'} not load; saved court layouts were used.`
       : '';
   }
-  const archiveName = l =>
-    l.mode === 'career' ? `${l.name} (Career)` : l.mode === 'franchise' ? `${l.name} (Franchise)` : l.name;
   // Hoop Land's game modes, by the number a save stores in season.mode.
   const MODES = { 0: 'Franchise', 1: 'Commissioner', 2: 'Career' };
   const modeOf = league => (Number.isInteger(league?.season?.mode) ? league.season.mode : 1),

@@ -1,8 +1,10 @@
 const path = require('node:path');
 
-// A small league (five teams, a few days of games) keeps browser tests quick. Tests that need a full
-// season of coverage, like season reviews and stat leaders, use the full sample instead.
+// Browser tests use a small league (five teams) so they run in seconds: a few days into the season,
+// or the same league with its whole season played for tests that need season reviews, leaders,
+// awards and a champion. Unit tests check facts from the larger full sample.
 const samplePath = path.join(__dirname, 'fixtures', 'small_save');
+const seasonSamplePath = path.join(__dirname, 'fixtures', 'season_save');
 const fullSamplePath = path.join(__dirname, 'fixtures', 'sample_save');
 
 // Browser scripts use Playwright from NODE_PATH. HOOPWIRE_BROWSER picks the channel (default: msedge).
@@ -35,4 +37,4 @@ function expectedStoryCount(save) {
   }, 0);
 }
 
-module.exports = { samplePath, fullSamplePath, launchBrowser, expectedStoryCount };
+module.exports = { samplePath, seasonSamplePath, fullSamplePath, launchBrowser, expectedStoryCount };
