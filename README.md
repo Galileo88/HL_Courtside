@@ -37,6 +37,17 @@ You can also back up your archive to a file and load it again later.
 
 Keep playing your league and load your new save whenever you want fresh stories.
 
+## Put HoopWire on your Home Screen
+
+HoopWire works like an app on your phone or tablet, and it opens even without internet.
+
+- **iPhone or iPad:** open HoopWire in Safari, tap the Share button, then **Add to Home Screen**.
+- **Android:** open HoopWire in Chrome, tap the ⋮ menu, then **Add to Home screen** or **Install app**.
+- **Computer:** in Chrome or Edge, click the install icon in the address bar.
+
+On iPhone and iPad this also keeps your stories safe. Safari can clear a website's saved data if you don't
+visit it for a week, but it never does that to apps on your Home Screen.
+
 ## Good to know
 
 - Everything stays on your own computer. Your save file is never uploaded anywhere.

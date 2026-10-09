@@ -562,7 +562,9 @@
       ctx.drawImage(world, x * 2, y * 2, w * 2, h * 2, 0, 0, 768, 432);
     }
     const blob = await new Promise((resolve, reject) =>
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not compose the article image.'))), 'image/png')
+      // Lossless WebP keeps every pixel and is about a third the size of PNG. A browser that cannot
+      // write WebP returns a PNG instead.
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not compose the article image.'))), 'image/webp', 1)
     );
     const text = caption(scene, story);
     return { imageBlob: blob, sceneInputs, customCourt, imageAlt: text, imageCaption: text };

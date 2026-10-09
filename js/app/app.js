@@ -777,6 +777,8 @@
     state.raw = parsed;
     state.leagueIndex = 0;
     el.fileName.textContent = file.name;
+    // Ask the browser to keep the archive when the device runs low on space.
+    navigator.storage?.persist?.().catch(() => {});
 
     await readArchive();
     const archived = [];
@@ -1985,6 +1987,9 @@
   });
   controls();
   view();
+  // Lets HoopWire open offline and be added to the Home Screen as an app.
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http'))
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   run(async () => {
     await archive.open();
     await readArchive();
