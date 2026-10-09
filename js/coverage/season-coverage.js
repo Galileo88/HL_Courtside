@@ -306,8 +306,8 @@
       .filter(p => {
         const s = p.s;
         if (!(s?.GP > 0) || (s.GP / games) * 100 < (award.minGames || 0)) return false;
-        const position = ['pg', 'sg', 'sf', 'pf', 'c'][p.position];
-        if (position && award[position] === false) return false;
+        const positions = C.positionKeys(p.position);
+        if (positions.length && positions.every(k => award[k] === false)) return false;
         if (award.yearsPro > 0 && (p.yearsPro ?? 0) + 1 !== award.yearsPro) return false;
         if (
           (award.minStarted > 0 || award.maxStarted < 100) &&
@@ -608,8 +608,7 @@
     ];
     const profile = name => profiles.find(p => p.name === name);
     const positionName = value => {
-      if (Number.isInteger(value))
-        return ['point guard', 'shooting guard', 'small forward', 'power forward', 'center'][value] || '';
+      if (Number.isInteger(value)) return C.positionName(value);
       const key = String(value || '')
         .trim()
         .toLowerCase()

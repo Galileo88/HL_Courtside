@@ -477,6 +477,27 @@
   function possessive(name) {
     return /s$/i.test(name) ? `${name}'` : `${name}'s`;
   }
+  // Saves store positions on a 0-8 scale: the five positions on even values, hybrids between them.
+  const POSITIONS = [
+    'point guard',
+    'combo guard',
+    'shooting guard',
+    'wing',
+    'small forward',
+    'forward',
+    'power forward',
+    'forward-center',
+    'center',
+  ];
+  function positionName(pos) {
+    return (Number.isInteger(pos) && POSITIONS[pos]) || '';
+  }
+  // The award settings' position flags a player falls under: one for a position, both neighbors for a hybrid.
+  function positionKeys(pos) {
+    const keys = ['pg', 'sg', 'sf', 'pf', 'c'];
+    if (!Number.isInteger(pos) || pos < 0 || pos > 8) return [];
+    return pos % 2 ? [keys[(pos - 1) / 2], keys[(pos + 1) / 2]] : [keys[pos / 2]];
+  }
   // Hoop Land records gender 0 for men and 1 for women; anything else keeps the name.
   function pronoun(person) {
     return person?.gender === 0 ? 'he' : person?.gender === 1 ? 'she' : null;
@@ -1369,6 +1390,8 @@
     surname,
     possessive,
     pronoun,
+    positionName,
+    positionKeys,
     teamRef,
     verb,
     quoteParagraph,
