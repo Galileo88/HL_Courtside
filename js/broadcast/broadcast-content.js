@@ -1019,7 +1019,7 @@
             : say('clean-r', [
                 `That's winning basketball. Take care of the rock and everybody eats.`,
                 `Underrated. You don't beat yourself, you give yourself a chance every night.`,
-                `That's grown-man basketball right there.`,
+                `That's big-time basketball right there.`,
               ]),
       });
     }
@@ -1120,15 +1120,11 @@
         key: 'support',
         priority: 60,
         speaker: 2,
-        question: say('support-q', [
-          `Who else stepped up?`,
-          `${A}, who's the unsung guy?`.replace(' guy', ' name'),
-          `Anybody else, ${A}?`,
-        ]),
+        question: say('support-q', [`Who else stepped up?`, `${A}, who's the unsung name?`, `Anybody else, ${A}?`]),
         detail: `Don't sleep on ${helper.name}. ${count(helper.stats.PTS, 'points')}${helper.stats.GS === 0 ? ' off the bench' : ''}. Every team needs a second option.`,
         response: say('support-r', [
           `Good call. You can't do it alone in this league.`,
-          `That's the guy nobody's talking about tomorrow. They should be.`.replace('the guy', 'the name'),
+          `That's the name nobody's talking about tomorrow. They should be.`,
           `Depth wins. Simple as that.`,
         ]),
       });
@@ -1159,7 +1155,7 @@
               "You need your top option to show up. Didn't happen.",
             ])
           : say('opp-r', [
-              "That's the problem when one guy's doing all the lifting.",
+              "That's the problem when one player's doing all the lifting.",
               "Nobody else gave them anything. That's the game.",
             ]),
       });
@@ -1479,7 +1475,7 @@
           pick(
             story,
             [
-              `Deserved. No debate. ${last} was the guy, and everybody in the league knew it.`,
+              `Deserved. No debate. Everybody in the league knew it was ${last}.`,
               `Easiest call of the year. I'm not even entertaining other names.`,
               `I had ${last} on my ballot from day one. Day one!`,
             ],
@@ -2298,7 +2294,7 @@
           : /injury/i.test(type)
             ? [
                 "We'll watch for an update on the return.",
-                "For now, it's next man up.",
+                'For now, somebody else has to step up.',
                 'Get well soon. That one stings.',
                 "Somebody's getting more minutes. Let's see who takes them.",
               ]
@@ -2378,7 +2374,7 @@
         body.push(
           turn(
             2,
-            `My guy is ${sleeper.name} at No. ${sleeper.pick}. ${sleeper.college.PTS} points a night in college, more than the top pick. ${cap(T(sleeper))} might have gotten a steal.`
+            `My sleeper is ${sleeper.name} at No. ${sleeper.pick}. ${sleeper.college.PTS} points a night in college, more than the top pick. ${cap(T(sleeper))} might have gotten a steal.`
           ),
           turn(1, `Steal is a strong word, ${A}. Let's see the kid play first.`)
         );
@@ -3092,7 +3088,7 @@
         1,
         pick(
           story,
-          [`Give me ${show.featured}. That's my guy in this one.`, `I'm watching ${show.featured}. Book it.`],
+          [`Give me ${show.featured}. I'm riding with that one.`, `I'm watching ${show.featured}. Book it.`],
           'showcase:take'
         )
       )
