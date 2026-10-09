@@ -1,6 +1,9 @@
 const path = require('node:path');
 
-const samplePath = path.join(__dirname, 'fixtures', 'sample_save');
+// A small league (five teams, a few days of games) keeps browser tests quick. Tests that need a full
+// season of coverage, like season reviews and stat leaders, use the full sample instead.
+const samplePath = path.join(__dirname, 'fixtures', 'small_save');
+const fullSamplePath = path.join(__dirname, 'fixtures', 'sample_save');
 
 // Browser scripts use Playwright from NODE_PATH. HOOPWIRE_BROWSER picks the channel (default: msedge).
 function launchBrowser() {
@@ -32,4 +35,4 @@ function expectedStoryCount(save) {
   }, 0);
 }
 
-module.exports = { samplePath, launchBrowser, expectedStoryCount };
+module.exports = { samplePath, fullSamplePath, launchBrowser, expectedStoryCount };

@@ -1,4 +1,4 @@
-const { samplePath } = require('./helpers.cjs');
+const { fullSamplePath } = require('./helpers.cjs');
 const test = require('node:test'),
   assert = require('node:assert/strict'),
   S = require('../js/coverage/season-coverage.js');
@@ -627,7 +627,7 @@ test('award stories stay focused on the winner and coach quotes discuss the winn
   assert.match(coachLine, /award|recognition|honor|recognized/i);
 });
 test('team review headlines add something the record does not already say', () => {
-  const save = JSON.parse(require('node:fs').readFileSync(samplePath, 'utf8'));
+  const save = JSON.parse(require('node:fs').readFileSync(fullSamplePath, 'utf8'));
   const headlines = save.seasonLeagues
     .flatMap(l => S.candidates(l, save.seasonLeagues))
     .filter(x => /^team-.*-regular$/.test(x.story.eventKey))

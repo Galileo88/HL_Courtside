@@ -1,11 +1,11 @@
-const { samplePath } = require('./helpers.cjs');
+const { fullSamplePath } = require('./helpers.cjs');
 const test = require('node:test'),
   assert = require('node:assert/strict'),
   fs = require('node:fs'),
   C = require('../js/coverage/core.js'),
   P = require('../js/coverage/profiles.js');
 
-const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+const save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
 
 test('a league yields player, coach and team profiles with stats, awards and ranks', () => {
   const league = save.seasonLeagues[0],
