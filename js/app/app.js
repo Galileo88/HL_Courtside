@@ -59,13 +59,17 @@
   };
   const imageURLs = new Map();
   const frontScroll = new Map(),
-    storyOrigins = new Map();
+    storyOrigins = new Map(),
+    profileOrigins = new Map();
+  let profileRender = 0;
   try {
     for (const [id, value] of JSON.parse(sessionStorage.getItem('hoopwire-story-origins') || '[]'))
       storyOrigins.set(id, value);
   } catch {}
   function routeData(hash = location.hash) {
     try {
+      const profile = window.HoopWireProfileView.route(hash);
+      if (profile) return { ...profile, profile: profile.kind, kind: 'profile' };
       if (hash.startsWith('#story/')) return { kind: 'story', id: decodeURIComponent(hash.slice(7)) };
       if (hash.startsWith('#league/')) return { kind: 'front', fingerprint: decodeURIComponent(hash.slice(8)) };
       const old = hash.match(/^#league-(\d+)$/);
@@ -518,6 +522,10 @@
     el.feed.replaceChildren();
     const route = routeData();
     el.feed.classList.toggle('front-page', route.kind === 'front');
+    if (route.kind === 'profile') {
+      renderProfile(route);
+      return;
+    }
     if (route.kind === 'front') {
       renderEdition(route.fingerprint);
       pruneImageURLs();
@@ -580,11 +588,7 @@
       } else figure.remove();
       const paragraphs = window.HoopWireSeason.articleParagraphs(story);
       const reviewLists = story.type === 'Regular-season review' ? window.HoopWireSeason.seasonReviewLists(story) : [];
-      for (const text of paragraphs) {
-        const p = document.createElement('p');
-        p.textContent = text;
-        node.querySelector('.article-body').appendChild(p);
-      }
+      node.querySelector('.article-body').append(...linkedParagraphs(story, paragraphs));
       const body = node.querySelector('.article-body');
       if (story.kind === 'season' && story.type !== 'Regular-season review') {
         const graphic = tvSeasonGraphic(story, 10);
@@ -683,7 +687,8 @@
     location.hash = '#newsroom';
     view();
     const snapshots = [],
-      leagues = [];
+      leagues = [],
+      profiles = [];
     for (const league of parsed.seasonLeagues) {
       const fingerprint = C.buildFingerprint(league);
       const previous = state.leagues.find(l => l.id === fingerprint);
@@ -710,10 +715,18 @@
           result
         );
       }
+      const people = window.HoopWireProfiles.build(league, fingerprint);
+      profiles.push(...people);
+      // Names from earlier uploads stay linkable, unless the name now belongs to someone else.
+      const index = window.HoopWireProfiles.nameIndex(people),
+        named = new Set(people.flatMap(r => [r.name, r.nickname]).filter(Boolean)),
+        known = new Set(index.map(([, id]) => id));
+      for (const entry of previous?.people || []) if (!named.has(entry[0]) && !known.has(entry[1])) index.push(entry);
       leagues.push({
         ...previous,
         id: fingerprint,
         studioId: league.studioId,
+        people: index,
         name: league.leagueName || 'League',
         shortName: league.shortName || null,
         leagueType: league.leagueType,
@@ -732,7 +745,7 @@
         );
       }
     }
-    await archive.write({ snapshots, leagues, meta: [{ id: 'active-leagues', ids: state.scope }] });
+    await archive.write({ snapshots, leagues, profiles, meta: [{ id: 'active-leagues', ids: state.scope }] });
     state.raw = parsed;
     state.leagueIndex = 0;
     el.fileName.textContent = file.name;
@@ -904,8 +917,11 @@
       document.getElementById(id).classList.toggle('hidden', route.kind !== id);
     document.getElementById('newsroom').classList.add('hidden');
     document.getElementById('historicalStories').classList.toggle('hidden', route.kind !== 'stories');
-    el.feed.classList.toggle('hidden', !['front', 'story', 'stories'].includes(route.kind));
-    el.status.classList.toggle('hidden', ['tv', 'front', 'story'].includes(route.kind) || !el.status.textContent);
+    el.feed.classList.toggle('hidden', !['front', 'story', 'stories', 'profile'].includes(route.kind));
+    el.status.classList.toggle(
+      'hidden',
+      ['tv', 'front', 'story', 'profile'].includes(route.kind) || !el.status.textContent
+    );
     for (const link of document.querySelectorAll('.nav a')) {
       if (
         link.getAttribute('href') === location.hash ||
@@ -918,7 +934,48 @@
     if (route.kind === 'tv') renderTV();
     else window.HoopWireBroadcast?.stop();
     if (route.kind === 'front') requestAnimationFrame(() => scrollTo(0, frontScroll.get(location.hash) || 0));
-    else if (route.kind === 'story') requestAnimationFrame(() => scrollTo(0, 0));
+    else if (['story', 'profile'].includes(route.kind)) requestAnimationFrame(() => scrollTo(0, 0));
+  }
+  async function renderProfile(route) {
+    const token = ++profileRender,
+      back = document.createElement('a');
+    back.className = 'article-back text-action';
+    back.href = profileOrigins.get(location.hash) || leagueHref(route.fingerprint);
+    back.textContent = '← Back';
+    const page = document.createElement('div');
+    el.feed.append(back, page);
+    const shown = await window.HoopWireProfileView.render(page, route, {
+      archive,
+      state,
+      statBoard,
+      storyHref,
+    });
+    if (token !== profileRender) return;
+    if (!shown) {
+      const empty = document.createElement('div');
+      empty.className = 'panel muted';
+      empty.textContent = 'This profile is not in the archive yet. Upload a save from this league to add it.';
+      page.append(empty);
+    }
+  }
+  // An article's body, with each player, coach and team linked the first time it is named.
+  function linkedParagraphs(story, paragraphs) {
+    const league = state.leagues.find(l => l.id === story.fingerprint);
+    return window.HoopWireProfiles.linkParagraphs(paragraphs, league?.people).map(parts => {
+      const p = document.createElement('p');
+      for (const part of parts) {
+        if (!part.id) {
+          p.append(document.createTextNode(part.text));
+          continue;
+        }
+        const a = document.createElement('a');
+        a.className = 'entity-link';
+        a.href = window.HoopWireProfileView.href(part.id);
+        a.textContent = part.text;
+        p.append(a);
+      }
+      return p;
+    });
   }
   function currentLeagueForStory(story) {
     return (
@@ -1195,6 +1252,7 @@
     marker = true,
     optional = [],
     toggle = null,
+    links = null,
   }) {
     const board = document.createElement('figure');
     board.className = 'tv-board';
@@ -1275,6 +1333,14 @@
             short.className = 'tv-name-short';
             short.textContent = `${parts[0][0]}.\u00a0${parts.slice(1).join('\u00a0')}`;
             cell.append(short);
+          }
+          // A row can open a profile or a recap from its name.
+          if (links?.[r]) {
+            const a = document.createElement('a');
+            a.href = links[r];
+            a.className = 'board-link';
+            a.append(...cell.childNodes);
+            cell.append(a);
           }
           if (tags?.[r]) {
             const tag = document.createElement('span');
@@ -1864,6 +1930,7 @@
         } catch {}
       }
     }
+    if (window.HoopWireProfileView.route(target) && target !== location.hash) profileOrigins.set(target, location.hash);
     if (link.classList.contains('article-back')) {
       const origin = storyOrigins.get(current.id);
       if (origin) frontScroll.set(origin.route, origin.scroll);

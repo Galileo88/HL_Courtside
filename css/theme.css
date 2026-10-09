@@ -550,3 +550,124 @@ dialog h2 {
   color: var(--hw-text);
   background: transparent;
 }
+
+/* Links to player, coach and team pages: quiet in prose, clear on hover. */
+.entity-link,
+.board-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--hw-accent) 55%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.entity-link:hover,
+.entity-link:focus-visible,
+.board-link:hover,
+.board-link:focus-visible {
+  color: var(--hw-accent);
+  text-decoration-color: currentColor;
+}
+
+/* Profile pages. */
+.profile-header {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--hw-line);
+}
+.profile-logo {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  object-fit: contain;
+}
+.profile-heading {
+  min-width: 0;
+}
+.profile-name {
+  margin-bottom: 8px;
+}
+.profile-line {
+  margin: 4px 0 0;
+  color: var(--hw-text-2);
+  font-family: var(--hw-font-ui);
+  font-size: 15px;
+  font-weight: 600;
+}
+.profile-line:first-of-type {
+  color: var(--hw-text);
+  font-size: 17px;
+}
+.profile-section {
+  margin-top: 30px;
+}
+.profile-section-title {
+  margin: 0 0 12px;
+  color: var(--hw-text);
+  font-family: var(--hw-font-ui);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.profile-news,
+.profile-awards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.profile-news li,
+.profile-awards li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hw-line-soft);
+  font-family: var(--hw-font-ui);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.profile-news .entity-link {
+  font-weight: 700;
+}
+.profile-news-date {
+  display: block;
+  color: var(--hw-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.profile-asof {
+  margin: 28px 0 0;
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .profile-header {
+    gap: 12px;
+  }
+  .profile-logo {
+    width: 56px;
+    height: 56px;
+  }
+  .profile-line {
+    font-size: 14px;
+  }
+  .profile-line:first-of-type {
+    font-size: 15px;
+  }
+}
+/* Profile tables keep a row's label on one line; the table scrolls instead. */
+.profile .tv-board-table tbody th.is-name {
+  white-space: nowrap;
+}
+.profile .tv-board-table td {
+  white-space: nowrap;
+}
+.profile-logo[hidden] {
+  display: none;
+}
+/* Cards let long words break; numbers in a table must not. */
+.profile .tv-board-table {
+  overflow-wrap: normal;
+}
