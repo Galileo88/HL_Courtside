@@ -671,3 +671,16 @@ dialog h2 {
 .profile .tv-board-table {
   overflow-wrap: normal;
 }
+
+/* The TV picture keeps its 16:9 shape even while its image is loading or being redrawn. */
+.tv-stage {
+  aspect-ratio: 16 / 9;
+}
+.tv-stage > img,
+.wire-tv-poster {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #0a1828;
+}
