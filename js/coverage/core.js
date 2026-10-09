@@ -431,9 +431,16 @@
       winnerLastSeason: priorSeason(winner, league),
       loserLastSeason: priorSeason(loser, league),
       dayGames: slate.length,
+      // Which close game, blowout or regular win this is on the day, so each draws its own quote.
       daySlot: Math.max(
         0,
-        day.findIndex(x => x.game.gId === game.gId)
+        day
+          .filter(
+            (x, i) =>
+              (slate[i] <= 3 ? 'close' : slate[i] >= 12 ? 'blowout' : 'normal') ===
+              (close ? 'close' : blowout ? 'blowout' : 'normal')
+          )
+          .findIndex(x => x.game.gId === game.gId)
       ),
       rout: blowout && margin >= 0.18 * winnerScore,
       widestOfDay: slate.length >= 3 && slate.filter(m => m >= margin).length === 1,
@@ -915,7 +922,10 @@
           "We were sharp. I don't want to make too much of one night, but that's the standard.",
           'We defended, we rebounded and we moved the ball. That travels.',
           "Everybody who checked in gave us something. That's what I'm proudest of.",
-          'We set the tone early and never let up.',
+          'We were locked in from the opening tip and never let up.',
+          "Our bench was terrific. That's what depth looks like.",
+          'We took care of the basketball and made them work for everything.',
+          "That's the most complete defensive game we've played.",
         ]);
       return daily([
         "Good win. There's stuff we have to clean up, but I'll take it.",
@@ -954,6 +964,9 @@
         "We've been waiting on a game like that. Now we've got to keep it going.",
         'The ball was moving and everybody ate. That was fun.',
         "Our defense got us going. Once we got out in transition, it's hard to stop us.",
+        'Shots were falling early, and that opened everything up.',
+        'Coach told us to keep our foot on the gas. Nobody let up.',
+        "That's what we're capable of when everybody's on the same page.",
       ]);
     return daily([
       "We came in and took care of business. That's all you can ask.",

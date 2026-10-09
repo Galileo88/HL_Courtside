@@ -711,7 +711,7 @@
           [
             1,
             (m >= 0.18 * ws
-              ? `That was a beatdown. ${m} points. ${cap(L.nick)} need answers, and they need them fast.`
+              ? `Not close at all. ${m} points. ${cap(L.nick)} need answers, and they need them fast.`
               : `Never in doubt. ${cap(L.nick)} need a better answer than that.`
             ).replace(` ${L.nick} need`, ` ${L.nick} ${C.verb(L, 'need')}`),
           ],
@@ -2161,7 +2161,13 @@
       );
     }
     const verdict =
-      team.r.W > team.r.L ? 'a winning season' : team.r.W < team.r.L ? 'a losing season' : 'a .500 season';
+      pctW >= 0.6
+        ? 'a strong season'
+        : team.r.W > team.r.L
+          ? 'a winning season'
+          : team.r.W < team.r.L
+            ? 'a losing season'
+            : 'a .500 season';
     return frame(
       story,
       'season',

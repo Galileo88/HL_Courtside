@@ -1357,7 +1357,7 @@
           if (x.elite.length)
             parts.push(
               x.fresh.length === 1
-                ? `${name(x.elite[0])}, the lone freshman, is one of the ${elite} highest-rated recruits in the country.`
+                ? `${name(x.elite[0])}, ${C.possessive(T(x.t).nick)} only freshman, is one of the ${elite} highest-rated recruits in the country.`
                 : `${name(x.elite[0])} headlines a ${C.num(x.fresh.length)}-player freshman class and is one of the ${elite} highest-rated recruits in the country.`
             );
           if (lostLine && x.starters != null && x.starters <= 2) parts.push(`${cap(lostLine)}.`);

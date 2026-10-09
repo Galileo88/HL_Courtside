@@ -672,7 +672,6 @@
       interior.push(
         `${subject(g.REB, true)} ${g.REB.tied ? 'shared' : 'swept'} the rebounding and shot-blocking titles, averaging ${g.REB.rate} rebounds and ${g.BLK.rate} blocks a night.`
       );
-      interior.push('Owning both categories is the kind of two-way season that changes how a player is remembered.');
       const p = !g.REB.tied ? profile(g.REB.names[0]) : null;
       if (p?.s?.GP > 0 && p.s.PTS / p.s.GP >= 10 && Number(g.REB.rate) >= 10)
         interior.push(
@@ -862,22 +861,31 @@
         `This group earned every one of those ${wins} wins. I'm proud of what we built together.`,
         `That's an outstanding regular season. Our players deserve a lot of credit for ${wins} wins.`,
         "We had a tremendous season. I'm proud of this team and the way we earned it.",
+        "We were the hunted all year and we handled it. I'm proud of how this group earned it.",
       ],
       winning: [
         "This was a successful season, and our players deserve the credit. I'm proud of this group.",
         "We earned those wins together. There's a lot to be proud of here.",
+        'We took a step this year. Now the expectations go up, and that is a good thing.',
+        'We were a tough out most nights. I like where this group is headed.',
       ],
       balanced: [
         'We had some good stretches. Consistency is where we have to take the next step.',
         'We showed what we can do. Now we need to bring that level more often.',
+        'We were right there in a lot of games. Closing them out is the next step.',
+        "Some nights we looked like a playoff team, some nights we didn't. We have to fix that.",
       ],
       losing: [
         "We didn't win enough games. We have to be more consistent at both ends of the floor.",
         'There are things we can build on, but the results have to get better.',
+        'We lost too many close games. That comes down to execution, and we will work on it.',
+        "I like the effort. I don't like the record. Both of those things are true.",
       ],
       struggling: [
         "The results weren't good enough, and I take responsibility for that. We have to get better.",
         'It was a tough season. We owe it to this group to turn the work into wins.',
+        'We have to be better, starting with me. That record is not good enough.',
+        'It was a tough year, and nobody in this building is happy with it. We have a lot of work to do this summer.',
       ],
     };
     const playerQuotes = {
@@ -904,31 +912,42 @@
       dominant: [
         `Winning ${wins} games is something we're proud of. We earned that together.`,
         "We had a great season. I'm proud of this group and what we accomplished.",
+        'We came in every night expecting to win, and we earned it.',
       ],
       winning: [
         'We put together a good year. I want us to keep building on it.',
         "There's a lot to be proud of. We earned those wins as a group.",
+        "We proved a lot of people wrong this year. We're not done.",
+        'Good season, but we left some wins out there. That motivates me.',
       ],
       balanced: [
         'We had good nights and tough nights. We have to find more consistency.',
         'We know we can play better. The next step is doing it more often.',
+        "We showed flashes. Now it's about doing it every night.",
+        'Close games went both ways on us. We have to win more of those.',
       ],
       losing: [
         'We wanted more wins than this. We have to turn those lessons into better basketball.',
         "The record isn't where we wanted it. We have to keep working and get better.",
+        "It's frustrating. We were better than our record, but the record is what counts.",
+        "I'm already thinking about next season. This one's going to drive me.",
       ],
       struggling: [
         'It was a tough year. None of us are satisfied with that record.',
         'We have to be honest about how this season went and come back better.',
+        "It was a tough year, and that's not who we want to be. It starts with how we work this summer.",
+        'Losing like that is tough. We have to use it.',
       ],
     };
+    // Teams rotate through the lines by id, so a day of season reviews doesn't repeat one quote.
+    const pick = (options, salt) =>
+      Number.isInteger(team?.id)
+        ? options[(parseInt(C.hashString(`${tone}|${salt}`), 36) + team.id) % options.length]
+        : C.choose(id, options, salt);
     const lines = [];
     if (coach)
-      lines.push(
-        C.quoteParagraph(C.choose(id, coachQuotes[tone], 'season-coach'), `head coach ${C.playerDisplay(coach)}`)
-      );
-    if (player)
-      lines.push(C.quoteParagraph(C.choose(id, playerQuotes[tone], 'season-player'), C.playerDisplay(player)));
+      lines.push(C.quoteParagraph(pick(coachQuotes[tone], 'season-coach'), `head coach ${C.playerDisplay(coach)}`));
+    if (player) lines.push(C.quoteParagraph(pick(playerQuotes[tone], 'season-player'), C.playerDisplay(player)));
     return lines;
   }
   function awardQuoteLines(id, player, coach, kind) {
