@@ -1201,15 +1201,21 @@ select {
 .site-menu-panel[hidden] {
   display: none;
 }
-.site-menu-panel button {
+.site-menu-panel :is(a, button) {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   text-align: left;
   background: none;
   border: 0;
   padding: 11px 12px;
   font-size: 14px;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
 }
+.site-menu-panel a:hover,
+.site-menu-panel a:focus-visible,
 .site-menu-panel button:hover:not(:disabled),
 .site-menu-panel button:focus-visible {
   background: #1455a5;

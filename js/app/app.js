@@ -1727,7 +1727,7 @@
   el.siteMenuButton.addEventListener('click', event => {
     event.stopPropagation();
     siteMenu(el.siteMenu.hidden);
-    if (!el.siteMenu.hidden) el.siteMenu.querySelector('button:not(:disabled)')?.focus();
+    if (!el.siteMenu.hidden) el.siteMenu.querySelector('a:not([aria-disabled]), button:not(:disabled)')?.focus();
   });
   el.menuUploadSave.addEventListener('click', () => {
     siteMenu(false);
