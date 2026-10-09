@@ -18,10 +18,13 @@
 .wire-ticker-track,
 .wire-ticker-group {
   display: flex;
-  flex-shrink: 0;
+  flex: none;
+  width: max-content;
 }
 .wire-score {
-  flex: 0 0 230px;
+  flex: none;
+  box-sizing: border-box;
+  width: 260px;
   padding: 0 16px;
   border-right: 1px solid var(--line);
   color: inherit;
@@ -76,7 +79,9 @@ a.wire-score:focus-visible {
 }
 .wire-score-team span {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .wire-heading {
   position: relative;
@@ -374,7 +379,7 @@ a.wire-score:focus-visible {
     padding: 9px 0;
   }
   .wire-score {
-    flex-basis: 190px;
+    width: 214px;
     padding: 0 12px;
   }
   .wire-score-team {
