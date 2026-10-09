@@ -724,7 +724,13 @@
       state.leagueIndex = index;
       archived.push(...(await generate()));
     }
-    state.leagueIndex = 0;
+    // Open on the first league with coverage this season; a career save can start with only college news.
+    const covered = parsed.seasonLeagues.findIndex(l =>
+      [...state.stories.values()].some(
+        s => s.fingerprint === C.buildFingerprint(l) && String(s.season) === String(C.seasonYear(l))
+      )
+    );
+    state.leagueIndex = Math.max(0, covered);
     const league = selectedLeague();
     archiveNavigation(C.buildFingerprint(league), C.seasonYear(league), C.buildLookups(league).latestDay + 1);
     view();
@@ -767,6 +773,7 @@
       ...window.HoopWireNews.candidates(league, state.raw.seasonLeagues),
       ...window.HoopWireNews.offseason(league, state.raw.seasonLeagues),
       ...window.HoopWirePerformance.candidates(league),
+      ...window.HoopWireCareer.candidates(league),
     ].filter(x => {
       if (milestoneIds.has(x.story.id)) return false;
       milestoneIds.add(x.story.id);
@@ -1102,6 +1109,7 @@
           headers: board.headers,
           rows: board.rows.slice(0, limit),
           ranked: !!board.ranked,
+          marker: board.lead !== false,
           subs: board.subs?.slice(0, limit) || null,
         })
       );
@@ -1155,6 +1163,7 @@
     subs = null,
     tags = null,
     highlight = true,
+    marker = true,
     optional = [],
     toggle = null,
   }) {
@@ -1190,7 +1199,7 @@
       return vals.length && top > 0 && vals.some(v => v !== top) ? top : null;
     });
     const table = document.createElement('table');
-    table.className = 'tv-board-table';
+    table.className = marker ? 'tv-board-table' : 'tv-board-table no-lead';
     const head = document.createElement('tr');
     if (ranked) {
       const th = document.createElement('th');

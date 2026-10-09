@@ -1218,7 +1218,11 @@
         y = py0 + ph + 52;
       ctx.fillStyle = '#c9cfdb';
       ctx.font = '400 13px Arial';
-      for (const word of `Committed. ${C.teamDisplay(team)}, let's work.`.split(' ')) {
+      const post = scene.post || {
+        text: `Committed. ${C.teamDisplay(team)}, let's work.`,
+        tag: String(team?.name || 'Committed').replace(/\s+/g, ''),
+      };
+      for (const word of post.text.split(' ')) {
         const w = ctx.measureText(word + ' ').width;
         if (x + w > cx + cw - 12) {
           x = cx + 14;
@@ -1228,7 +1232,7 @@
         x += w;
       }
       ctx.fillStyle = '#7d8aa6';
-      ctx.fillText(`#${String(team?.name || 'Committed').replace(/\s+/g, '')}`, cx + 14, y + 20);
+      ctx.fillText(`#${post.tag}`, cx + 14, y + 20);
       return {
         canvas,
         extra: {
@@ -1236,6 +1240,10 @@
           pressLeagueLogoData: scene.pressLeagueLogoData || null,
         },
       };
+    },
+    // A prospect's Hoop Gram post before a showcase game: the commitment card with the prospect's own words.
+    showcase(scene, rand) {
+      return scenes.commit(scene, rand);
     },
     // A player award: the press conference stage, the player at the podium.
     award(scene, rand) {
@@ -1566,6 +1574,10 @@
       const C = window.HoopWireCore;
       return `${scene.recruit ? C.playerDisplay(scene.recruit) : 'A recruit'} announces a commitment to ${C.teamDisplay(scene.team)} on Hoop Gram.`;
     }
+    if (scene.kind === 'coach-showcase') {
+      const C = window.HoopWireCore;
+      return `${scene.recruit ? C.playerDisplay(scene.recruit) : 'A prospect'} of the ${C.teamDisplay(scene.team)} posts on Hoop Gram before the ${scene.post?.event || 'showcase'}.`;
+    }
     if (scene.kind === 'coach-rafters') {
       const C = window.HoopWireCore,
         p = scene.retired?.player;
@@ -1691,6 +1703,7 @@
       signee: context.signee ? { ...snap(context.signee), wearsSuit: true, isCoach: false } : null,
       retiree: context.retiree ? { ...snap(context.retiree), wearsSuit: true, isCoach: false } : null,
       recruit: snap(context.recruit),
+      post: context.post ? { ...context.post } : null,
       retired: context.retired
         ? { player: snap(context.retired.player), num: context.retired.num, years: context.retired.years || null }
         : null,

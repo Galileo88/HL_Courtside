@@ -2965,8 +2965,105 @@
       ? [turn(0, `Here's what ${who} had to say: “${words}”`), turn(pick(story, [1, 2], 'quote:reactor'), response)]
       : [];
   }
+  // Career mode, before the first game: the desk meets the player and sizes up the showcase.
+  function showcaseScript(story, n) {
+    const career = story.seasonSnapshot.career,
+      show = story.seasonSnapshot.showcase,
+      [, J, A] = n;
+    if (career) {
+      const who = [career.age && `${career.age}-year-old`, career.position, career.country && `from ${career.country}`]
+        .filter(Boolean)
+        .join(' ');
+      const body = [
+        turn(
+          1,
+          career.height
+            ? pick(
+                story,
+                [
+                  `${career.height}${career.weight ? `, ${career.weight} pounds` : ''}, and still in high school. I'm already in.`,
+                  `Look at the frame. ${career.height} at ${career.age || 'that age'}? Come on.`,
+                ],
+                'career:take'
+              )
+            : pick(
+                story,
+                ["I've seen the tape. I'm already in.", 'I like this kid. I like this kid a lot.'],
+                'career:take'
+              )
+        ),
+      ];
+      if (career.countrymen?.length)
+        body.push(
+          turn(
+            2,
+            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home, ${J}.`
+          )
+        );
+      body.push(
+        turn(
+          3,
+          career.strengths?.length
+            ? `Easy, ${J}. One game. What I'll say is ${career.pronoun === 'she' ? 'her' : career.pronoun === 'he' ? 'his' : `${career.last}'s`} ${join(career.strengths)} already ${career.strengths.length === 1 ? 'ranks' : 'rank'} near the top of this field.`
+            : `Easy, ${J}. It's one game, and I don't grade careers off one game.`
+        )
+      );
+      if (career.fanPosts)
+        body.push(
+          turn(0, `The fans have already made up their minds. They're posting about ${career.last} on Hoop Gram.`)
+        );
+      return frame(
+        story,
+        'career',
+        [
+          `Before anything else tonight, meet ${career.name}${who ? `, a ${who}` : ''}. ${J}, what do you see?`,
+          `A new name for your notebook: ${career.name}${who ? `, a ${who}` : ''}, suiting up for the ${career.team} in the ${career.event}. ${J}?`,
+        ],
+        [`The ${career.event}. We'll all be watching.`, `${career.name}. Remember the name.`],
+        body
+      );
+    }
+    const [home, away] = show.teams;
+    const worldly = show.teams.find(t => t.countries.length >= 3);
+    const body = [];
+    if (home.tallest && away.tallest)
+      body.push(
+        turn(
+          2,
+          `Size on both sides. ${home.tallest.name} is ${home.tallest.height}, ${away.tallest.name} is ${away.tallest.height}. That's a fun matchup in the paint.`
+        )
+      );
+    if (worldly)
+      body.push(
+        turn(
+          3,
+          `The ${worldly.name} have players from ${C.num(worldly.countries.length)} countries. That's a real mix of styles.`
+        )
+      );
+    body.push(
+      turn(
+        1,
+        pick(
+          story,
+          [`Give me ${show.featured}. That's my guy in this one.`, `I'm watching ${show.featured}. Book it.`],
+          'showcase:take'
+        )
+      )
+    );
+    return frame(
+      story,
+      'showcase',
+      [
+        `The ${show.event}: the ${home.name} and the ${away.name}, the best high school prospects on one floor. ${A}?`,
+        `It's showcase time. The ${home.name} against the ${away.name}. ${A}, where do you start?`,
+      ],
+      [`The ${show.event}. Don't miss it.`, `That's the ${show.event}. College coaches, take notes.`],
+      body
+    );
+  }
   function baseScript(story, context, n) {
     if (story.performanceSnapshot) return Performance.script(story, n);
+    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase) return showcaseScript(story, n);
     if (story.seasonSnapshot?.roundup) return roundupScript(story, n);
     if (story.type === 'Season leaders') return leadersScript(story, n);
     if (story.type === 'Seeding snub') return snubScript(story, n);
