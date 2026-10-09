@@ -3201,7 +3201,9 @@
         body.push(
           turn(
             2,
-            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home.`
+            career.countrymen.length > 3
+              ? `And there's a subplot: ${career.countrymen.length} other players in this game are from ${career.country || 'the same place'}. Bragging rights back home.`
+              : `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home.`
           )
         );
       if (career.fanPosts)

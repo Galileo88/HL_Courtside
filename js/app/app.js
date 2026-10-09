@@ -839,30 +839,33 @@
   const modeOf = league => (Number.isInteger(league?.season?.mode) ? league.season.mode : 1),
     modeName = mode => MODES[mode] || 'Franchise';
   class SaveRejected extends Error {}
+  // How a save knows each of its leagues: the HoopWire tag when the league has one, which survives
+  // renamed and added teams; otherwise the league's name, starting year and teams as they stand.
+  const identity = league => C.leagueId(league) || C.buildFingerprint(league);
   // Why a file can't start a new save, or update the open one; nothing when it can.
   function saveProblem(parsed, save) {
     const leagues = parsed.seasonLeagues,
-      tags = leagues.map(C.leagueId),
+      tags = leagues.map(C.leagueId).filter(Boolean),
+      ids = leagues.map(identity),
       mode = modeOf(leagues[0]);
-    const untagged = leagues.find(l => !C.leagueId(l));
-    if (untagged)
-      return `${untagged.leagueName || 'A league in this file'} has no HoopWire tag. Export the league from Hoop League Studio, start your game from that file, then upload the save here.`;
     if (new Set(tags).size !== tags.length)
       return 'Two leagues in this file have the same HoopWire tag. Export each league from Hoop League Studio so each gets its own.';
     if (!save) {
-      const ids = leagues.map(l => C.buildFingerprint(l)),
-        taken = state.saves.find(s => s.leagueIds.some(id => ids.includes(id)));
-      const league = taken && leagues[ids.findIndex(id => taken.leagueIds.includes(id))];
+      const archived = leagues.map(l => C.buildFingerprint(l)),
+        taken = state.saves.find(s => s.leagueIds.some(id => archived.includes(id)));
+      const league = taken && leagues[archived.findIndex(id => taken.leagueIds.includes(id))];
       return taken
         ? `You already have a ${modeName(mode)} save for ${league.leagueName || 'this league'}. Open it from Your saves to update it, or delete it to start over.`
         : null;
     }
     if (mode !== save.mode)
       return `This is a ${modeName(mode)} save, but the open save, “${save.name}”, is a ${modeName(save.mode)} save.`;
-    const stranger = leagues.find(l => !save.tags.includes(C.leagueId(l)));
+    const stranger = leagues.find((l, i) => !save.tags.includes(ids[i]));
     if (stranger)
-      return `${stranger.leagueName || 'A league in this file'} has a different HoopWire tag than the open save, “${save.name}”, so this file is from a different save.`;
-    const missing = save.tags.findIndex(t => !tags.includes(t));
+      return C.leagueId(stranger)
+        ? `${stranger.leagueName || 'A league in this file'} has a different HoopWire tag than the open save, “${save.name}”, so this file is from a different save.`
+        : `${stranger.leagueName || 'A league in this file'} doesn’t match the open save, “${save.name}”. Without a HoopWire tag, a league with renamed or added teams looks like a different league. Start a new save for it.`;
+    const missing = save.tags.findIndex(t => !ids.includes(t));
     if (missing >= 0)
       return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from the open save, “${save.name}”.`;
     return null;
@@ -960,7 +963,7 @@
         ...save,
         file: { name: file.name, size: file.size, savedAt: now },
         mode: modeOf(parsed.seasonLeagues[0]),
-        tags: parsed.seasonLeagues.map(C.leagueId),
+        tags: parsed.seasonLeagues.map(identity),
         leagueIds: state.scope,
         leagueNames: parsed.seasonLeagues.map(l => l.leagueName || 'League'),
         createdAt: save.createdAt || now,

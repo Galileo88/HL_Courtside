@@ -26,12 +26,29 @@
   };
   const regions =
     typeof Intl === 'object' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'region' }) : null;
+  // Plain names where the browser's are written for menus ("Congo - Kinshasa", "Hong Kong SAR China").
+  const names = {
+    BA: 'Bosnia and Herzegovina',
+    CD: 'Democratic Republic of the Congo',
+    CG: 'Republic of the Congo',
+    HK: 'Hong Kong',
+    MM: 'Myanmar',
+    MO: 'Macao',
+    PS: 'Palestine',
+    TC: 'Turks and Caicos Islands',
+  };
   function country(code) {
     try {
-      return (code && regions?.of(code)) || null;
+      return (code && (names[code] || regions?.of(code))) || null;
     } catch {
       return null;
     }
+  }
+  // A country as a sentence names it: "from the United States", "from the Philippines", "from Slovenia".
+  const theCountries = new Set(['BS', 'GM', 'KM', 'MV', 'NL', 'PH', 'SC']);
+  function place(code) {
+    const name = country(code);
+    return name && (theCountries.has(code) || /^United |Republic|Islands$/.test(name)) ? `the ${name}` : name;
   }
   // Before a career starts, the game asks how the player wants to be remembered and saves the answer as
   // the player's potential. These are the game's three answers, word for word (with the word the game's
@@ -123,7 +140,7 @@
       his = he === 'she' ? 'her' : he === 'he' ? 'his' : C.possessive(last),
       him = he === 'she' ? 'her' : he === 'he' ? 'him' : last,
       position = C.positionName(player.pos),
-      from = country(player.ctry),
+      from = place(player.ctry),
       T = C.teamRef(team),
       O = C.teamRef(other);
     const countrymen = field.filter(p => p.id !== player.id && p.ctry && p.ctry === player.ctry),
@@ -195,16 +212,19 @@
               ? `At ${size}, ${last} brings a college-ready frame, and ${his} ${C.listJoin(traits.map(t => strengths[t.key]))} ${traits.length === 1 ? 'ranks' : 'rank'} among the best in the showcase field.`
               : `${C.capitalize(last)} checks in at ${size}.`
             : '',
-          others.length
-            ? `${C.capitalize(last)} won't be the only player from ${from || 'home'} on the floor: ${C.listJoin([
-                ...sameSide.map(p => `${C.playerDisplay(p)} is a teammate on ${T.full}`),
-                ...(otherSide.length
-                  ? [
-                      `${C.listJoin(otherSide.map(p => C.playerDisplay(p)))} ${otherSide.length === 1 ? 'suits' : 'suit'} up for ${O.full}`,
-                    ]
-                  : []),
-              ])}.`
-            : '',
+          // Players from the same country, named together; a long list becomes a count.
+          others.length > 4
+            ? `${C.capitalize(last)} is one of ${C.num(others.length + 1)} players from ${from || 'the same country'} in the game.`
+            : others.length
+              ? `${C.capitalize(last)} won't be the only player from ${from || 'home'} on the floor: ${C.listJoin(
+                  [
+                    sameSide.length &&
+                      `${C.listJoin(sameSide.map(C.playerDisplay))} ${sameSide.length === 1 ? 'plays' : 'play'} alongside ${him} on ${T.full}`,
+                    otherSide.length &&
+                      `${C.listJoin(otherSide.map(C.playerDisplay))} ${otherSide.length === 1 ? 'suits' : 'suit'} up for ${O.full}`,
+                  ].filter(Boolean)
+                )}.`
+              : '',
           fans.length
             ? fansFromHome === fans.length && from
               ? `Back in ${from}, fans are already posting about ${him} on Hoop Gram.`
@@ -317,7 +337,7 @@
         paragraphs: [
           `The ${event} puts ${C.num(field.length)} of the top high school prospects on one floor, with ${sides[0].R.full} facing ${sides[1].R.full}${arena ? ` at ${arena}` : ''}.`,
           worldly
-            ? `The ${worldly.R.display} roster has a global feel, with players from ${C.listJoin(worldly.countries.map(c => country(c) || c))}.`
+            ? `The ${worldly.R.display} roster has a global feel, with players from ${C.listJoin(worldly.countries.map(c => place(c) || c))}.`
             : '',
           sides.every(s => s.tall)
             ? `The size to watch: ${C.playerDisplay(sides[0].tall)} (${height(sides[0].tall.ht)}) for ${sides[0].R.full} and ${C.playerDisplay(sides[1].tall)} (${height(sides[1].tall.ht)}) for ${sides[1].R.full}.`

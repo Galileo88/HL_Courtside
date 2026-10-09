@@ -56,13 +56,6 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     assert.equal(await page.locator('#loadTitle').textContent(), 'New save');
     assert.equal(await page.locator('#savesCard').isVisible(), false);
 
-    // A league without a HoopWire tag can't start a save.
-    await refused(
-      copy(s => (s.seasonLeagues[1].commissioner.tag = '')),
-      /New League has no HoopWire tag/
-    );
-    assert.deepEqual((await archived()).saves, []);
-
     // Choose the file: the save takes the pro league's name, and the newsroom opens.
     await upload(base);
     await page.locator('.wire-lead').waitFor();
@@ -184,9 +177,32 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     );
     assert.equal(after.counts['hw-smallpro-career'], undefined);
     assert.equal(after.counts['hw-smallpro-franchise'], updated.counts['hw-smallpro-franchise']);
+
+    // A file without HoopWire tags still starts a save; its leagues are known by their name and teams.
+    const untagged = edit =>
+      copy(s => {
+        s.seasonLeagues.forEach(l => (l.commissioner.tag = ''));
+        edit?.(s);
+      });
+    await welcome();
+    await page.click('#newSaveButton');
+    await upload(untagged());
+    await page.locator('.wire-lead').waitFor();
+    const plain = (await archived()).saves.find(s => !s.ids[0].startsWith('hw-'));
+    assert.equal(plain?.name, 'New League');
+    assert.equal(plain.ids.length, 2);
+    assert.ok(plain.ids.every(id => id.endsWith('-franchise')));
+    // The same file updates it; renamed teams make it look like another league.
+    await welcome();
+    await upload(untagged());
+    assert.deepEqual((await archived()).saves.find(s => s.ids[0] === plain.ids[0]).ids, plain.ids);
+    await refused(
+      untagged(s => (s.seasonLeagues[0].teams[1].name = 'Renamed')),
+      /New League doesn’t match the open save, “New League”\. Without a HoopWire tag/
+    );
     assert.deepEqual(errors, []);
     console.log(
-      'Save checks passed: named saves, export of the original file, refused untagged, different-mode, different-league and duplicate files, updates through an expansion, open without the file, reload and delete.'
+      'Save checks passed: named saves, export of the original file, untagged saves, refused different-mode, different-league and duplicate files, updates through an expansion, open without the file, reload and delete.'
     );
   } finally {
     await browser.close();
