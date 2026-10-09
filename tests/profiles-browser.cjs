@@ -1,0 +1,117 @@
+/* Names in articles open player, coach and team pages built from the uploaded save. */
+const { launchBrowser, samplePath } = require('./helpers.cjs');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
+
+(async () => {
+  const browser = await launchBrowser();
+  try {
+    const page = await browser.newPage(),
+      errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    // An archive from before profiles existed upgrades in place.
+    await page.goto(url + '/scripts/');
+    await page.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const req = indexedDB.open('hoopwire.daily.v1', 1);
+          req.onupgradeneeded = () => {
+            for (const name of ['stories', 'snapshots', 'leagues', 'meta'])
+              req.result.createObjectStore(name, { keyPath: 'id' });
+          };
+          req.onsuccess = () => {
+            req.result.close();
+            resolve();
+          };
+          req.onerror = () => reject(req.error);
+        })
+    );
+    await page.goto(url);
+    await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
+    await page.locator('#saveFile').setInputFiles(samplePath);
+    await page.waitForFunction(() => document.getElementById('saveFile').disabled);
+    await page.waitForFunction(() => !document.getElementById('saveFile').disabled, null, { timeout: 180000 });
+    const stored = await page.evaluate(async () => {
+      const a = await new HoopWireArchive().open();
+      try {
+        const [profiles, leagues, stories] = await Promise.all([a.all('profiles'), a.all('leagues'), a.all('stories')]);
+        return {
+          kinds: [...new Set(profiles.map(p => p.kind))].sort(),
+          indexed: leagues.every(l => l.people?.length > 0),
+          story: stories.find(s => s.gid && s.paragraphs.length > 3 && /coach/.test(s.paragraphs.join(' '))).id,
+        };
+      } finally {
+        a.db.close();
+      }
+    });
+    assert.deepEqual(stored.kinds, ['coach', 'player', 'team']);
+    assert.ok(stored.indexed);
+
+    const openStory = async () => {
+      await page.evaluate(id => (location.hash = '#story/' + encodeURIComponent(id)), stored.story);
+      await page.waitForSelector('.article-body .entity-link');
+    };
+    await openStory();
+    const hrefs = await page.$$eval('.article-body .entity-link', as => as.map(a => a.getAttribute('href')));
+    assert.equal(new Set(hrefs).size, hrefs.length, 'each name links once');
+    assert.ok(hrefs.some(h => h.startsWith('#player/')) && hrefs.some(h => h.startsWith('#team/')));
+    assert.equal(await page.locator('.article-headline .entity-link').count(), 0);
+    // Names in the story's stat cards open the same pages.
+    assert.ok((await page.locator('.article-body .tv-board .board-link[href^="#player/"]').count()) > 0);
+
+    await page.click('.article-body .entity-link[href^="#player/"]');
+    await page.waitForSelector('.profile-header');
+    const player = await page.textContent('.profile');
+    assert.match(player, /Player ·/);
+    assert.match(player, /Latest game/);
+    assert.match(player, /Career/);
+    assert.match(player, /In the news/);
+    assert.doesNotMatch(player, /rating|potential|undefined|NaN/i);
+    await page.click('.article-back');
+    await page.waitForSelector('.article-body .entity-link');
+    assert.match(page.url(), /#story\//);
+
+    if (hrefs.some(h => h.startsWith('#coach/'))) {
+      await page.click('.article-body .entity-link[href^="#coach/"]');
+      await page.waitForSelector('.profile-header');
+      assert.match(await page.textContent('.profile'), /Head coach[\s\S]*Coaching record/);
+      await openStory();
+    }
+    await page.click('.article-body .entity-link[href^="#team/"]');
+    await page.waitForSelector('.profile-header');
+    const team = await page.textContent('.profile');
+    assert.match(team, /Team ·[\s\S]*team stats[\s\S]*League rank[\s\S]*Roster[\s\S]*Results/i);
+    // Roster names open player pages.
+    await page.click('.profile .board-link[href^="#player/"]');
+    await page.waitForFunction(() =>
+      /^Player/.test(document.querySelector('.profile .article-meta')?.textContent || '')
+    );
+    assert.match(await page.textContent('.profile'), /Player ·/);
+
+    // A missing profile says so instead of breaking.
+    await page.evaluate(() => (location.hash = '#player/nope/1'));
+    await page.waitForSelector('.panel.muted');
+    assert.match(await page.textContent('.panel.muted'), /not in the archive/);
+
+    // Backups carry profiles.
+    const backup = await page.evaluate(async () => {
+      const a = await new HoopWireArchive().open();
+      try {
+        return (await a.exportData()).profiles.length;
+      } finally {
+        a.db.close();
+      }
+    });
+    assert.ok(backup > 0);
+    assert.deepEqual(errors, []);
+    console.log(
+      'Profile checks passed: first-mention links, player, coach and team pages, back navigation, upgrade and backup.'
+    );
+  } finally {
+    await browser.close();
+  }
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

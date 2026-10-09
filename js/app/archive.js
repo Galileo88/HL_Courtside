@@ -1,7 +1,7 @@
 /* Atomic browser archive; blobs stay outside localStorage. */
 (() => {
   'use strict';
-  const STORES = ['stories', 'snapshots', 'leagues', 'meta'];
+  const STORES = ['stories', 'snapshots', 'leagues', 'meta', 'profiles'];
   const request = req =>
     new Promise((resolve, reject) => {
       req.onsuccess = () => resolve(req.result);
@@ -9,9 +9,11 @@
     });
   class Archive {
     async open() {
-      const req = indexedDB.open('hoopwire.daily.v1', 1);
+      // Version 2 adds player, coach and team profiles; older archives keep everything else.
+      const req = indexedDB.open('hoopwire.daily.v1', 2);
       req.onupgradeneeded = () => {
-        for (const name of STORES) req.result.createObjectStore(name, { keyPath: 'id' });
+        for (const name of STORES)
+          if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name, { keyPath: 'id' });
       };
       this.db = await new Promise((resolve, reject) => {
         req.onsuccess = () => resolve(req.result);
@@ -40,7 +42,7 @@
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error || new Error('Archive reset failed.'));
         tx.onabort = () => reject(tx.error || new Error('Archive reset was aborted.'));
-        for (const name of ['stories', 'snapshots']) {
+        for (const name of ['stories', 'snapshots', 'profiles']) {
           const cursor = tx.objectStore(name).openCursor();
           cursor.onsuccess = () => {
             const record = cursor.result;
@@ -60,7 +62,7 @@
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error || new Error('Archive reset failed.'));
         tx.onabort = () => reject(tx.error || new Error('Archive reset was aborted.'));
-        for (const name of ['stories', 'snapshots', 'leagues']) tx.objectStore(name).clear();
+        for (const name of ['stories', 'snapshots', 'leagues', 'profiles']) tx.objectStore(name).clear();
         // Keep the original recovery copy without re-importing reset coverage.
         tx.objectStore('meta').put({ id: 'legacy-migrated', date: new Date().toISOString() });
       });
@@ -145,6 +147,7 @@
         stories,
         snapshots: (await this.all('snapshots')).filter(s => !fingerprint || s.fingerprint === fingerprint),
         leagues,
+        profiles: (await this.all('profiles')).filter(p => !fingerprint || p.fingerprint === fingerprint),
       };
     }
     async importData(data) {
@@ -175,6 +178,19 @@
         )
           throw new Error('Backup contains an invalid stat snapshot.');
       }
+      // Backups made before profiles existed have none.
+      data.profiles ||= [];
+      if (
+        !Array.isArray(data.profiles) ||
+        data.profiles.some(
+          p =>
+            typeof p?.fingerprint !== 'string' ||
+            !['player', 'coach', 'team'].includes(p.kind) ||
+            p.id !== `${p.fingerprint}:${p.kind}:${p.ref}` ||
+            typeof p.name !== 'string'
+        )
+      )
+        throw new Error('Backup contains an invalid profile.');
       if (data.leagues.some(l => typeof l.id !== 'string' || typeof l.name !== 'string'))
         throw new Error('Backup contains an invalid league.');
       for (const league of data.leagues) {
@@ -199,7 +215,7 @@
         }
       }
       const records = {};
-      for (const name of ['stories', 'snapshots', 'leagues']) {
+      for (const name of ['stories', 'snapshots', 'leagues', 'profiles']) {
         const ids = new Set((await this.all(name)).map(r => r.id));
         const seen = new Set();
         records[name] = data[name].filter(r => {

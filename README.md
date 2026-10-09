@@ -11,6 +11,10 @@ HoopWire reads your save file and writes news stories about your league, just li
 It covers big wins, close games, amazing player nights, awards, trades, the draft, new records and championships.
 Every story gets its own pixel-art picture.
 
+**👤 Player, Coach and Team Pages**
+Click a name in a story to open that player's, coach's or team's page. You'll see their stats for this season,
+their latest box score, their career numbers, awards, team rankings and every story they've been in.
+
 **📺 HoopWire TV**
 Press play to watch a show about your league. Four hosts sit at the desk and talk about the day's biggest stories:
 
