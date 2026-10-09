@@ -529,11 +529,6 @@ button:disabled {
   font-weight: 900;
   letter-spacing: 2px;
 }
-.landing h1 {
-  font-size: clamp(36px, 6vw, 64px);
-  letter-spacing: -2px;
-  margin-top: 18px;
-}
 .landing .file-row {
   border: 2px dashed #bbc3ce;
   padding: 24px;
@@ -767,16 +762,6 @@ body.entry-screen {
   height: auto;
   margin: 0 auto;
 }
-.entry-screen .landing h1 {
-  font-size: 30px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 800;
-  font-style: normal;
-  margin: 0 0 10px;
-  color: #f0f7ff;
-  text-shadow: 3px 3px #03101c;
-}
 .menu-intro p {
   color: #abc8e6;
   font-size: 16px;
@@ -939,9 +924,6 @@ body.entry-screen {
   }
   .menu-card > p {
     min-height: 0;
-  }
-  .entry-screen .landing h1 {
-    font-size: 25px;
   }
 }
 

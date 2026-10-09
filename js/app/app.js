@@ -719,18 +719,16 @@
     el.fileName.textContent = file.name;
 
     await readArchive();
-    let total = 0;
+    const archived = [];
     for (let index = 0; index < parsed.seasonLeagues.length; index++) {
       state.leagueIndex = index;
-      total += await generate();
+      archived.push(...(await generate()));
     }
     state.leagueIndex = 0;
     const league = selectedLeague();
     archiveNavigation(C.buildFingerprint(league), C.seasonYear(league), C.buildLookups(league).latestDay + 1);
     view();
-    status(
-      `Save loaded. Archived ${total} new or upgraded stories across ${parsed.seasonLeagues.length} leagues. Refreshed ${snapshots.length} verified player box scores from this save.`
-    );
+    status(`Save loaded.${courtWarnings(archived)}`);
   }
   async function generate() {
     const league = selectedLeague(),
@@ -830,10 +828,7 @@
     await archive.write({ stories });
     await readArchive();
     archiveNavigation(fingerprint, C.seasonYear(league), C.buildLookups(league).latestDay + 1);
-    status(
-      `Archived ${stories.length} new or upgraded ${stories.length === 1 ? 'story' : 'stories'}, including images and stats.${courtWarnings(stories)}`
-    );
-    return stories.length;
+    return stories;
   }
   async function refreshImages() {
     const selected = selectedStories().filter(s => s.sceneInputs);
