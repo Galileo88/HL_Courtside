@@ -1,11 +1,11 @@
-const { samplePath, launchBrowser } = require('./helpers.cjs');
+const { fullSamplePath, launchBrowser } = require('./helpers.cjs');
 /* Isolated integration check for editorial content, not playback timing. */
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+  save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname,
     file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : decodeURIComponent(pathname)));

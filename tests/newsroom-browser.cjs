@@ -1,10 +1,10 @@
-const { samplePath, launchBrowser } = require('./helpers.cjs');
+const { fullSamplePath, launchBrowser } = require('./helpers.cjs');
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
   http = require('node:http');
 const root = path.resolve(__dirname, '..'),
-  save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+  save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const f = path.resolve(root, '.' + new URL(req.url, 'http://localhost').pathname.replace(/^\/$/, '/index.html'));
   if (!f.startsWith(root + path.sep) || !fs.existsSync(f)) {
@@ -206,7 +206,12 @@ const server = http.createServer((req, res) => {
           leagues: [{ id: chosen.fingerprint, name: chosen.leagueName }],
           stories: [{ ...chosen, imageBlob: null }],
         });
-        await a.write({ meta: [{ id: 'active-leagues', ids: [chosen.fingerprint] }] });
+        // The open save now covers only that league.
+        const [save] = await a.all('saves');
+        await a.write({
+          saves: [{ ...save, leagueIds: [chosen.fingerprint] }],
+          meta: [{ id: 'active-save', save: save.id }],
+        });
       } finally {
         a.db.close();
       }

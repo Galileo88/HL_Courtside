@@ -82,8 +82,13 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const fixed = await page.evaluate(async () => {
       const a = await new HoopWireArchive().open();
       try {
-        const league = (await a.all('leagues'))[0];
-        return (await Object.values(league.studios)[0].imageBlob.arrayBuffer()).byteLength;
+        // The studio on screen was redrawn; whichever league it belongs to, its picture is whole again.
+        const sizes = await Promise.all(
+          (await a.all('leagues')).map(
+            async l => (await Object.values(l.studios)[0].imageBlob.arrayBuffer()).byteLength
+          )
+        );
+        return Math.max(...sizes);
       } finally {
         a.db.close();
       }

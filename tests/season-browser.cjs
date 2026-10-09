@@ -1,10 +1,10 @@
-const { samplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
+const { fullSamplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   http = require('node:http'),
   path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
+const save = JSON.parse(fs.readFileSync(process.argv[2] || fullSamplePath, 'utf8'));
 if (process.env.HOOPWIRE_TEST_NEWS) {
   const l = save.seasonLeagues[0],
     p = l.teams[0].roster[0];

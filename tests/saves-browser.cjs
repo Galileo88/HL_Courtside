@@ -60,7 +60,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     // A league without a HoopWire tag can't start a save.
     await refused(
       copy(s => (s.seasonLeagues[1].commissioner.tag = '')),
-      /Hoop League College Association has no HoopWire tag/
+      /New League has no HoopWire tag/
     );
     assert.deepEqual((await archived()).saves, []);
 
@@ -69,7 +69,9 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     await upload(base);
     await page.locator('.wire-lead').waitFor();
     const first = await archived();
-    assert.deepEqual(first.saves, [{ name: 'Test League', mode: 1, ids: ['hw-samplepro', 'hw-samplecollege'] }]);
+    assert.deepEqual(first.saves, [
+      { name: 'Test League', mode: 0, ids: ['hw-smallpro-franchise', 'hw-smallcollege-franchise'] },
+    ]);
 
     // The save keeps the exact file, compressed, and Export hands it back byte for byte.
     const stored = await page.evaluate(async () => {
@@ -110,21 +112,21 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     assert.equal(await page.locator('#saveName').isVisible(), false);
     assert.match(
       await page.locator('.saves-list li').textContent(),
-      /Test League.*Commissioner · HL, HLCA · 2026 · Day \d+ · \d+ stories/
+      /Test League.*Franchise · NL, NL · 2026 · Day \d+ · \d+ stories/
     );
 
     // Files that don't belong to this save are refused, and say why.
     await refused(
       copy(s => s.seasonLeagues.forEach(l => (l.season.mode = 2))),
-      /This is a Career save, but “Test League” is a Commissioner save\./
+      /This is a Career save, but “Test League” is a Franchise save\./
     );
     await refused(
       copy(s => (s.seasonLeagues[0].commissioner.tag = 'hoopwire:hw-someoneelse')),
-      /Hoop League isn’t part of “Test League”/
+      /New League isn’t part of “Test League”/
     );
     await refused(
       copy(s => s.seasonLeagues.pop()),
-      /doesn’t include Hoop League College Association from “Test League”/
+      /doesn’t include New League from “Test League”/
     );
 
     // The same league after an expansion team and a renamed team still updates it.
@@ -144,28 +146,28 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     // A second save of the same league in the same mode is refused; a career save gets its own.
     await welcome();
     await page.click('#newSaveButton');
-    await refused(base, /“Test League” already covers Hoop League in Commissioner mode/);
+    await refused(base, /“Test League” already covers New League in Franchise mode/);
     await page.fill('#saveName', 'My Career');
     await upload(copy(s => s.seasonLeagues.forEach(l => (l.season.mode = 2))));
     const both = await archived();
     assert.deepEqual(both.saves.map(s => s.name).sort(), ['My Career', 'Test League']);
     assert.deepEqual(both.saves.find(s => s.name === 'My Career').ids, [
-      'hw-samplepro-career',
-      'hw-samplecollege-career',
+      'hw-smallpro-career',
+      'hw-smallcollege-career',
     ]);
     for (const [id, count] of Object.entries(updated.counts)) assert.equal(both.counts[id], count);
     // The newsroom shows only the open save.
     const shown = async () =>
       new Set(await page.locator('[data-story-id]').evaluateAll(n => n.map(x => x.dataset.storyId.split(':')[0])));
     await page.locator('.wire-lead').waitFor();
-    assert.deepEqual([...(await shown())].sort(), ['hw-samplecollege-career', 'hw-samplepro-career']);
+    assert.deepEqual([...(await shown())].sort(), ['hw-smallcollege-career', 'hw-smallpro-career']);
 
     // Open the first save from the list, without its file.
     await welcome();
     await page.click('.saves-list button[aria-label="Open Test League"]');
     await page.waitForFunction(() => location.hash === '#newsroom');
     await page.locator('.wire-lead').waitFor();
-    assert.deepEqual([...(await shown())].sort(), ['hw-samplecollege', 'hw-samplepro']);
+    assert.deepEqual([...(await shown())].sort(), ['hw-smallcollege-franchise', 'hw-smallpro-franchise']);
     // It is still the open save after a reload.
     await page.reload();
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
@@ -184,8 +186,8 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
       after.saves.map(s => s.name),
       ['Test League']
     );
-    assert.equal(after.counts['hw-samplepro-career'], undefined);
-    assert.equal(after.counts['hw-samplepro'], updated.counts['hw-samplepro']);
+    assert.equal(after.counts['hw-smallpro-career'], undefined);
+    assert.equal(after.counts['hw-smallpro-franchise'], updated.counts['hw-smallpro-franchise']);
     assert.deepEqual(errors, []);
     console.log(
       'Save checks passed: named saves, export of the original file, refused untagged, different-mode, different-league and duplicate files, updates through an expansion, open without the file, reload and delete.'

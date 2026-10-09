@@ -1,11 +1,11 @@
-const { samplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
+const { fullSamplePath, launchBrowser, expectedStoryCount } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const C = require('../js/coverage/core.js');
-const sample = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
+const sample = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
 const server = http.createServer((req, res) => {
   const file = path.resolve(
     root,
