@@ -3052,7 +3052,11 @@
               `${he.charAt(0).toUpperCase() + he.slice(1)} gave the ${r.opponent} ${r.pronoun === 'she' ? 'her' : r.pronoun === 'he' ? 'his' : 'a'} word. That's a big get for them.`,
               2,
             ]
-          : [`The ${r.opponent} move on to the next name on the board.`, 2]
+          : r.reply === 2
+            ? [`The ${r.opponent} move on to the next name on the board.`, 2]
+            : r.reply >= 7
+              ? ['Firing back at a school? That bridge might be burned.', 1]
+              : [`No promises yet. The ${r.opponent} will keep calling.`, 2]
         : r.reply >= 7
           ? [
               pick(
@@ -3067,11 +3071,15 @@
             ]
           : r.reply >= 3
             ? [
-                pick(
-                  story,
-                  ['Winners share the credit. Good look.', "That's somebody who notices the work."],
-                  'reply:credit'
-                ),
+                result === 'win'
+                  ? pick(
+                      story,
+                      ['Winners share the credit. Good look.', "That's somebody who notices the work."],
+                      'reply:credit'
+                    )
+                  : result === 'loss'
+                    ? 'Sharing the credit after a loss? That says a lot about a teammate.'
+                    : "That's somebody who notices the work.",
                 2,
               ]
             : r.post === 7 || r.post === 8
@@ -3090,7 +3098,7 @@
                   ]
                 : result === 'loss'
                   ? r.reply === 1
-                    ? ['Owning it is the first step. Then you fix it.', 3]
+                    ? ["That's what you want after a tough one. Move on to the next.", 3]
                     : ['Out of your control? I want the ball, not an excuse.', 1]
                   : r.reply === 1
                     ? ['Enjoy it tonight. The next one comes fast.', 3]
@@ -3110,7 +3118,7 @@
       [
         ...(r.post === 3 ? [] : [turn(3, `${he.charAt(0).toUpperCase() + he.slice(1)} ${r.did}.`)]),
         turn(take[1], take[0]),
-        ...(take[1] === 1 ? [turn(2, `The question is how it lands with ${his} teammates.`)] : []),
+        ...(r.reply >= 7 && r.post !== 3 ? [turn(2, `The question is how it lands with ${his} teammates.`)] : []),
       ]
     );
   }

@@ -256,3 +256,40 @@ test('Hoop Gram replies become stories that report what the player did, not inve
     []
   );
 });
+test('every Hoop Gram post and reply the game offers makes one story that reads right', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const games = { [K.POST.playerOfTheGame]: 701, [K.POST.teamWin]: 701, [K.POST.opponentLoss]: 701 };
+  for (const kind of Object.values(K.POST))
+    for (const reply of Object.values(K.REPLY)) {
+      const l = replies(),
+        pitch = kind === K.POST.recruitment;
+      l.season.posts = [
+        {
+          league: 1,
+          day: 0,
+          gid: kind <= K.POST.recruitment ? 0 : games[kind] || 700,
+          contentType: kind,
+          responseType: reply,
+          player: { id: 10 },
+          author: pitch ? { type: 2 } : { type: 4, fanData: { fn: 'Jane', ln: 'Doe' } },
+          team: { id: pitch ? 4 : 3 },
+        },
+      ];
+      const found = K.candidates(l).filter(x => x.story.type === 'Hoop Gram reply');
+      assert.equal(found.length, 1, `post ${kind}, reply ${reply}`);
+      const { story } = found[0],
+        tv = B.script(story, {})
+          .map(t => t.text)
+          .join(' ');
+      const all = [story.headline, ...story.paragraphs, tv].join(' ');
+      assert.doesNotMatch(all, /undefined|NaN|null|\$\{| {2}/, `post ${kind}, reply ${reply}`);
+      // The opponent is named once in a headline, and a win is never "a win after a win".
+      assert.ok((story.headline.match(/Laramie Lassos/g) || []).length <= 1, story.headline);
+      assert.doesNotMatch(story.headline, /win after .* win|loss after .* loss/, story.headline);
+      // Credit or a jab in reply to a school's pitch is about the school, not teammates or fans.
+      if (pitch) assert.doesNotMatch(all, /teammate|the fans|roster/, story.headline);
+      // Showcase teams are one-night teams with no home city.
+      if (kind <= K.POST.showcaseResults) assert.doesNotMatch(all, /fans in|whole roster/, story.headline);
+      if (story.seasonSnapshot.reply.won === false) assert.doesNotMatch(tv, /Winners share/);
+    }
+});

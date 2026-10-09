@@ -393,7 +393,8 @@
     const name = C.playerDisplay(player),
       last = player.ln || C.surname(name),
       he = C.pronoun(player),
-      his = he === 'she' ? 'her' : he === 'he' ? 'his' : C.possessive(last);
+      his = he === 'she' ? 'her' : he === 'he' ? 'his' : C.possessive(last),
+      him = he === 'she' ? 'her' : he === 'he' ? 'him' : last;
     const groups = new Map();
     for (const post of answered) {
       const key = post.gid > 0 ? `game-${post.gid}` : `${post.contentType}-${post.day}-${post.team?.id ?? 0}`;
@@ -444,27 +445,49 @@
       }[reply];
       let headline, lead, label;
       if (kind === POST.recruitment) {
-        headline =
+        // A school's pitch is answered with a yes, a no, thanks or a jab, whichever reply was picked.
+        const tone =
           reply === REPLY.positive
-            ? `${name} gives ${P.display} ${his} word`
+            ? [
+                `gives ${P.display} ${his} word`,
+                `answered ${C.possessive(P.full)} pitch on Hoop Gram and gave the program ${his} word`,
+                `gave ${his} word`,
+              ]
             : reply === REPLY.negative
-              ? `${name} turns down ${P.display}`
-              : `${name} ${said[0]} in reply to ${P.display}`;
-        lead =
-          reply === REPLY.positive
-            ? `${name} answered ${C.possessive(P.full)} pitch on Hoop Gram and gave the program ${his} word.`
-            : reply === REPLY.negative
-              ? `${name} turned down ${P.full} on Hoop Gram and said ${he || last} would forge ${his} own path.`
-              : `${name} answered ${C.possessive(P.full)} pitch on Hoop Gram and ${said[1]}.`;
-        label = reply === REPLY.positive ? `gave ${his} word` : reply === REPLY.negative ? 'turned it down' : said[1];
+              ? [
+                  `turns down ${P.display}`,
+                  `turned down ${P.full} on Hoop Gram and said ${he || last} would forge ${his} own path`,
+                  'turned it down',
+                ]
+              : weight(reply) === 2
+                ? [
+                    `thanks ${P.display} for the interest`,
+                    `answered ${C.possessive(P.full)} pitch on Hoop Gram with thanks but no promises`,
+                    'thanked them for the interest',
+                  ]
+                : [
+                    `fires back at ${P.display}`,
+                    `fired back at ${C.possessive(P.full)} pitch on Hoop Gram`,
+                    'fired back at the pitch',
+                  ];
+        headline = `${name} ${tone[0]}`;
+        lead = `${name} ${tone[1]}.`;
+        label = tone[2];
       } else if (kind === POST.showcase || kind === POST.showcaseResults) {
         const when = kind === POST.showcase ? 'ahead of the Koality Showcase' : 'after the Koality Showcase';
+        // Showcase teams are thrown together for one night, so credit goes to whoever got the player there.
+        const showcase = {
+          [REPLY.creditTeammate]: ['credits a Showcase teammate', 'credited a Showcase teammate'],
+          [REPLY.creditCoach]: [`credits the coaches who got ${him} here`, `credited the coaches who got ${him} here`],
+          [REPLY.creditTeam]: [`credits ${his} Showcase teammates`, `credited ${his} Showcase teammates`],
+          [REPLY.creditFans]: ['thanks the fans', 'thanked the fans'],
+        }[reply];
         const tone =
           reply === REPLY.positive
             ? ['embraces the Koality Showcase spotlight', `embraced the Hoop Gram buzz ${when}`]
             : reply === REPLY.negative
               ? ['brushes off the Koality Showcase hype', `pushed back on the Hoop Gram buzz ${when}`]
-              : [`${said[0]} ${when}`, `${said[1]} on Hoop Gram ${when}`];
+              : [`${(showcase || said)[0]} ${when}`, `${(showcase || said)[1]} on Hoop Gram ${when}`];
         headline = `${name} ${tone[0]}`;
         lead = `${name} ${tone[1]}.`;
         label = tone[1].split(' on Hoop Gram')[0];
@@ -473,21 +496,24 @@
         const tone =
           reply === REPLY.positive
             ? rivals
-              ? [`shows ${O.display} fans respect`, `showed ${O.display} fans some respect`]
+              ? [`shows ${O.display} fans respect`, 'showed the other side some respect']
               : won
-                ? ['soaks in the win', 'soaked in the win']
-                : ['takes the blame', 'took responsibility for the loss']
+                ? ['soaks it in', 'soaked in the win']
+                : [`keeps ${his} head up`, `kept ${his} head up`]
             : reply === REPLY.negative
               ? rivals
-                ? [`trades jabs with ${O.display} fans`, `traded jabs with ${O.display} fans`]
+                ? [`trades jabs with ${O.display} fans`, 'traded jabs with the other side']
                 : won
                   ? [`answers ${his} critics`, `answered ${his} critics`]
-                  : [
-                      'says the loss was out of his control'.replace('his', his),
-                      `said the loss was out of ${his} control`,
-                    ]
-              : said;
-        headline = `${name} ${tone[0]} after ${score} ${won ? 'win over' : 'loss to'} ${O.display}`;
+                  : ['deflects the blame', `said the loss was out of ${his} control`]
+              : rivals && reply === REPLY.callOutFans
+                ? [`fires back at ${O.display} fans`, 'fired back at the other side']
+                : said;
+        // The opponent is named once in a headline.
+        const after = tone[0].includes(O.display)
+          ? `${score} ${won ? 'win' : 'loss'}`
+          : `${score} ${won ? 'win over' : 'loss to'} ${O.display}`;
+        headline = `${name} ${tone[0]} after ${after}`;
         lead = `${name} ${tone[1]} on Hoop Gram after ${C.possessive(T.full)} ${score} ${won ? 'win over' : 'loss to'} ${O.full}.`;
         label = tone[1];
       }
