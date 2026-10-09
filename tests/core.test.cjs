@@ -222,3 +222,23 @@ test('positions read on the save 0-8 scale, with hybrids between the five positi
   assert.deepEqual(C.positionKeys(7), ['pf', 'c']);
   assert.deepEqual(C.positionKeys(null), []);
 });
+test('a Hoop League Studio ID in the commissioner tag is the league identity, and a pinned archive wins', () => {
+  const league = {
+    leagueName: 'Hoop League',
+    season: { startingYear: 2026 },
+    commissioner: { tag: 'hoopwire:HW-a10d6139c4b6' },
+    teams: [{ id: 1, name: 'A' }],
+  };
+  const expanded = { ...league, teams: [...league.teams, { id: 2, name: 'Expansion' }] };
+  assert.equal(C.leagueId(league), 'hw-a10d6139c4b6');
+  assert.equal(C.buildFingerprint(league), 'hw-a10d6139c4b6');
+  assert.equal(C.buildFingerprint(expanded), C.buildFingerprint(league));
+  assert.equal(C.buildFingerprint({ ...expanded, archiveId: 'kept' }), 'kept');
+  for (const tag of ['', 'Railers', 'hoopwire:', 'hoopwire:hw-1 extra'])
+    assert.equal(C.leagueId({ ...league, commissioner: { tag } }), null);
+  assert.equal(C.leagueId({ ...league, commissioner: undefined }), null);
+  assert.notEqual(
+    C.buildFingerprint({ ...league, commissioner: null }),
+    C.buildFingerprint({ ...expanded, commissioner: null })
+  );
+});
