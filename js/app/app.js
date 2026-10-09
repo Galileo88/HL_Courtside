@@ -638,6 +638,7 @@
         }
         node.querySelector('.article-body').appendChild(section);
       }
+      linkBoardNames(node, story.fingerprint);
       el.feed.appendChild(node);
     }
     pruneImageURLs();
@@ -956,6 +957,22 @@
       empty.className = 'panel muted';
       empty.textContent = 'This profile is not in the archive yet. Upload a save from this league to add it.';
       page.append(empty);
+    }
+  }
+  // Names in stat cards open the same pages as names in the story.
+  function linkBoardNames(root, fingerprint) {
+    const index = state.leagues.find(l => l.id === fingerprint)?.people;
+    if (!index?.length) return;
+    const ids = new Map(index.map(([name, id]) => [name, id]));
+    for (const cell of root.querySelectorAll('.tv-board-table tbody th.is-name')) {
+      const full = cell.querySelector('.tv-name-full'),
+        id = !cell.querySelector('a') && ids.get(full?.textContent.trim());
+      if (!id) continue;
+      const a = document.createElement('a');
+      a.href = window.HoopWireProfileView.href(id);
+      a.className = 'board-link';
+      cell.insertBefore(a, full);
+      a.append(...cell.querySelectorAll(':scope > .tv-name-full, :scope > .tv-name-short'));
     }
   }
   // An article's body, with each player, coach and team linked the first time it is named.
@@ -1759,8 +1776,11 @@
         })
       : {};
     window.HoopWireBroadcast?.mount(tvStory, studio, false, context);
-    if (tvStory) el.tvSegment.appendChild(tvStoryPanel(tvStory));
-    else el.tvSegment.textContent = 'Choose an archived day with stories to start the broadcast.';
+    if (tvStory) {
+      const panel = tvStoryPanel(tvStory);
+      linkBoardNames(panel, tvStory.fingerprint);
+      el.tvSegment.appendChild(panel);
+    } else el.tvSegment.textContent = 'Choose an archived day with stories to start the broadcast.';
     const results = new Map(
       Object.values(league?.gameResults?.[el.archiveSeason.value]?.[el.archiveDay.value] || {}).map(g => [g.gid, g])
     );

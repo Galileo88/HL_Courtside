@@ -95,51 +95,55 @@
     if (!artCache.has('drink'))
       artCache.set(
         'drink',
-        window.HoopWireCourt.loadImage('assets/scene/bottle.png').then(source => {
+        Promise.resolve().then(() => {
           const canvas = document.createElement('canvas');
           canvas.width = 300;
           canvas.height = 156;
           const ctx = canvas.getContext('2d');
           ctx.imageSmoothingEnabled = false;
-          const glow = ctx.createLinearGradient(0, 0, 300, 156);
-          glow.addColorStop(0, '#0b3245');
-          glow.addColorStop(1, '#116579');
+          const glow = ctx.createRadialGradient(150, 70, 6, 150, 70, 170);
+          glow.addColorStop(0, '#16788c');
+          glow.addColorStop(1, '#0b3245');
           ctx.fillStyle = glow;
           ctx.fillRect(0, 0, 300, 156);
-          ctx.strokeStyle = 'rgba(121,255,244,.2)';
-          ctx.lineWidth = 2;
-          for (let i = 0; i < 8; i++) {
+          // Rising bubbles, kept clear of the edges.
+          ctx.fillStyle = 'rgba(121,255,244,.16)';
+          for (const [x, y, r] of [
+            [36, 40, 5],
+            [62, 92, 3],
+            [118, 28, 4],
+            [186, 58, 3],
+            [238, 34, 5],
+            [266, 96, 3],
+          ]) {
             ctx.beginPath();
-            ctx.arc(12 + i * 43, 26 + ((i * 31) % 96), 8 + (i % 3) * 5, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
           }
-          const colors = [
-            [44, 197, 239],
-            [255, 157, 44],
-            [161, 216, 58],
+          const flavors = [
+            ['#2cc5ef', '#8be6ff', '#1987b0'],
+            ['#ff9d2c', '#ffd08a', '#c96a0f'],
+            ['#a1d83a', '#d6f58d', '#6d9a1d'],
           ];
-          colors.forEach((color, i) => {
-            const tile = document.createElement('canvas');
-            tile.width = source.width;
-            tile.height = source.height;
-            const t = tile.getContext('2d');
-            t.drawImage(source, 0, 0);
-            const pixels = t.getImageData(0, 0, tile.width, tile.height);
-            // Leave the cap white and retain the bottle's light/shadow values.
-            for (let y = 1; y < tile.height; y++)
-              for (let x = 0; x < tile.width; x++) {
-                const offset = (y * tile.width + x) * 4;
-                if (!pixels.data[offset + 3]) continue;
-                const shade = (pixels.data[offset] + pixels.data[offset + 1] + pixels.data[offset + 2]) / 765;
-                color.forEach((channel, k) => (pixels.data[offset + k] = Math.round(channel * shade)));
-              }
-            t.putImageData(pixels, 0, 0);
+          flavors.forEach((body, i) => {
+            const art = HoopWireAdArt.bottle(HoopWireAdArt.SPORT_BOTTLE, {
+              outline: '#062433',
+              cap: ['#f4fbff', '#ffffff', '#b9cdd8'],
+              body,
+              label: ['#f4fbff', '#ffffff', '#c9dbe5'],
+              stripe: ['#0b3245', '#0b3245', '#0b3245'],
+            });
+            const scale = i === 1 ? 4 : 3.6,
+              w = art.width * scale,
+              h = art.height * scale,
+              x = 64 + i * 86 - w / 2;
             ctx.fillStyle = '#062433';
             ctx.beginPath();
-            ctx.ellipse(64 + i * 86, 139, 31, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(64 + i * 86, 142, 30, 6, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.drawImage(tile, 37 + i * 86, i === 1 ? 15 : 27, 54, 108);
+            ctx.drawImage(art, x, 142 - h, w, h);
           });
+          HoopWireAdArt.blend(ctx, 300, 156, '#0b3245', 16);
           return canvas.toDataURL('image/png');
         })
       );
@@ -210,7 +214,7 @@
       cls: 'wire-drink-ad',
     },
     'movie-drama': {
-      bg: '#351925',
+      bg: '#221422',
       title: 'LAST POSSESSION',
       subtitle: 'A HOOPWIRE PICTURES FILM',
       tagline: 'One shot. Everything on the line.',
@@ -236,7 +240,7 @@
       cls: 'wire-shoe-ad',
     },
     airways: {
-      bg: '#235275',
+      bg: '#17314b',
       title: 'Horizon Airways',
       logo: 'brand2.png',
       subtitle: 'THE AWAY GAME COLLECTION',

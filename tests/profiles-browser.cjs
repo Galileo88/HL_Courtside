@@ -57,6 +57,8 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     assert.equal(new Set(hrefs).size, hrefs.length, 'each name links once');
     assert.ok(hrefs.some(h => h.startsWith('#player/')) && hrefs.some(h => h.startsWith('#team/')));
     assert.equal(await page.locator('.article-headline .entity-link').count(), 0);
+    // Names in the story's stat cards open the same pages.
+    assert.ok((await page.locator('.article-body .tv-board .board-link[href^="#player/"]').count()) > 0);
 
     await page.click('.article-body .entity-link[href^="#player/"]');
     await page.waitForSelector('.profile-header');
