@@ -112,6 +112,20 @@ test('a career opens with a player profile and a showcase preview before the gam
   assert.match(preview.paragraphs.join(' '), /players from Slovenia, Türkiye and Finland/);
   assert.ok(stories.every(s => s.day === 1 && s.season === 1967));
 });
+test('players from the same country are named together, and a long list becomes a count', () => {
+  const two = league();
+  two.starTeams[0].roster.push(prospect(13, 'Luka', 'Novak', { ctry: 'SI' }));
+  const paragraph = l => K.candidates(l)[0].story.paragraphs.find(p => /only player|one of/.test(p));
+  assert.equal(
+    paragraph(two),
+    "Berlin won't be the only player from Slovenia on the floor: Luka Novak plays alongside him on the Western All-Americans and Jozef Bozic suits up for the Eastern All-Americans."
+  );
+  two.starTeams[0].roster.push(prospect(14, 'Jan', 'Kos', { ctry: 'SI' }));
+  assert.match(paragraph(two), /Luka Novak and Jan Kos play alongside him on the Western All-Americans/);
+  const many = league();
+  for (let i = 0; i < 5; i++) many.starTeams[1].roster.push(prospect(40 + i, 'Player', `No${i}`, { ctry: 'SI' }));
+  assert.equal(paragraph(many), 'Berlin is one of seven players from Slovenia in the game.');
+});
 test('the goal story quotes how the player wants to be remembered, with no ratings behind it', () => {
   const { story, context } = K.candidates(league())[1];
   assert.equal(story.headline, 'Tavish Berlin wants to be an All-Star year in and year out');

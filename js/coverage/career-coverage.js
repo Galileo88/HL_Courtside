@@ -195,16 +195,19 @@
               ? `At ${size}, ${last} brings a college-ready frame, and ${his} ${C.listJoin(traits.map(t => strengths[t.key]))} ${traits.length === 1 ? 'ranks' : 'rank'} among the best in the showcase field.`
               : `${C.capitalize(last)} checks in at ${size}.`
             : '',
-          others.length
-            ? `${C.capitalize(last)} won't be the only player from ${from || 'home'} on the floor: ${C.listJoin([
-                ...sameSide.map(p => `${C.playerDisplay(p)} is a teammate on ${T.full}`),
-                ...(otherSide.length
-                  ? [
-                      `${C.listJoin(otherSide.map(p => C.playerDisplay(p)))} ${otherSide.length === 1 ? 'suits' : 'suit'} up for ${O.full}`,
-                    ]
-                  : []),
-              ])}.`
-            : '',
+          // Players from the same country, named together; a long list becomes a count.
+          others.length > 4
+            ? `${C.capitalize(last)} is one of ${C.num(others.length + 1)} players from ${from || 'the same country'} in the game.`
+            : others.length
+              ? `${C.capitalize(last)} won't be the only player from ${from || 'home'} on the floor: ${C.listJoin(
+                  [
+                    sameSide.length &&
+                      `${C.listJoin(sameSide.map(C.playerDisplay))} ${sameSide.length === 1 ? 'plays' : 'play'} alongside ${him} on ${T.full}`,
+                    otherSide.length &&
+                      `${C.listJoin(otherSide.map(C.playerDisplay))} ${otherSide.length === 1 ? 'suits' : 'suit'} up for ${O.full}`,
+                  ].filter(Boolean)
+                )}.`
+              : '',
           fans.length
             ? fansFromHome === fans.length && from
               ? `Back in ${from}, fans are already posting about ${him} on Hoop Gram.`
