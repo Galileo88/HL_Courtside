@@ -1,0 +1,17 @@
+{
+  "name": "HoopWire",
+  "short_name": "HoopWire",
+  "description": "News and broadcasts for your Hoop Land league.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071722",
+  "theme_color": "#0d3971",
+  "icons": [
+    { "src": "assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/brand/hoopwire_icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

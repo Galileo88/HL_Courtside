@@ -45,6 +45,8 @@ http
         '.wav': 'audio/wav',
         '.mp3': 'audio/mpeg',
         '.json': 'application/json',
+        '.webmanifest': 'application/manifest+json',
+        '.webp': 'image/webp',
       }[path.extname(file)] || 'text/plain'
     );
     fs.createReadStream(file).pipe(res);

@@ -285,11 +285,14 @@
     });
   }
   function decodeImage(data) {
-    if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(data)) throw new Error('Backup contains an invalid image.');
-    const bytes = Uint8Array.from(atob(data.split(',')[1]), c => c.charCodeAt(0));
-    if (bytes.length < 8 || ![137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => bytes[i] === v))
-      throw new Error('Backup image is not a PNG.');
-    return new Blob([bytes], { type: 'image/png' });
+    const match = /^data:image\/(png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(data);
+    if (!match) throw new Error('Backup contains an invalid image.');
+    const bytes = Uint8Array.from(atob(match[2]), c => c.charCodeAt(0));
+    const png = [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => bytes[i] === v),
+      webp =
+        String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    if (match[1] === 'png' ? !png : !webp) throw new Error(`Backup image is not a ${match[1].toUpperCase()}.`);
+    return new Blob([bytes], { type: `image/${match[1]}` });
   }
   function validStory(s) {
     return (
