@@ -50,14 +50,12 @@
     SPD: 'Speed',
     STM: 'Stamina',
   };
-  // The career ceilings the game offers before a career starts, on its 0-10 potential scale (two per star).
+  // The career ceilings the game offers before a career starts, by the save's potential value.
   const ceilings = {
     10: 'the greatest player of all time',
     9: 'a first-ballot Hall of Famer',
     8: 'a perennial All-Star',
   };
-  const starWords = ['zero', 'one', 'two', 'three', 'four', 'five'];
-  const stars = pot => `${starWords[Math.floor(pot / 2)]}${pot % 2 ? '-and-a-half' : ''}-star`;
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
   const height = inches => (Number.isFinite(inches) && inches > 0 ? `${Math.floor(inches / 12)}-${inches % 12}` : null);
   const current = (p, key) => (Array.isArray(p.attributes?.[key]) ? Number(p.attributes[key][0]) || 0 : 0);
@@ -260,18 +258,25 @@
       const room = growth.filter(x => x.top - x.now === most).slice(0, 3),
         done = skills.filter(x => x.top === x.now && x.top >= 15);
       const peers = field.filter(p => p.id !== player.id && p.pot === player.pot).length;
-      const ceiling = ceilings[player.pot] || null;
+      const ceiling = ceilings[player.pot] || null,
+        listed = list => C.listJoin(list.map(x => skillLabels[x.key].toLowerCase())),
+        report = [
+          ['Most room to grow', room],
+          ['Room to grow', growth.filter(x => !room.includes(x))],
+          ['Fully developed', done],
+          ['Little room to grow', skills.filter(x => x.top === x.now && !done.includes(x))],
+        ].filter(([, list]) => list.length);
       result.push({
         story: story(`career-potential-${player.id}`, {
           type: 'Career',
           headline: ceiling
             ? `${name}'s ceiling: ${ceiling.replace(/^(a|the) /, '')}`
-            : `${name} brings a ${stars(player.pot)} ceiling to the ${event}`,
+            : `${name}'s ceiling is still an open question`,
           importance: 115,
           paragraphs: [
             ceiling
               ? `${name} arrives at the ${event} with the ceiling of ${ceiling}.`
-              : `${name} arrives at the ${event} as a ${stars(player.pot)} prospect.`,
+              : `${name} arrives at the ${event} with ${his} ceiling still an open question.`,
             room.length ? `The most room to grow is in ${his} ${C.listJoin(room.map(x => strengths[x.key]))}.` : '',
             done.length
               ? `${C.capitalize(his)} ${C.listJoin(done.map(x => strengths[x.key]))} ${done.length === 1 ? 'is' : 'are'} already fully developed.`
@@ -281,17 +286,13 @@
               : `The climb starts in the ${event}.`,
           ].filter(Boolean),
           seasonSnapshot: {
-            headers: ['Skill', 'Now', 'Ceiling'],
-            rows: [...growth, ...skills.filter(x => !growth.includes(x))]
-              .slice(0, 10)
-              .map(x => [skillLabels[x.key], x.now, x.top]),
+            headers: ['Outlook', 'Skills'],
+            rows: report.map(([label, list]) => [label, C.capitalize(listed(list))]),
             board: {
-              kicker: 'Room to grow',
+              kicker: 'Scouting report',
               title: name,
-              headers: ['Skill', 'Now', 'Ceiling'],
-              rows: [...growth, ...skills.filter(x => !growth.includes(x))]
-                .slice(0, 10)
-                .map(x => [skillLabels[x.key], x.now, x.top]),
+              headers: ['Outlook', 'Skills'],
+              rows: report.map(([label, list]) => [label, C.capitalize(listed(list))]),
               lead: false,
             },
             source: 'season.career',
@@ -300,12 +301,10 @@
               name,
               last,
               pronoun: he || null,
-              potential: player.pot,
-              stars: stars(player.pot),
               ceiling,
               room: room.map(x => strengths[x.key]),
               developed: done.map(x => strengths[x.key]),
-              peers,
+              shared: peers === 0 ? 'none' : peers <= 2 ? 'few' : 'many',
             },
           },
         }),

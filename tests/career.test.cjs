@@ -119,15 +119,17 @@ test('the ceiling story names the potential and where the growth has to come fro
   assert.match(text, /with the ceiling of a perennial All-Star/);
   assert.match(text, /most room to grow is in his finishing at the rim and three-point shooting\./);
   assert.match(text, /His strength and stamina are already fully developed/);
-  assert.deepEqual(story.seasonSnapshot.rows[0], ['Finishing', 10, 14]);
+  assert.deepEqual(story.seasonSnapshot.rows, [
+    ['Most room to grow', 'Finishing and three-point'],
+    ['Room to grow', 'Passing'],
+    ['Fully developed', 'Strength and stamina'],
+  ]);
+  assert.doesNotMatch(JSON.stringify([story.headline, story.paragraphs, story.seasonSnapshot.rows]), /\d/);
   assert.equal(context.sceneKind, 'interview');
   assert.equal(context.event, 'Koality Showcase');
   const low = league();
   low.starTeams[0].roster[0].pot = 7;
-  assert.equal(
-    K.candidates(low)[1].story.headline,
-    'Tavish Berlin brings a three-and-a-half-star ceiling to the Koality Showcase'
-  );
+  assert.equal(K.candidates(low)[1].story.headline, "Tavish Berlin's ceiling is still an open question");
 });
 test('no story is illustrated with a game that has not happened', () => {
   const contexts = K.candidates(league()).map(x => x.context);

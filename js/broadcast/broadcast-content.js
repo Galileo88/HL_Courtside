@@ -2977,19 +2977,27 @@
       const body = [
         turn(
           3,
-          `${potential.ceiling ? `The ceiling is ${potential.ceiling}.` : `It's a ${potential.stars} ceiling.`}${potential.peers ? ` For context, ${C.num(potential.peers)} other ${potential.peers === 1 ? 'player' : 'players'} in this showcase ${potential.peers === 1 ? 'shares' : 'share'} it.` : ''}`
+          `${potential.ceiling ? `The ceiling is ${potential.ceiling}.` : "Nobody knows the ceiling yet, and that's fine."}${
+            potential.ceiling
+              ? {
+                  none: ' Nobody else in this showcase can say that.',
+                  few: ' Only a few others in this showcase can say that.',
+                  many: ` ${C.capitalize(he)}'s got company in this showcase, though. That's what makes the field so good.`,
+                }[potential.shared] || ''
+              : ''
+          }`
         ),
         turn(
           1,
           pick(
             story,
-            potential.potential >= 10
+            /greatest/.test(potential.ceiling || '')
               ? [
                   "The greatest of all time. Say it with your chest. I'm not laughing.",
                   "The greatest of all time? Laugh now. I'm buying.",
                 ]
               : [
-                  "Ceiling? I'm taking the over. Put him in the conversation now.",
+                  `Ceiling? I'm taking the over. Put ${potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'him' : potential.last} in the conversation now.`,
                   "That's the floor for me. I've seen enough. I'm taking the over.",
                 ],
             'potential:take'
