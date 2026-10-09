@@ -31,7 +31,8 @@ const server = http.createServer((req, res) => {
   let browser;
   try {
     browser = await launchBrowser();
-    const page = await browser.newPage({ viewport: { width: 1100, height: 1000 } }),
+    // The offline cache would fetch the theme itself, past the blocked request below.
+    const page = await browser.newPage({ viewport: { width: 1100, height: 1000 }, serviceWorkers: 'block' }),
       errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.addInitScript(() => {
@@ -144,7 +145,8 @@ const server = http.createServer((req, res) => {
     await page.locator('#tvStagePlay').click();
     await page.clock.fastForward(10000);
     await page.clock.resume();
-    assert.equal(await page.locator('#tvIntro.is-outro').isVisible(), true);
+    // The desk wipes away before the closing card shows.
+    await page.locator('#tvIntro.is-outro').waitFor({ state: 'visible', timeout: 5000 });
     assert.equal(await page.locator('.tv-speech').count(), 0);
     assert.equal(await page.locator('#tvLiveHosts').isVisible(), false);
     assert.equal(await page.locator('#tvStagePlay').isVisible(), false);

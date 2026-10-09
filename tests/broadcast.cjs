@@ -25,7 +25,9 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
     assert.equal(await page.locator('#tvSegment .article-body, #tvSegment .article-image').count(), 0);
     assert.ok((await page.locator('#tvSegment table').count()) > 0);
     assert.equal(await page.locator('.tv-live-host').count(), 4);
-    assert.equal(await page.locator('.tv-speech').count(), 1);
+    // Before play, the show waits on its title card; the hosts speak once the theme has played.
+    assert.equal(await page.locator('#tvIntro').isVisible(), true);
+    assert.equal(await page.locator('.tv-speech').count(), 0);
     const voiced = await page.evaluate(async () => {
       const synth = await HoopWireBroadcast.voiceSamples(),
         audioContext = new AudioContext();
@@ -66,7 +68,7 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
       await page.locator('.tv-live-host.is-speaking canvas').evaluate(c => getComputedStyle(c).animationName),
       'tv-talk-bob'
     );
-    await page.locator('#tvPlay').click();
+    await page.locator('#tvStage').press(' ');
     assert.equal(await page.locator('.is-speaking').count(), 0);
     const seen = new Set();
     for (let i = 0; i < 30; i++) {
@@ -83,11 +85,20 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
     await page.locator('#tvStagePlay').click();
     await page.waitForFunction(() => document.querySelectorAll('.is-speaking').length === 1);
     assert.match(await page.locator('#tvDiscussionStatus').textContent(), /^Line 1 of/);
-    assert.equal(await page.locator('#tv button:visible').count(), 4);
+    // While playing: mute on the stage, and the previous and next story buttons. Tapping the stage pauses.
+    assert.deepEqual(await page.locator('#tv button:visible').evaluateAll(b => b.map(x => x.id)), [
+      'tvMute',
+      'tvPrevious',
+      'tvNext',
+    ]);
     assert.equal(await page.locator('#tvTicker').isVisible(), true);
     assert.match(await page.locator('#tvTicker').getAttribute('aria-label'), /final results:/);
     assert.equal(await page.locator('#tvTicker').evaluate(t => t.parentElement.id), 'tvStage');
-    assert.equal(await page.locator('#tvSegment h2').textContent(), 'Box score');
+    // The panel beside the show is titled with the story being discussed.
+    assert.equal(
+      await page.locator('#tvSegment h2').textContent(),
+      await page.locator('#tvStorySelect option:checked').textContent()
+    );
     await page.locator('#tvMute').click();
     assert.equal(await page.locator('#tvMute').getAttribute('aria-label'), 'Unmute voices');
     assert.equal(await page.locator('#tvMute').getAttribute('aria-pressed'), 'true');
@@ -101,7 +112,10 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
     );
     await page.locator('#tv').screenshot({ path: path.join(root, 'artifacts/tv-discussion.png') });
     await page.locator('.nav a[href="#newsroom"]').click();
-    assert.equal(await page.locator('.is-speaking').count(), 0);
+    // Leaving TV stops the show once the page has switched.
+    await page.waitForFunction(() => location.hash === '#newsroom' && !document.querySelector('.is-speaking'), null, {
+      timeout: 5000,
+    });
     await page.locator('.nav a[href="#tv"]').click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#tv').screenshot({ path: path.join(root, 'artifacts/tv-discussion-mobile.png') });
@@ -113,7 +127,8 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
       return data;
     });
     assert.ok(Object.values(backup.leagues[0].studios)[0].backdropData.startsWith('data:image/png;base64,'));
-    const other = await browser.newContext(),
+    // The offline cache would fetch the voice samples itself, past the blocked request below.
+    const other = await browser.newContext({ serviceWorkers: 'block' }),
       p = await other.newPage();
     await p.goto('http://127.0.0.1:8123');
     await p.waitForFunction(() => !document.getElementById('saveFile').disabled);
@@ -128,14 +143,15 @@ const save = JSON.parse(fs.readFileSync(process.argv[2] || samplePath, 'utf8'));
     await p.route('**/samples.wav', r => r.abort());
     await p.locator('.nav a[href="#tv"]').click();
     assert.equal(await p.locator('.tv-live-host').count(), 4, await p.locator('#status').textContent());
-    assert.equal(await p.locator('.tv-speech').count(), 1);
+    assert.equal(await p.locator('#tvIntro').isVisible(), true);
+    assert.equal(await p.locator('.tv-speech').count(), 0);
     assert.equal(await p.locator('.is-speaking').count(), 0);
     await p.locator('#tvStagePlay').click();
     await p.waitForFunction(() =>
       document.getElementById('tvDiscussionStatus').textContent.includes('Voice unavailable')
     );
     assert.equal(await p.locator('.is-speaking').count(), 1);
-    await p.locator('#tvPlay').click();
+    await p.locator('#tvStage').press(' ');
     assert.equal(await p.locator('.is-speaking').count(), 0);
     assert.equal(await p.locator('#tvStagePlay').isVisible(), true);
     assert.deepEqual(errors, []);

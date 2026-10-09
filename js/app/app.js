@@ -594,8 +594,10 @@
       node.querySelector('.article-meta').textContent = tvStoryKicker(story);
       const league = state.leagues.find(l => l.id === story.fingerprint),
         info = league ? window.HoopWireNewsroom.leagueInfo(league, storiesForLabels) : null;
-      node.querySelector('.article-byline').textContent =
-        `HoopWire Staff · ${info?.leagueType === 0 ? 'Pro · ' : info?.leagueType === 1 ? 'College · ' : ''}${info?.shortName || info?.name || story.leagueName || ''} · ${story.season} · Day ${story.day}`;
+      const byline = node.querySelector('.article-byline'),
+        credit = document.createElement('span');
+      credit.textContent = `HoopWire Staff · ${info?.leagueType === 0 ? 'Pro · ' : info?.leagueType === 1 ? 'College · ' : ''}${info?.shortName || info?.name || story.leagueName || ''} · ${story.season} · Day ${story.day}`;
+      byline.replaceChildren(credit, window.HoopWireShare.button(node.querySelector('.article-card'), story.headline));
       node.querySelector('.article-headline').textContent = story.headline;
       const figure = node.querySelector('.article-image');
       if (story.imageBlob) {
