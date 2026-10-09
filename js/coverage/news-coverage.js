@@ -849,7 +849,8 @@
             false,
             C.coachForTeam(team),
             player,
-            'injury'
+            'injury',
+            team
           )
         );
       }

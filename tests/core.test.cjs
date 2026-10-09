@@ -211,3 +211,14 @@ test('recaps read like wire copy: short references, AP numbers and box-score con
   assert.equal(C.gamesBetter([21, 8], [20, 8]), 'a half-game');
 });
 module.exports = { league };
+test('positions read on the save 0-8 scale, with hybrids between the five positions', () => {
+  assert.equal(C.positionName(0), 'point guard');
+  assert.equal(C.positionName(3), 'wing');
+  assert.equal(C.positionName(4), 'small forward');
+  assert.equal(C.positionName(8), 'center');
+  assert.equal(C.positionName(9), '');
+  assert.equal(C.positionName('PG'), '');
+  assert.deepEqual(C.positionKeys(2), ['sg']);
+  assert.deepEqual(C.positionKeys(7), ['pf', 'c']);
+  assert.deepEqual(C.positionKeys(null), []);
+});

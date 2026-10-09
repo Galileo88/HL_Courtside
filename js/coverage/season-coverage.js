@@ -306,8 +306,8 @@
       .filter(p => {
         const s = p.s;
         if (!(s?.GP > 0) || (s.GP / games) * 100 < (award.minGames || 0)) return false;
-        const position = ['pg', 'sg', 'sf', 'pf', 'c'][p.position];
-        if (position && award[position] === false) return false;
+        const positions = C.positionKeys(p.position);
+        if (positions.length && positions.every(k => award[k] === false)) return false;
         if (award.yearsPro > 0 && (p.yearsPro ?? 0) + 1 !== award.yearsPro) return false;
         if (
           (award.minStarted > 0 || award.maxStarted < 100) &&
@@ -608,8 +608,7 @@
     ];
     const profile = name => profiles.find(p => p.name === name);
     const positionName = value => {
-      if (Number.isInteger(value))
-        return ['point guard', 'shooting guard', 'small forward', 'power forward', 'center'][value] || '';
+      if (Number.isInteger(value)) return C.positionName(value);
       const key = String(value || '')
         .trim()
         .toLowerCase()
@@ -834,13 +833,15 @@
     if (entrants.length && !entrants.includes(teamId)) return 'missed';
     return null;
   }
-  function quoteLines(id, record, champion, coach, player, postseason = null) {
+  function quoteLines(id, record, champion, coach, player, postseason = null, team = null) {
     const tone = outcome(record, champion, postseason);
     if (!tone) return [];
     const wins = (record?.seasonStats || record)?.W;
+    const guys = C.squad(team || { roster: player ? [player] : [] }),
+      they = C.pronouns(player, player?.ln || 'the player');
     const coachQuotes = {
       champion: [
-        "This group earned a championship. I couldn't be prouder of what these guys accomplished.",
+        `This group earned a championship. I couldn't be prouder of what these ${guys} accomplished.`,
         'Winning a title takes everybody. This team gave us everything we asked for, and then some.',
       ],
       runnerup: [
@@ -856,8 +857,8 @@
         "The record says we didn't do enough. We need a clearer identity and more consistency from day one.",
       ],
       injury: [
-        "It's disappointing to lose him. We want him healthy first, and the rest of the group has to step up.",
-        "You hate to see a player go down. We'll support him and give him the time he needs.",
+        `It's disappointing to lose ${they.him}. We want ${they.him} healthy first, and the rest of the group has to step up.`,
+        `You hate to see a player go down. We'll support ${they.him} and give ${they.him} the time ${they.he} needs.`,
       ],
       dominant: [
         `This group earned every one of those ${wins} wins. I'm proud of what we built together.`,
@@ -883,7 +884,7 @@
     };
     const playerQuotes = {
       champion: [
-        "We're champions, man. Everybody in that locker room had a part in this.",
+        `We're champions${guys === 'guys' ? ', man' : ''}. Everybody in that locker room had a part in this.`,
         "We'll remember this one forever. Winning a championship with this group means everything.",
       ],
       runnerup: [
@@ -1409,7 +1410,8 @@
             winner?.id === team.id,
             coach,
             featured && featured.tid === team.id && stats(featured, league, year)?.GP > 0 ? featured : null,
-            postseason
+            postseason,
+            team
           )
         );
       const ctx = {

@@ -24,6 +24,16 @@
       'siteMenuButton',
       'siteMenu',
       'menuUploadSave',
+      'menuLoadLatest',
+      'saveFolder',
+      'saveFolderNew',
+      'saveFolderKnown',
+      'saveFolderName',
+      'saveSlotChoice',
+      'saveSlots',
+      'chooseSaveFolder',
+      'loadLatestSave',
+      'changeSaveFolder',
       'resetArchive',
       'resetDialog',
       'resetTitle',
@@ -47,6 +57,7 @@
   );
   const state = {
     scope: null,
+    saveFolder: null,
     raw: null,
     leagueIndex: 0,
     stories: new Map(),
@@ -213,6 +224,14 @@
     }
     for (const tab of el.archiveLeagueSwitch.querySelectorAll('button')) tab.disabled = state.busy || !state.ready;
     el.menuUploadSave.disabled = state.busy || !state.ready;
+    for (const button of [
+      el.chooseSaveFolder,
+      el.loadLatestSave,
+      el.changeSaveFolder,
+      el.menuLoadLatest,
+      ...el.saveSlots.querySelectorAll('button'),
+    ])
+      button.disabled = state.busy || !state.ready;
     options(
       el.newsroomLeague,
       (state.raw?.seasonLeagues || []).map((l, i) => [i, l.leagueName || `League ${i + 1}`]),
@@ -719,25 +738,28 @@
     el.fileName.textContent = file.name;
 
     await readArchive();
-    let total = 0;
+    const archived = [];
     for (let index = 0; index < parsed.seasonLeagues.length; index++) {
       state.leagueIndex = index;
-      total += await generate();
+      archived.push(...(await generate()));
     }
-    state.leagueIndex = 0;
+    // Open on the first league with coverage this season; a career save can start with only college news.
+    const covered = parsed.seasonLeagues.findIndex(l =>
+      [...state.stories.values()].some(
+        s => s.fingerprint === C.buildFingerprint(l) && String(s.season) === String(C.seasonYear(l))
+      )
+    );
+    state.leagueIndex = Math.max(0, covered);
     const league = selectedLeague();
     archiveNavigation(C.buildFingerprint(league), C.seasonYear(league), C.buildLookups(league).latestDay + 1);
     view();
-    status(
-      `Save loaded. Archived ${total} new or upgraded stories across ${parsed.seasonLeagues.length} leagues. Refreshed ${snapshots.length} verified player box scores from this save.`
-    );
+    status(`Save loaded.${courtWarnings(archived)}`);
   }
   async function generate() {
     const league = selectedLeague(),
       fingerprint = C.buildFingerprint(league);
     const stories = [];
     const contexts = pending();
-    status(`Composing ${contexts.length} story images…`);
     const composed = await Promise.all(
       contexts.map(async ctx => {
         const existing = state.stories.get(C.storyId(fingerprint, ctx.seasonYear, ctx.game.gId));
@@ -758,7 +780,10 @@
           for (const key of ['imageBlob', 'sceneInputs', 'imageAlt', 'imageCaption', 'customCourt'])
             if (existing[key] !== undefined) story[key] = existing[key];
         } else
-          Object.assign(story, await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league)));
+          Object.assign(
+            story,
+            await window.HoopWireScenes.render(window.HoopWireScenes.inputs(ctx, story.id, league), story)
+          );
         return story;
       })
     );
@@ -770,6 +795,7 @@
       ...window.HoopWireNews.candidates(league, state.raw.seasonLeagues),
       ...window.HoopWireNews.offseason(league, state.raw.seasonLeagues),
       ...window.HoopWirePerformance.candidates(league),
+      ...window.HoopWireCareer.candidates(league),
     ].filter(x => {
       if (milestoneIds.has(x.story.id)) return false;
       milestoneIds.add(x.story.id);
@@ -807,7 +833,8 @@
               return Object.assign(
                 story,
                 await window.HoopWireScenes.render(
-                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season)
+                  window.HoopWireCoachScenes.inputs(context, story.id, league, story.season),
+                  story
                 )
               );
             const scene = window.HoopWireScenes.inputs(context, story.id, league);
@@ -822,7 +849,7 @@
                   variant: window.HoopWireCore.choose(story.id, ['player-close-up', 'player-profile'], 'coach-framing'),
                 },
               });
-            Object.assign(story, await window.HoopWireScenes.render(scene));
+            Object.assign(story, await window.HoopWireScenes.render(scene, story));
             return story;
           })
         ))
@@ -831,10 +858,7 @@
     await archive.write({ stories });
     await readArchive();
     archiveNavigation(fingerprint, C.seasonYear(league), C.buildLookups(league).latestDay + 1);
-    status(
-      `Archived ${stories.length} new or upgraded ${stories.length === 1 ? 'story' : 'stories'}, including images and stats.${courtWarnings(stories)}`
-    );
-    return stories.length;
+    return stories;
   }
   async function refreshImages() {
     const selected = selectedStories().filter(s => s.sceneInputs);
@@ -849,7 +873,7 @@
       selected.map(async original => {
         const story = structuredClone(original);
         const scene = window.HoopWireScenes.upgrade(story.sceneInputs, story, contexts.get(story.id));
-        Object.assign(story, await window.HoopWireScenes.render(scene));
+        Object.assign(story, await window.HoopWireScenes.render(scene, story));
         return story;
       })
     );
@@ -1108,6 +1132,7 @@
           headers: board.headers,
           rows: board.rows.slice(0, limit),
           ranked: !!board.ranked,
+          marker: board.lead !== false,
           subs: board.subs?.slice(0, limit) || null,
         })
       );
@@ -1161,6 +1186,7 @@
     subs = null,
     tags = null,
     highlight = true,
+    marker = true,
     optional = [],
     toggle = null,
   }) {
@@ -1196,7 +1222,7 @@
       return vals.length && top > 0 && vals.some(v => v !== top) ? top : null;
     });
     const table = document.createElement('table');
-    table.className = 'tv-board-table';
+    table.className = marker ? 'tv-board-table' : 'tv-board-table no-lead';
     const head = document.createElement('tr');
     if (ranked) {
       const th = document.createElement('th');
@@ -1733,7 +1759,7 @@
   el.siteMenuButton.addEventListener('click', event => {
     event.stopPropagation();
     siteMenu(el.siteMenu.hidden);
-    if (!el.siteMenu.hidden) el.siteMenu.querySelector('button:not(:disabled)')?.focus();
+    if (!el.siteMenu.hidden) el.siteMenu.querySelector('a:not([aria-disabled]), button:not(:disabled)')?.focus();
   });
   el.menuUploadSave.addEventListener('click', () => {
     siteMenu(false);
@@ -1749,8 +1775,84 @@
     }
   });
   window.addEventListener('hashchange', () => siteMenu(false));
+  // Chrome and Edge can remember the game's save folder and this league's save slot, then open
+  // the newest save in that slot. Saves from other slots (other leagues) are never picked.
+  const folder = window.HoopWireSaveFolder,
+    isSave = data => Array.isArray(data?.seasonLeagues);
+  const describeSave = data => {
+    const league = data.seasonLeagues[0] || {};
+    return [league.leagueName, league.season?.mode === 2 ? 'career' : null, league.season?.currentYear]
+      .filter(Boolean)
+      .join(' · ');
+  };
+  // Show the save location for this computer; both when it can't tell.
+  const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
+  for (const hint of document.querySelectorAll('[data-platform]'))
+    hint.hidden = /mac|win/.test(platform) && !platform.includes(hint.dataset.platform.slice(0, 3));
+  function folderControls(choosing = false) {
+    const saved = state.saveFolder;
+    el.saveFolder.hidden = !folder.supported();
+    el.saveSlotChoice.hidden = !choosing;
+    el.saveFolderNew.hidden = choosing || !!saved?.slot;
+    el.saveFolderKnown.hidden = choosing || !saved?.slot;
+    el.menuLoadLatest.hidden = !saved?.slot;
+    el.saveFolderName.textContent = saved?.slot ? `${saved.folder.name} · slot ${saved.slot}` : '';
+  }
+  async function useSlot(handle, slot) {
+    state.saveFolder = { folder: handle, slot };
+    folderControls();
+    await folder.remember(state.saveFolder).catch(() => {});
+    await loadLatest();
+  }
+  async function loadLatest() {
+    const { folder: handle, slot } = state.saveFolder;
+    if (!(await folder.permitted(handle, true)))
+      throw new Error(`HoopWire needs permission to read the ${handle.name} folder.`);
+    const file = await folder.latestSave(handle, isSave, slot);
+    if (!file) throw new Error(`No save was found in slot ${slot} of the ${handle.name} folder.`);
+    await loadSave(file);
+  }
+  async function chooseFolder() {
+    let handle;
+    try {
+      handle = await window.showDirectoryPicker({ id: 'hoop-land-saves', mode: 'read' });
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      throw error;
+    }
+    if (!(await folder.permitted(handle, true)))
+      throw new Error(`HoopWire needs permission to read the ${handle.name} folder.`);
+    const found = await folder.slots(handle, isSave, describeSave);
+    if (!found.length) throw new Error(`No Hoop Land saves were found in the ${handle.name} folder.`);
+    if (found.length === 1) return useSlot(handle, found[0].slot);
+    // Several leagues share the folder: the player says which slot this one is.
+    el.saveSlots.replaceChildren(
+      ...found.map(({ slot, label }) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = `Slot ${slot} · ${label}`;
+        button.addEventListener('click', () => run(() => useSlot(handle, slot)));
+        return button;
+      })
+    );
+    folderControls(true);
+  }
+  el.chooseSaveFolder.addEventListener('click', () => run(chooseFolder));
+  el.changeSaveFolder.addEventListener('click', () => run(chooseFolder));
+  el.loadLatestSave.addEventListener('click', () => run(loadLatest));
+  el.menuLoadLatest.addEventListener('click', () => {
+    siteMenu(false);
+    run(loadLatest);
+  });
   el.saveFile.addEventListener('change', () => {
     const file = el.saveFile.files[0];
+    // A save chosen by hand from another slot becomes the slot to follow.
+    const slot = folder.slotOf(file?.name);
+    if (file && slot && state.saveFolder && slot !== state.saveFolder.slot) {
+      state.saveFolder = { ...state.saveFolder, slot };
+      folder.remember(state.saveFolder).catch(() => {});
+      folderControls();
+    }
     if (file) run(() => loadSave(file));
     el.saveFile.value = '';
   });
@@ -1842,6 +1944,8 @@
   run(async () => {
     await archive.open();
     await readArchive();
+    if (folder.supported()) state.saveFolder = await folder.recall();
+    folderControls();
     state.ready = true;
     archiveNavigation();
     view();

@@ -185,7 +185,6 @@
     focus,
     changes,
     baseline,
-    playoffs,
     mine,
     opp,
     result,
@@ -241,12 +240,6 @@
           `${c.favorable ? "It wasn't all good news" : 'There was a bright side'}: ${C.listJoin(mixed.map(phrase))}.`
         );
     }
-    const games = C.plural(baseline.GP, 'regular-season game');
-    paragraphs.push(
-      playoffs
-        ? `Those averages come from ${games} before the playoffs.`
-        : `Those averages cover ${games} before this one.`
-    );
     return paragraphs;
   }
   function candidates(league) {
@@ -312,7 +305,7 @@
     }
     const result = [];
     for (const x of kept) {
-      const { snap, player, entry, game, playoffs, baseline, comparisons, focus, coldOnly, r } = x;
+      const { snap, player, entry, game, baseline, comparisons, focus, coldOnly, r } = x;
       const name = C.playerDisplay(player),
         id = `${fingerprint}:${year}:performance:${snap.gid}:${snap.pid}`;
       const ctx = C.gameContext(game, entry.dayIndex, league, lookup, map, fingerprint);
@@ -337,7 +330,7 @@
         coach: null,
         importance: Math.round(70 + Math.min(30, x.score * 8)),
         templateVersion: 1,
-        editorialVersion: 3,
+        editorialVersion: 4,
         quotesEnabled: false,
         performanceSnapshot: {
           baseline: structuredClone(baseline),
@@ -365,7 +358,6 @@
           focus,
           changes,
           baseline,
-          playoffs,
           mine,
           opp,
           result: { won, score: `${ctx.winnerScore}-${ctx.loserScore}` },
@@ -633,7 +625,7 @@
       ...story,
       type: good && poor ? 'Mixed performance' : good ? 'Above expectations' : 'Below expectations',
       headline: headline(name, focus, opp, story.id, false, coldOnly),
-      editorialVersion: 3,
+      editorialVersion: 4,
       importance: Math.round(70 + Math.min(30, (coldOnly ? 1.1 : best.score) * 8)),
       performanceSnapshot: {
         ...snap,
@@ -657,7 +649,6 @@
         focus,
         changes,
         baseline,
-        playoffs: known.playoffs ?? /before the playoffs/.test((story.paragraphs || []).join(' ')),
         mine,
         opp,
         result: { won, score: `${hi}-${lo}` },

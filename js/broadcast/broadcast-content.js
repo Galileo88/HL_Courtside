@@ -1019,7 +1019,7 @@
             : say('clean-r', [
                 `That's winning basketball. Take care of the rock and everybody eats.`,
                 `Underrated. You don't beat yourself, you give yourself a chance every night.`,
-                `That's grown-man basketball right there.`,
+                `That's big-time basketball right there.`,
               ]),
       });
     }
@@ -1120,15 +1120,11 @@
         key: 'support',
         priority: 60,
         speaker: 2,
-        question: say('support-q', [
-          `Who else stepped up?`,
-          `${A}, who's the unsung guy?`.replace(' guy', ' name'),
-          `Anybody else, ${A}?`,
-        ]),
+        question: say('support-q', [`Who else stepped up?`, `${A}, who's the unsung name?`, `Anybody else, ${A}?`]),
         detail: `Don't sleep on ${helper.name}. ${count(helper.stats.PTS, 'points')}${helper.stats.GS === 0 ? ' off the bench' : ''}. Every team needs a second option.`,
         response: say('support-r', [
           `Good call. You can't do it alone in this league.`,
-          `That's the guy nobody's talking about tomorrow. They should be.`.replace('the guy', 'the name'),
+          `That's the name nobody's talking about tomorrow. They should be.`,
           `Depth wins. Simple as that.`,
         ]),
       });
@@ -1159,7 +1155,7 @@
               "You need your top option to show up. Didn't happen.",
             ])
           : say('opp-r', [
-              "That's the problem when one guy's doing all the lifting.",
+              "That's the problem when one player's doing all the lifting.",
               "Nobody else gave them anything. That's the game.",
             ]),
       });
@@ -1479,7 +1475,7 @@
           pick(
             story,
             [
-              `Deserved. No debate. ${last} was the guy, and everybody in the league knew it.`,
+              `Deserved. No debate. Everybody in the league knew it was ${last}.`,
               `Easiest call of the year. I'm not even entertaining other names.`,
               `I had ${last} on my ballot from day one. Day one!`,
             ],
@@ -2298,7 +2294,7 @@
           : /injury/i.test(type)
             ? [
                 "We'll watch for an update on the return.",
-                "For now, it's next man up.",
+                'For now, somebody else has to step up.',
                 'Get well soon. That one stings.',
                 "Somebody's getting more minutes. Let's see who takes them.",
               ]
@@ -2378,7 +2374,7 @@
         body.push(
           turn(
             2,
-            `My guy is ${sleeper.name} at No. ${sleeper.pick}. ${sleeper.college.PTS} points a night in college, more than the top pick. ${cap(T(sleeper))} might have gotten a steal.`
+            `My sleeper is ${sleeper.name} at No. ${sleeper.pick}. ${sleeper.college.PTS} points a night in college, more than the top pick. ${cap(T(sleeper))} might have gotten a steal.`
           ),
           turn(1, `Steal is a strong word, ${A}. Let's see the kid play first.`)
         );
@@ -2965,8 +2961,153 @@
       ? [turn(0, `Here's what ${who} had to say: “${words}”`), turn(pick(story, [1, 2], 'quote:reactor'), response)]
       : [];
   }
+  // Career mode, before the first game: the desk meets the player and sizes up the showcase.
+  function showcaseScript(story, n) {
+    const career = story.seasonSnapshot.career,
+      show = story.seasonSnapshot.showcase,
+      potential = story.seasonSnapshot.potential,
+      [, J, A, N] = n;
+    if (potential) {
+      const he = potential.pronoun || potential.last,
+        his = potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'his' : `${potential.last}'s`;
+      const body = [
+        turn(
+          3,
+          `${potential.ceiling ? `The ceiling is ${potential.ceiling}.` : "Nobody knows the ceiling yet, and that's fine."}${
+            potential.ceiling
+              ? {
+                  none: ' Nobody else in this showcase can say that.',
+                  few: ' Only a few others in this showcase can say that.',
+                  many: ` ${C.capitalize(he)}'s got company in this showcase, though. That's what makes the field so good.`,
+                }[potential.shared] || ''
+              : ''
+          }`
+        ),
+        turn(
+          1,
+          pick(
+            story,
+            /greatest/.test(potential.ceiling || '')
+              ? [
+                  "The greatest of all time. Say it with your chest. I'm not laughing.",
+                  "The greatest of all time? Laugh now. I'm buying.",
+                ]
+              : [
+                  `Ceiling? I'm taking the over. Put ${potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'him' : potential.last} in the conversation now.`,
+                  "That's the floor for me. I've seen enough. I'm taking the over.",
+                ],
+            'potential:take'
+          )
+        ),
+      ];
+      if (potential.room?.length)
+        body.push(turn(2, `Here's where the work is: ${join(potential.room)}. Get those up and ${he}'s a problem.`));
+      return frame(
+        story,
+        'potential',
+        [
+          `Before ${potential.name} plays a minute in the ${potential.event}, the question is how high ${he} can go. ${N}?`,
+          `${potential.name} has a ceiling, and we're going to argue about it. ${N}, start us off.`,
+        ],
+        [`The climb starts at the ${potential.event}.`, `We'll check back on ${his} climb.`],
+        body
+      );
+    }
+    if (career) {
+      const who = [career.age && `${career.age}-year-old`, career.position, career.country && `from ${career.country}`]
+        .filter(Boolean)
+        .join(' ');
+      const body = [
+        turn(
+          1,
+          career.height
+            ? pick(
+                story,
+                [
+                  `${career.height}${career.weight ? `, ${career.weight} pounds` : ''}, and still in high school. I'm already in.`,
+                  `Look at the frame. ${career.height} at ${career.age || 'that age'}? Come on.`,
+                ],
+                'career:take'
+              )
+            : pick(
+                story,
+                ["I've seen the tape. I'm already in.", 'I like this kid. I like this kid a lot.'],
+                'career:take'
+              )
+        ),
+      ];
+      if (career.countrymen?.length)
+        body.push(
+          turn(
+            2,
+            `And there's a subplot: ${join(career.countrymen)} ${career.countrymen.length === 1 ? 'is' : 'are'} from ${career.country || 'the same place'} too. Bragging rights back home, ${J}.`
+          )
+        );
+      body.push(
+        turn(
+          3,
+          career.strengths?.length
+            ? `Easy, ${J}. One game. What I'll say is ${career.pronoun === 'she' ? 'her' : career.pronoun === 'he' ? 'his' : `${career.last}'s`} ${join(career.strengths)} already ${career.strengths.length === 1 ? 'ranks' : 'rank'} near the top of this field.`
+            : `Easy, ${J}. It's one game, and I don't grade careers off one game.`
+        )
+      );
+      if (career.fanPosts)
+        body.push(
+          turn(0, `The fans have already made up their minds. They're posting about ${career.last} on Hoop Gram.`)
+        );
+      return frame(
+        story,
+        'career',
+        [
+          `Before anything else tonight, meet ${career.name}${who ? `, a ${who}` : ''}. ${J}, what do you see?`,
+          `A new name for your notebook: ${career.name}${who ? `, a ${who}` : ''}, suiting up for the ${career.team} in the ${career.event}. ${J}?`,
+        ],
+        [`The ${career.event}. We'll all be watching.`, `${career.name}. Remember the name.`],
+        body
+      );
+    }
+    const [home, away] = show.teams;
+    const worldly = show.teams.find(t => t.countries.length >= 3);
+    const body = [];
+    if (home.tallest && away.tallest)
+      body.push(
+        turn(
+          2,
+          `Size on both sides. ${home.tallest.name} is ${home.tallest.height}, ${away.tallest.name} is ${away.tallest.height}. That's a fun matchup in the paint.`
+        )
+      );
+    if (worldly)
+      body.push(
+        turn(
+          3,
+          `The ${worldly.name} have players from ${C.num(worldly.countries.length)} countries. That's a real mix of styles.`
+        )
+      );
+    body.push(
+      turn(
+        1,
+        pick(
+          story,
+          [`Give me ${show.featured}. I'm riding with that one.`, `I'm watching ${show.featured}. Book it.`],
+          'showcase:take'
+        )
+      )
+    );
+    return frame(
+      story,
+      'showcase',
+      [
+        `The ${show.event}: the ${home.name} and the ${away.name}, the best high school prospects on one floor. ${A}?`,
+        `It's showcase time. The ${home.name} against the ${away.name}. ${A}, where do you start?`,
+      ],
+      [`The ${show.event}. Don't miss it.`, `That's the ${show.event}. College coaches, take notes.`],
+      body
+    );
+  }
   function baseScript(story, context, n) {
     if (story.performanceSnapshot) return Performance.script(story, n);
+    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase || story.seasonSnapshot?.potential)
+      return showcaseScript(story, n);
     if (story.seasonSnapshot?.roundup) return roundupScript(story, n);
     if (story.type === 'Season leaders') return leadersScript(story, n);
     if (story.type === 'Seeding snub') return snubScript(story, n);

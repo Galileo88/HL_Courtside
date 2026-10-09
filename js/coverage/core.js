@@ -477,9 +477,44 @@
   function possessive(name) {
     return /s$/i.test(name) ? `${name}'` : `${name}'s`;
   }
+  // Saves store positions on a 0-8 scale: the five positions on even values, hybrids between them.
+  const POSITIONS = [
+    'point guard',
+    'combo guard',
+    'shooting guard',
+    'wing',
+    'small forward',
+    'forward',
+    'power forward',
+    'forward-center',
+    'center',
+  ];
+  function positionName(pos) {
+    return (Number.isInteger(pos) && POSITIONS[pos]) || '';
+  }
+  // The award settings' position flags a player falls under: one for a position, both neighbors for a hybrid.
+  function positionKeys(pos) {
+    const keys = ['pg', 'sg', 'sf', 'pf', 'c'];
+    if (!Number.isInteger(pos) || pos < 0 || pos > 8) return [];
+    return pos % 2 ? [keys[(pos - 1) / 2], keys[(pos + 1) / 2]] : [keys[pos / 2]];
+  }
   // Hoop Land records gender 0 for men and 1 for women; anything else keeps the name.
   function pronoun(person) {
     return person?.gender === 0 ? 'he' : person?.gender === 1 ? 'she' : null;
+  }
+  // Subject, object and possessive forms for a person, or their name when the save gives no gender.
+  function pronouns(person, name = '') {
+    const he = pronoun(person);
+    return {
+      he: he || name,
+      him: he === 'she' ? 'her' : he === 'he' ? 'him' : name,
+      his: he === 'she' ? 'her' : he === 'he' ? 'his' : possessive(name),
+    };
+  }
+  // What a coach or teammate calls the group: "guys" on a men's roster, "players" on a women's.
+  function squad(team) {
+    const roster = team?.roster || [];
+    return roster.length && roster.filter(p => p.gender === 1).length > roster.length / 2 ? 'players' : 'guys';
   }
   // Accepts a native team, a snapshot team or an archived score summary.
   function teamRef(team) {
@@ -754,11 +789,12 @@
 
   function quoteBank(ctx, seed, salt) {
     const pick = options => choose(seed, options, salt),
-      S = ctx.series;
+      S = ctx.series,
+      guys = squad(ctx.winner);
     if (S && salt === 'quote-coach') {
       if (S.title)
         return pick([
-          'Nobody can ever take this away from these guys. They earned every bit of it.',
+          `Nobody can ever take this away from these ${guys}. They earned every bit of it.`,
           "I've been dreaming about this since I got into coaching. I'm so happy for this group.",
           "This is what we built all year for. Champions. I still can't believe I get to say it.",
         ]);
@@ -766,11 +802,11 @@
         return pick([
           "Closing out a series is the hardest thing to do in this league. I'm proud of how we finished it.",
           "We'll enjoy it tonight. Tomorrow we get to work on the next one.",
-          "That's a good team we just beat. Our guys earned this.",
+          `That's a good team we just beat. Our ${guys} earned this.`,
         ]);
       if (S.savedSeason)
         return pick([
-          "Our guys weren't ready to go home. That was a team that refused to quit.",
+          `Our ${guys} weren't ready to go home. That was a team that refused to quit.`,
           'We had our backs against the wall and responded. Now we have to do it again.',
         ]);
       if (S.tied)
@@ -795,7 +831,7 @@
       if (S.title)
         return pick([
           "We're champions. I don't even know what to say right now. This group deserved it.",
-          'All the work, all those nights, it was all for this. I love these guys.',
+          `All the work, all those nights, it was all for this. I love these ${guys}.`,
           "I've wanted this my whole life. To do it with this team, it means everything.",
         ]);
       if (S.clinched)
@@ -826,14 +862,14 @@
           "That was a grind. Neither team gave an inch, and I'm proud of how our group competed.",
           "Those are the ones that test you. We didn't play perfect, but we were good enough at the end.",
           "Give them credit, they made it hard on us. I'll take a win like that every time.",
-          "Games like that grow you up. I'm happy for our guys.",
+          `Games like that grow you up. I'm happy for our ${guys}.`,
         ]);
       if (ctx.upset)
         return pick([
-          "There's a lot of respect in our locker room for that team. But our guys believed they could win this game, and they played like it.",
-          "We don't look at the standings. We came in with a plan and our guys trusted it.",
+          `There's a lot of respect in our locker room for that team. But our ${guys} believed they could win this game, and they played like it.`,
+          `We don't look at the standings. We came in with a plan and our ${guys} trusted it.`,
           "That's a quality opponent. Beating a team like that tells our group what it's capable of.",
-          "I told our guys before the game that the records don't matter once the ball goes up. They believed it.",
+          `I told our ${guys} before the game that the records don't matter once the ball goes up. They believed it.`,
         ]);
       if (ctx.blowout)
         return pick([
@@ -844,7 +880,7 @@
         ]);
       return pick([
         "Good win. There's stuff we have to clean up, but I'll take it.",
-        "It wasn't always pretty. Our guys found a way, and that's what good teams do.",
+        `It wasn't always pretty. Our ${guys} found a way, and that's what good teams do.`,
         "We handled our business. That's what I want to see from this group.",
         'I thought we were the more connected team tonight. Still plenty to work on.',
       ]);
@@ -1369,6 +1405,10 @@
     surname,
     possessive,
     pronoun,
+    pronouns,
+    squad,
+    positionName,
+    positionKeys,
     teamRef,
     verb,
     quoteParagraph,
