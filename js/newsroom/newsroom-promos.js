@@ -296,8 +296,21 @@
       cls: 'wire-beer-ad',
     },
   };
-  const artFor = (selected, hosts) =>
-    selected === 'drink' ? drinkArt() : selected === 'suit' ? suitArt(hosts) : HoopWireAdArt.render(selected, hosts);
+  const artFor = (selected, hosts, shape) =>
+    selected === 'drink'
+      ? drinkArt()
+      : selected === 'suit'
+        ? suitArt(hosts)
+        : selected.startsWith('movie-')
+          ? HoopWirePosters.render(selected, hosts, shape)
+          : HoopWireAdArt.render(selected, hosts);
+  // Posters are 2:3 one-sheets in the sidebar and 16:9 banners in the feed.
+  const artSize = (selected, shape) =>
+    selected.startsWith('movie-')
+      ? shape === 'banner'
+        ? [1068, 600]
+        : [600, 900]
+      : [300, selected === 'drink' ? 156 : selected === 'automotive' ? 285 : 180];
   const hostsFor = studio => studio?.inputs?.announcers || window.HoopWireTV.inputs({ teams: [] }).announcers;
   // An in-feed sponsor tile, shaped like a story card, for grids whose last
   // row would otherwise have an empty cell.
@@ -312,9 +325,8 @@
     frame.style.background = creative.bg;
     const art = node('img', '');
     art.alt = creative.alt;
-    art.width = 300;
-    art.height = selected === 'drink' ? 156 : selected === 'automotive' ? 285 : 180;
-    artFor(selected, hostsFor(studio))
+    [art.width, art.height] = artSize(selected, 'banner');
+    artFor(selected, hostsFor(studio), 'banner')
       .then(src => {
         art.src = src;
         art.dataset.ready = 'true';
@@ -366,8 +378,7 @@
       const body = node('div', 'wire-ad-body');
       body.append(brand, node('span', 'wire-suit-collection', creative.subtitle));
       const art = node('img', 'wire-product-art');
-      art.width = 300;
-      art.height = selected === 'drink' ? 156 : selected === 'automotive' ? 285 : 180;
+      [art.width, art.height] = artSize(selected);
       art.alt = creative.alt;
       const artwork = artFor(selected, hosts);
       artwork
@@ -378,7 +389,6 @@
         .catch(() => art.remove());
       body.append(art, node('p', 'wire-suit-tagline', creative.tagline));
       if (selected === 'beer') body.append(node('span', 'wire-ad-responsibility', 'Drink responsibly.'));
-      if (selected.startsWith('movie-')) body.append(node('span', 'wire-movie-release', 'NOW SHOWING'));
       ad.append(node('span', 'wire-ad-label', 'Advertisement'), body);
       return ad;
     }
