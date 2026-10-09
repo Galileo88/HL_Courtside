@@ -301,9 +301,10 @@
       league: { name: league.leagueName || ctx.leagueName, logoURL: league.logoURL || null },
       attackDirection: action.side,
       action,
-      interview: interviewDesign(id),
+      interview: interviewDesign(id, ctx.interviewVariant),
       ball: structuredClone(ctx.gameBall),
-      kind: ctx.injury ? 'action' : sceneKind(id, ctx.potgStatsTrusted),
+      kind: ctx.injury ? 'action' : ctx.sceneKind || sceneKind(id, ctx.potgStatsTrusted),
+      event: ctx.event || null,
       pose: action.pose,
       player: playerSnapshot(ctx.potg || ctx.scenePlayer),
       team: teamSnapshot(team),
@@ -362,8 +363,9 @@
       const group =
         participants.length > 1 ? participants.slice(0, -1).join(', ') + ' and ' + participants.at(-1) : name;
       const plural = participants.length > 1;
-      description =
-        story.kind === 'season'
+      description = scene.event
+        ? `${group} ${plural ? 'meet' : 'meets'} the press before the ${scene.event}.`
+        : story.kind === 'season'
           ? `${group} ${plural ? 'discuss' : 'discusses'} ${story.type === 'Award announcement' ? 'the award announcement' : 'the season'}.`
           : `${group} ${plural ? 'answer' : 'answers'} postgame questions${result === 'win' ? ' after a win' : result === 'loss' ? ' after a loss' : result === 'tie' ? ' after a tied game' : ''}.`;
     } else {

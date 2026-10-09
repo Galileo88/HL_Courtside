@@ -33,6 +33,31 @@
       return null;
     }
   }
+  const skillLabels = {
+    LAY: 'Finishing',
+    DNK: 'Dunking',
+    INS: 'Inside scoring',
+    MID: 'Mid-range',
+    TPT: 'Three-point',
+    FTS: 'Free throws',
+    DRB: 'Ball handling',
+    PAS: 'Passing',
+    ORE: 'Off. rebounding',
+    DRE: 'Def. rebounding',
+    STL: 'Steals',
+    BLK: 'Shot blocking',
+    STR: 'Strength',
+    SPD: 'Speed',
+    STM: 'Stamina',
+  };
+  // The career ceilings the game offers before a career starts, on its 0-10 potential scale (two per star).
+  const ceilings = {
+    10: 'the greatest player of all time',
+    9: 'a first-ballot Hall of Famer',
+    8: 'a perennial All-Star',
+  };
+  const starWords = ['zero', 'one', 'two', 'three', 'four', 'five'];
+  const stars = pot => `${starWords[Math.floor(pot / 2)]}${pot % 2 ? '-and-a-half' : ''}-star`;
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
   const height = inches => (Number.isFinite(inches) && inches > 0 ? `${Math.floor(inches / 12)}-${inches % 12}` : null);
   const current = (p, key) => (Array.isArray(p.attributes?.[key]) ? Number(p.attributes[key][0]) || 0 : 0);
@@ -224,7 +249,81 @@
       context: showcasePost(team, other, player),
     });
 
-    // 2. The showcase itself: who is on each side.
+    // 2. The ceiling: how good the player can become and where the growth has to come from.
+    if (Number.isInteger(player.pot) && player.pot > 0) {
+      const skills = Object.keys(strengths)
+        .filter(key => Array.isArray(player.attributes?.[key]))
+        .map(key => ({ key, now: player.attributes[key][0], top: player.attributes[key][1] }))
+        .filter(x => Number.isFinite(x.now) && Number.isFinite(x.top));
+      const growth = skills.filter(x => x.top > x.now).sort((a, b) => b.top - b.now - (a.top - a.now) || b.top - a.top);
+      const most = growth.length ? growth[0].top - growth[0].now : 0;
+      const room = growth.filter(x => x.top - x.now === most).slice(0, 3),
+        done = skills.filter(x => x.top === x.now && x.top >= 15);
+      const peers = field.filter(p => p.id !== player.id && p.pot === player.pot).length;
+      const ceiling = ceilings[player.pot] || null;
+      result.push({
+        story: story(`career-potential-${player.id}`, {
+          type: 'Career',
+          headline: ceiling
+            ? `${name}'s ceiling: ${ceiling.replace(/^(a|the) /, '')}`
+            : `${name} brings a ${stars(player.pot)} ceiling to the ${event}`,
+          importance: 115,
+          paragraphs: [
+            ceiling
+              ? `${name} arrives at the ${event} with the ceiling of ${ceiling}.`
+              : `${name} arrives at the ${event} as a ${stars(player.pot)} prospect.`,
+            room.length ? `The most room to grow is in ${his} ${C.listJoin(room.map(x => strengths[x.key]))}.` : '',
+            done.length
+              ? `${C.capitalize(his)} ${C.listJoin(done.map(x => strengths[x.key]))} ${done.length === 1 ? 'is' : 'are'} already fully developed.`
+              : '',
+            ceiling
+              ? `A ceiling that high is a long climb, and it starts in the ${event}.`
+              : `The climb starts in the ${event}.`,
+          ].filter(Boolean),
+          seasonSnapshot: {
+            headers: ['Skill', 'Now', 'Ceiling'],
+            rows: [...growth, ...skills.filter(x => !growth.includes(x))]
+              .slice(0, 10)
+              .map(x => [skillLabels[x.key], x.now, x.top]),
+            board: {
+              kicker: 'Room to grow',
+              title: name,
+              headers: ['Skill', 'Now', 'Ceiling'],
+              rows: [...growth, ...skills.filter(x => !growth.includes(x))]
+                .slice(0, 10)
+                .map(x => [skillLabels[x.key], x.now, x.top]),
+              lead: false,
+            },
+            source: 'season.career',
+            potential: {
+              event,
+              name,
+              last,
+              pronoun: he || null,
+              potential: player.pot,
+              stars: stars(player.pot),
+              ceiling,
+              room: room.map(x => strengths[x.key]),
+              developed: done.map(x => strengths[x.key]),
+              peers,
+            },
+          },
+        }),
+        context: {
+          winner: team,
+          loser: other,
+          home: team,
+          game: { homeTeam: team.id },
+          scenePlayer: player,
+          gameBall,
+          sceneKind: 'interview',
+          interviewVariant: 'player-close-up',
+          event,
+        },
+      });
+    }
+
+    // 3. The showcase itself: who is on each side.
     const tallest = t => [...t.roster].filter(p => p.ht > 0).sort((a, b) => b.ht - a.ht || a.id - b.id)[0];
     const countries = t => [...new Set(t.roster.map(p => p.ctry).filter(Boolean))];
     const international = t => t.roster.filter(p => p.ctry && p.ctry !== 'US').length;

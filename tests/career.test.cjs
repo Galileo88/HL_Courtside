@@ -33,7 +33,8 @@ function league({ mode = 2, played = false } = {}) {
         wt: 234,
         pos: 3,
         num: 12,
-        attributes: { STR: [17, 17], STM: [20, 20], TPT: [8, 8] },
+        pot: 8,
+        attributes: { STR: [17, 17], STM: [20, 20], TPT: [10, 14], LAY: [10, 14], PAS: [9, 12] },
       }),
       prospect(11, 'Karl', 'Phelps', { ht: 87, pos: 8 }),
     ],
@@ -87,9 +88,9 @@ test('a career opens with a player profile and a showcase preview before the gam
   const stories = K.candidates(league()).map(x => x.story);
   assert.deepEqual(
     stories.map(s => s.eventKey),
-    ['career-showcase-10', 'showcase-preview']
+    ['career-showcase-10', 'career-potential-10', 'showcase-preview']
   );
-  const [profile, preview] = stories;
+  const [profile, , preview] = stories;
   assert.equal(profile.headline, 'Tavish Berlin opens his career at the Koality Showcase');
   const text = profile.paragraphs.join(' ');
   assert.match(text, /Tavish Berlin, a 17-year-old wing from Slovenia, opens his career/);
@@ -98,10 +99,10 @@ test('a career opens with a player profile and a showcase preview before the gam
     /No\. 12 and starts for the Western All-Americans against the Eastern All-Americans at Monarchs Arena West/
   );
   assert.deepEqual(
-    stories[1].seasonSnapshot.rows.map(r => r[0]),
+    preview.seasonSnapshot.rows.map(r => r[0]),
     ['Tavish Berlin', 'Karl Phelps', 'Abdullah Polat']
   );
-  assert.equal(stories[1].seasonSnapshot.board.lead, false);
+  assert.equal(preview.seasonSnapshot.board.lead, false);
   assert.match(text, /6-foot-8 and 234 pounds/);
   assert.match(text, /his stamina and strength rank among the best/);
   assert.match(text, /Jozef Bozic suits up for the Eastern All-Americans/);
@@ -111,11 +112,32 @@ test('a career opens with a player profile and a showcase preview before the gam
   assert.match(preview.paragraphs.join(' '), /players from Slovenia, Türkiye and Finland/);
   assert.ok(stories.every(s => s.day === 1 && s.season === 1967));
 });
-test('both stories are illustrated with Hoop Gram posts, never a game that has not happened', () => {
+test('the ceiling story names the potential and where the growth has to come from', () => {
+  const { story, context } = K.candidates(league())[1];
+  assert.equal(story.headline, "Tavish Berlin's ceiling: perennial All-Star");
+  const text = story.paragraphs.join(' ');
+  assert.match(text, /with the ceiling of a perennial All-Star/);
+  assert.match(text, /most room to grow is in his finishing at the rim and three-point shooting\./);
+  assert.match(text, /His strength and stamina are already fully developed/);
+  assert.deepEqual(story.seasonSnapshot.rows[0], ['Finishing', 10, 14]);
+  assert.equal(context.sceneKind, 'interview');
+  assert.equal(context.event, 'Koality Showcase');
+  const low = league();
+  low.starTeams[0].roster[0].pot = 7;
+  assert.equal(
+    K.candidates(low)[1].story.headline,
+    'Tavish Berlin brings a three-and-a-half-star ceiling to the Koality Showcase'
+  );
+});
+test('no story is illustrated with a game that has not happened', () => {
   const contexts = K.candidates(league()).map(x => x.context);
-  assert.ok(contexts.every(c => c.coachScene === 'showcase' && c.post?.tag === 'koalityshowcase'));
-  assert.equal(contexts[0].recruit.ln, 'Berlin');
-  assert.equal(contexts[1].recruit.ln, 'Makela');
+  assert.ok(contexts.every(c => c.coachScene === 'showcase' || c.sceneKind === 'interview'));
+  const posts = contexts.filter(c => c.coachScene === 'showcase');
+  assert.ok(posts.every(c => c.post?.tag === 'koalityshowcase'));
+  assert.deepEqual(
+    posts.map(c => c.recruit.ln),
+    ['Berlin', 'Makela']
+  );
 });
 test('no career stories outside career mode or once the showcase is played', () => {
   assert.deepEqual(K.candidates(league({ mode: 1 })), []);

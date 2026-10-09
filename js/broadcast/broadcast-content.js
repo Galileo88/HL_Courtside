@@ -2969,7 +2969,46 @@
   function showcaseScript(story, n) {
     const career = story.seasonSnapshot.career,
       show = story.seasonSnapshot.showcase,
-      [, J, A] = n;
+      potential = story.seasonSnapshot.potential,
+      [, J, A, N] = n;
+    if (potential) {
+      const he = potential.pronoun || potential.last,
+        his = potential.pronoun === 'she' ? 'her' : potential.pronoun === 'he' ? 'his' : `${potential.last}'s`;
+      const body = [
+        turn(
+          3,
+          `${potential.ceiling ? `The ceiling is ${potential.ceiling}.` : `It's a ${potential.stars} ceiling.`}${potential.peers ? ` For context, ${C.num(potential.peers)} other ${potential.peers === 1 ? 'player' : 'players'} in this showcase ${potential.peers === 1 ? 'shares' : 'share'} it.` : ''}`
+        ),
+        turn(
+          1,
+          pick(
+            story,
+            potential.potential >= 10
+              ? [
+                  "The greatest of all time. Say it with your chest. I'm not laughing.",
+                  "The greatest of all time? Laugh now. I'm buying.",
+                ]
+              : [
+                  "Ceiling? I'm taking the over. Put him in the conversation now.",
+                  "That's the floor for me. I've seen enough. I'm taking the over.",
+                ],
+            'potential:take'
+          )
+        ),
+      ];
+      if (potential.room?.length)
+        body.push(turn(2, `Here's where the work is: ${join(potential.room)}. Get those up and ${he}'s a problem.`));
+      return frame(
+        story,
+        'potential',
+        [
+          `Before ${potential.name} plays a minute in the ${potential.event}, the question is how high ${he} can go. ${N}?`,
+          `${potential.name} has a ceiling, and we're going to argue about it. ${N}, start us off.`,
+        ],
+        [`The climb starts at the ${potential.event}.`, `We'll check back on ${his} climb.`],
+        body
+      );
+    }
     if (career) {
       const who = [career.age && `${career.age}-year-old`, career.position, career.country && `from ${career.country}`]
         .filter(Boolean)
@@ -3063,7 +3102,8 @@
   }
   function baseScript(story, context, n) {
     if (story.performanceSnapshot) return Performance.script(story, n);
-    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase) return showcaseScript(story, n);
+    if (story.seasonSnapshot?.career || story.seasonSnapshot?.showcase || story.seasonSnapshot?.potential)
+      return showcaseScript(story, n);
     if (story.seasonSnapshot?.roundup) return roundupScript(story, n);
     if (story.type === 'Season leaders') return leadersScript(story, n);
     if (story.type === 'Seeding snub') return snubScript(story, n);
