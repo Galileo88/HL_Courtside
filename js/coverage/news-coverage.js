@@ -46,9 +46,8 @@
   function seasonLine(player, league, year) {
     const s = S.stats(player, league, year);
     if (!s || s.GP < 1) return '';
-    const last = player.ln || C.surname(C.playerDisplay(player)),
-      a = k => (s[k] / s.GP).toFixed(1);
-    return `${last} ${player.retired ? 'averaged' : 'is averaging'} ${a('PTS')} points, ${a('REB')} rebounds and ${a('AST')} assists in ${C.plural(s.GP, 'game')} this season.`;
+    const last = player.ln || C.surname(C.playerDisplay(player));
+    return `${last} ${player.retired ? 'averaged' : 'is averaging'} ${C.perGameList(s)} in ${C.plural(s.GP, 'game')} this season.`;
   }
   const roundupTypes = new Set([2, 3, 14, 15, 18, 19, 20, 21, 26]),
     roundupSize = 4;

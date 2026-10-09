@@ -165,7 +165,8 @@ test('identities separate seasons and leagues and upgrade only current template 
   assert.equal(C.shouldGenerate({ templateVersion: 3, playerStats: null }, ctx), true);
   assert.equal(C.shouldGenerate({ templateVersion: 2 }, ctx), false);
   assert.equal(C.shouldGenerate({ templateVersion: 3, playerStats: ctx.potgStats }, ctx), true, 'older prose upgrades');
-  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), false);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), true);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 3, playerStats: ctx.potgStats }, ctx), false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient', () => {
   const save = JSON.parse(fs.readFileSync(samplePath, 'utf8'));

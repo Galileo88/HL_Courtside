@@ -47,7 +47,7 @@ test('a proven consecutive record chain identifies a winning run and its end', (
   games.push(game(5, 5, false, [3, 2], [2, 3]));
   const ended = C.buildContext(story(games[4]), { league: source(games) });
   assert.deepEqual(ended.teams[1].streak.ended, { won: true, length: 3 });
-  assert.match(B.script(story(games[4]), ended)[0].text, /3-game (?:winning|losing) streak is over/);
+  assert.match(B.script(story(games[4]), ended)[0].text, /three-game (?:winning|losing) streak is over/);
 });
 test('losing runs and a breakthrough win are distinct supported stories', () => {
   const games = [
@@ -62,7 +62,7 @@ test('losing runs and a breakthrough win are distinct supported stories', () => 
   assert.match(B.script(lost, C.buildContext(lost, { league: source(games) }))[0].text, /three straight losses/);
   assert.match(
     B.script(ended, C.buildContext(ended, { league: source(games) }))[0].text,
-    /3-game losing streak is over/
+    /three-game losing streak is over/
   );
 });
 test('missing history, unbounded archives and ambiguous same-day order suppress exact streaks', () => {
@@ -135,7 +135,7 @@ test('dated averages establish exceptional production; later totals never enter 
     B.script(s, context)
       .map(t => t.text)
       .join(' '),
-    /20.0 points a game/
+    /came in averaging 18.4 points a game/
   );
   s.broadcastSnapshot.day = 9;
   assert.equal(C.buildContext(s).average, undefined);

@@ -109,20 +109,18 @@
     if (!facts) return story;
     const { player, season, career, period } = facts;
     const last = player.ln || C.surname(C.playerDisplay(player)),
-      avg = k => (season[k] / season.GP).toFixed(1),
       game = story.playerStats || facts.gameStats;
     const big =
       season.GP > 1 &&
       valid(game?.PTS) &&
       game.PTS >= (1.75 * season.PTS) / season.GP &&
       game.PTS - season.PTS / season.GP >= 3;
-    const minutes = Number.isFinite(season.MIN) ? ` in ${avg('MIN')} minutes` : '';
-    const line = `${last} is averaging ${avg('PTS')} points, ${avg('REB')} rebounds and ${avg('AST')} assists per game${minutes} ${period === 'season' ? 'this season' : 'in the playoffs'}.`;
+    const when = period === 'season' ? 'this season' : 'in the playoffs';
+    const line = `${last} is averaging ${C.perGameList(season)} ${when}.`;
     // Season context belongs beside the box score, ahead of the postgame quotes.
-    const he = C.pronoun(player),
-      text = big
-        ? `That was a big night by ${C.possessive(last)} standards. ${he ? `${C.capitalize(he)} came into the night` : last + ' came in'} averaging ${((season.PTS - game.PTS) / (season.GP - 1)).toFixed(1)} points per game ${period === 'season' ? 'this season' : 'in the playoffs'}.`
-        : line;
+    const text = big
+      ? `It was a breakout night for ${last}, who came in averaging ${((season.PTS - game.PTS) / (season.GP - 1)).toFixed(1)} points a game ${when}.`
+      : line;
     const at = story.paragraphs.findIndex(p => /^[“"]/.test(p));
     if (at >= 0) story.paragraphs.splice(at, 0, text);
     else story.paragraphs.push(text);
@@ -186,6 +184,8 @@
       };
       result.push({ story, context });
     }
+    // A record set in a league's first weeks only beats a handful of games.
+    const established = year > (Number(league.season?.startingYear) || year) || lookup.latestDay >= 20;
     // Individual milestones require a matched box score to establish when a threshold was crossed.
     for (const snap of d.snapshots) {
       const f = contextFor(d, snap);
@@ -252,8 +252,13 @@
           const others = list.filter(r => r !== record).map(r => r.value);
           return others.length ? Math.max(...others) : null;
         };
-        if (record && value === max) {
-          paragraphs.push(`Those ${value} ${label} also stand atop the league's ${stage} single-game record book.`);
+        const against = C.teamRef(lookup.teams.get(game.homeTeam === team.id ? game.awayTeam : game.homeTeam)).full;
+        if (established && record && value === max) {
+          paragraphs.push(
+            paragraphs.length
+              ? `Those ${value} ${label} are also the most in a ${stage} game in league history.`
+              : `${name} had ${value} ${label} against ${against}, the most in a ${stage} game in league history.`
+          );
           evidence.push({
             label: `League game record: ${label}`,
             value,
@@ -266,8 +271,12 @@
           });
         }
         const teamEntries = entries.filter(r => r.tid === team.id);
-        if (record && teamEntries.length && value === Math.max(...teamEntries.map(r => r.value))) {
-          paragraphs.push(`It is also the ${C.teamDisplay(team)} franchise record for ${label} in a game.`);
+        if (established && record && teamEntries.length && value === Math.max(...teamEntries.map(r => r.value))) {
+          paragraphs.push(
+            paragraphs.length
+              ? `It's also a ${C.teamDisplay(team)} franchise record.`
+              : `${name} had ${value} ${label} against ${against}, a ${C.teamDisplay(team)} franchise record for a single game.`
+          );
           evidence.push({
             label: `Team player game record: ${label}`,
             value,
@@ -301,7 +310,7 @@
           evidence.some(e => e.mark) ? 'Milestone' : 'Single-game record',
           evidence[0].mark
             ? `${name} reaches ${evidence[0].mark.toLocaleString('en-US')} ${evidence[0].label}`
-            : `${name} posts ${evidence[0].label.startsWith('Career') ? 'a career-best' : 'a record-book'} ${evidence[0].value} ${evidence[0].label.split(': ').at(-1)}`,
+            : `${name} posts ${evidence[0].label.startsWith('Career') ? 'a career-best' : evidence[0].label.startsWith('Team') ? 'a franchise-record' : 'a league-record'} ${evidence[0].value} ${evidence[0].label.split(': ').at(-1)}`,
           paragraphs,
           team,
           player,
@@ -319,7 +328,7 @@
             r.gameResults?.league === league.leagueType &&
             C.isCompleted(r.gameResults, lookup.teams, league.currentGame)
         );
-        if (!entries.length) continue;
+        if (!entries.length || !established) continue;
         const max = Math.max(...entries.map(r => r.value));
         if (max === 0) continue;
         for (const record of entries.filter(r => r.value === max && r.yr === year)) {
@@ -347,7 +356,7 @@
             'Single-game record',
             `${C.playerDisplay(p)} posts a league-record ${record.value} ${label}`,
             [
-              `${C.possessive(C.playerDisplay(p))} ${record.value} ${label} against ${C.teamRef(lookup.teams.get(played.game.homeTeam === team.id ? played.game.awayTeam : played.game.homeTeam)).full} stand atop the league's ${period === 'season' ? 'regular-season' : period === 'finals' ? 'Finals' : 'playoff'} single-game record book.`,
+              `${C.playerDisplay(p)} had ${record.value} ${label} against ${C.teamRef(lookup.teams.get(played.game.homeTeam === team.id ? played.game.awayTeam : played.game.homeTeam)).full}, the most in a ${period === 'season' ? 'regular-season' : period === 'finals' ? 'Finals' : 'playoff'} game in league history.`,
             ],
             team,
             p,
