@@ -33,28 +33,24 @@
       return null;
     }
   }
-  const skillLabels = {
-    LAY: 'Finishing',
-    DNK: 'Dunking',
-    INS: 'Inside scoring',
-    MID: 'Mid-range',
-    TPT: 'Three-point',
-    FTS: 'Free throws',
-    DRB: 'Ball handling',
-    PAS: 'Passing',
-    ORE: 'Off. rebounding',
-    DRE: 'Def. rebounding',
-    STL: 'Steals',
-    BLK: 'Shot blocking',
-    STR: 'Strength',
-    SPD: 'Speed',
-    STM: 'Stamina',
-  };
-  // The career ceilings the game offers before a career starts, by the save's potential value.
-  const ceilings = {
-    10: 'the greatest player of all time',
-    9: 'a first-ballot Hall of Famer',
-    8: 'a perennial All-Star',
+  // Before a career starts, the game asks how the player wants to be remembered; the answer is saved as
+  // the player's potential. Coverage quotes the answer, the way a reporter would.
+  const goals = {
+    10: {
+      quote: 'I want to be remembered as the greatest player of all time.',
+      goal: 'the greatest player of all time',
+      headline: n => `${n} wants to be the greatest of all time`,
+    },
+    9: {
+      quote: 'I want to be a first-ballot Hall of Famer.',
+      goal: 'a first-ballot Hall of Famer',
+      headline: n => `${n} sets sights on the Hall of Fame`,
+    },
+    8: {
+      quote: 'I want to be an All-Star every year.',
+      goal: 'an All-Star every year',
+      headline: n => `${n} wants to be an All-Star every year`,
+    },
   };
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
   const height = inches => (Number.isFinite(inches) && inches > 0 ? `${Math.floor(inches / 12)}-${inches % 12}` : null);
@@ -247,64 +243,39 @@
       context: showcasePost(team, other, player),
     });
 
-    // 2. The ceiling: how good the player can become and where the growth has to come from.
-    if (Number.isInteger(player.pot) && player.pot > 0) {
-      const skills = Object.keys(strengths)
-        .filter(key => Array.isArray(player.attributes?.[key]))
-        .map(key => ({ key, now: player.attributes[key][0], top: player.attributes[key][1] }))
-        .filter(x => Number.isFinite(x.now) && Number.isFinite(x.top));
-      const growth = skills.filter(x => x.top > x.now).sort((a, b) => b.top - b.now - (a.top - a.now) || b.top - a.top);
-      const most = growth.length ? growth[0].top - growth[0].now : 0;
-      const room = growth.filter(x => x.top - x.now === most).slice(0, 3),
-        done = skills.filter(x => x.top === x.now && x.top >= 15);
-      const peers = field.filter(p => p.id !== player.id && p.pot === player.pot).length;
-      const ceiling = ceilings[player.pot] || null,
-        listed = list => C.listJoin(list.map(x => skillLabels[x.key].toLowerCase())),
-        report = [
-          ['Most room to grow', room],
-          ['Room to grow', growth.filter(x => !room.includes(x))],
-          ['Fully developed', done],
-          ['Little room to grow', skills.filter(x => x.top === x.now && !done.includes(x))],
-        ].filter(([, list]) => list.length);
+    // 2. In the player's own words: how the player wants to be remembered.
+    const goal = goals[player.pot];
+    if (goal) {
+      const said = goal.quote.replace(/\.$/, ',');
       result.push({
         story: story(`career-potential-${player.id}`, {
           type: 'Career',
-          headline: ceiling
-            ? `${name}'s ceiling: ${ceiling.replace(/^(a|the) /, '')}`
-            : `${name}'s ceiling is still an open question`,
+          headline: goal.headline(name),
           importance: 115,
           paragraphs: [
-            ceiling
-              ? `${name} arrives at the ${event} with the ceiling of ${ceiling}.`
-              : `${name} arrives at the ${event} with ${his} ceiling still an open question.`,
-            room.length ? `The most room to grow is in ${his} ${C.listJoin(room.map(x => strengths[x.key]))}.` : '',
-            done.length
-              ? `${C.capitalize(his)} ${C.listJoin(done.map(x => strengths[x.key]))} ${done.length === 1 ? 'is' : 'are'} already fully developed.`
-              : '',
-            ceiling
-              ? `A ceiling that high is a long climb, and it starts in the ${event}.`
-              : `The climb starts in the ${event}.`,
-          ].filter(Boolean),
+            `“${said}” ${name} said ahead of the ${event}.`,
+            `It's a bold goal for ${bio || 'a prospect'} who hasn't played a college minute yet.`,
+            `${subject} gets ${his} first chance to back it up when ${T.full} face ${O.full}.`,
+          ],
           seasonSnapshot: {
-            headers: ['Outlook', 'Skills'],
-            rows: report.map(([label, list]) => [label, C.capitalize(listed(list))]),
+            headers: ['Player', 'Pos', 'Ht', 'From'],
+            rows: [rosterRow(player)],
             board: {
-              kicker: 'Scouting report',
-              title: name,
-              headers: ['Outlook', 'Skills'],
-              rows: report.map(([label, list]) => [label, C.capitalize(listed(list))]),
+              kicker: event,
+              title: 'Prospect',
+              headers: ['Player', 'Pos', 'Ht', 'From'],
+              rows: [rosterRow(player)],
               lead: false,
             },
             source: 'season.career',
-            potential: {
+            goal: {
               event,
               name,
               last,
               pronoun: he || null,
-              ceiling,
-              room: room.map(x => strengths[x.key]),
-              developed: done.map(x => strengths[x.key]),
-              shared: peers === 0 ? 'none' : peers <= 2 ? 'few' : 'many',
+              goal: goal.goal,
+              level: player.pot,
+              team: T.display,
             },
           },
         }),
