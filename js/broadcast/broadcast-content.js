@@ -1269,7 +1269,7 @@
       ],
       championship: [
         `Tonight belongs to the champions. Congratulations to ${W.nick}.`,
-        `The offseason questions can wait. Let ${W.nick} enjoy it.`,
+        `The offseason questions can wait. Congratulations to ${W.nick}!`,
         `Champions. Hard to say it any better than that.`,
         `A title for ${W.nick}. What a way to finish.`,
       ],
