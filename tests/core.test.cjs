@@ -166,7 +166,8 @@ test('identities separate seasons and leagues and upgrade only current template 
   assert.equal(C.shouldGenerate({ templateVersion: 2 }, ctx), false);
   assert.equal(C.shouldGenerate({ templateVersion: 3, playerStats: ctx.potgStats }, ctx), true, 'older prose upgrades');
   assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 2, playerStats: ctx.potgStats }, ctx), true);
-  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 3, playerStats: ctx.potgStats }, ctx), false);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 3, playerStats: ctx.potgStats }, ctx), true);
+  assert.equal(C.shouldGenerate({ templateVersion: 3, editorialVersion: 4, playerStats: ctx.potgStats }, ctx), false);
 });
 test('sample save selects Day 33 in both leagues and verifies every latest-day award recipient', () => {
   const save = JSON.parse(fs.readFileSync(fullSamplePath, 'utf8'));
@@ -258,4 +259,16 @@ test('a Hoop League Studio ID in the commissioner tag is the league identity, an
     C.buildFingerprint({ ...league, commissioner: null }),
     C.buildFingerprint({ ...expanded, commissioner: null })
   );
+});
+test('head-to-head notes name the opponent', () => {
+  const l = league(),
+    ctx = context(l),
+    said = series => {
+      ctx.form = { series };
+      return C.generateArticle(ctx, C.buildFingerprint(l), false).paragraphs.join(' ');
+    };
+  assert.match(said({ meetings: 2, winnerWins: 2 }), /The Stars have won both meetings with the Moons this season\./);
+  assert.match(said({ meetings: 4, winnerWins: 2 }), /The Stars and the Moons have split four meetings this season\./);
+  assert.match(said({ meetings: 3, winnerWins: 2 }), /The Stars lead the season series with the Moons, 2-1\./);
+  assert.match(said({ meetings: 3, winnerWins: 1 }), /The Moons still lead the season series with the Stars, 2-1\./);
 });

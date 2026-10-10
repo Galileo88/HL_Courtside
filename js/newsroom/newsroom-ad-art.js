@@ -348,15 +348,50 @@
       ctx.fillText('DOESN’T.', 18, 104);
       const truck = await HoopWireCourt.loadImage('assets/scene/truck.png');
       const width = 286,
-        height = (width * truck.height) / truck.width;
-      ctx.fillStyle = 'rgba(0,0,0,.5)';
+        height = (width * truck.height) / truck.width,
+        left = 7,
+        top = 266 - height;
+      // The truck sits at an angle, so its shadow follows where the tires meet the ground (as fractions of
+      // the art): far front, near front, near rear and the hidden far rear, softened at the edges. A shadow
+      // blur from an offset shape softens it in every browser.
+      const footprint = [
+        [0.1, 0.95],
+        [0.46, 1],
+        [0.88, 0.875],
+        [0.52, 0.83],
+      ].map(([x, y]) => [left + x * width, top + y * height]);
+      const [cx, cy] = footprint.reduce(([a, b], [x, y]) => [a + x / 4, b + y / 4], [0, 0]);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.6)';
+      ctx.shadowBlur = 9;
+      ctx.shadowOffsetX = 1000;
+      ctx.fillStyle = '#000';
       ctx.beginPath();
-      ctx.ellipse(150, 265, 133, 10, 0, 0, Math.PI * 2);
+      footprint.forEach(([x, y], i) => {
+        const px = cx + (x - cx) * 1.12 - 1000,
+          py = cy + (y - cy) * 1.25;
+        if (i) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+      });
+      ctx.closePath();
       ctx.fill();
+      // Each visible tire presses a darker patch into the ground.
+      ctx.shadowBlur = 3;
+      ctx.shadowColor = 'rgba(0,0,0,.7)';
+      for (const [x, y, r] of [
+        [0.122, 0.955, 0.045],
+        [0.455, 1, 0.062],
+        [0.87, 0.878, 0.055],
+      ]) {
+        ctx.beginPath();
+        ctx.ellipse(left + x * width - 1000, top + y * height, r * width, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(truck, 7, 266 - height, width, height);
+      ctx.drawImage(truck, left, top, width, height);
       ctx.restore();
       blend(ctx, 300, 285, '#08101d', 26);
     } else if (product === 'beer') {
