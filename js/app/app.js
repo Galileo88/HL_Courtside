@@ -26,9 +26,7 @@
       'siteMenuButton',
       'siteMenu',
       'menuUploadSave',
-      'loadTitle',
-      'loadText',
-      'cancelNewSave',
+      'loadCard',
       'savesCard',
       'savesList',
       'newSaveButton',
@@ -60,7 +58,6 @@
     // Named saves; the open one decides which leagues the newsroom shows.
     saves: [],
     save: null,
-    creating: false,
     raw: null,
     leagueIndex: 0,
     stories: new Map(),
@@ -297,15 +294,10 @@
   }
   // The welcome screen: update the open save, or start a new one; and the list of saves.
   function saveControls() {
-    const creating = state.creating || !state.save;
-    el.loadTitle.textContent = creating ? 'Upload save file' : 'Update save';
-    el.loadText.textContent = creating
-      ? 'Choose your Hoop Land save file.'
-      : `Upload the latest file for “${state.save.name}” (${modeName(state.save.mode)}) to add new stories.`;
-    el.cancelNewSave.hidden = !(creating && state.save);
-    el.newSaveButton.hidden = creating;
+    // With saves, each one updates from its own row; the upload card is for the first save.
+    el.loadCard.hidden = state.saves.length > 0;
     el.savesCard.hidden = !state.saves.length;
-    for (const button of [el.cancelNewSave, el.newSaveButton]) button.disabled = state.busy || !state.ready;
+    el.newSaveButton.disabled = state.busy || !state.ready;
     const counts = new Map();
     for (const story of state.stories.values()) counts.set(story.fingerprint, (counts.get(story.fingerprint) || 0) + 1);
     const items = state.saves.map(save => {
@@ -347,9 +339,15 @@
         info.append(name, detail);
         actions.className = 'save-actions';
         const open = document.createElement('button'),
+          update = document.createElement('button'),
           exporter = document.createElement('button'),
           remove = document.createElement('button');
-        open.type = exporter.type = remove.type = 'button';
+        open.type = update.type = exporter.type = remove.type = 'button';
+        update.textContent = 'Update';
+        update.title = 'Upload the latest Hoop Land file for this save';
+        update.setAttribute('aria-label', `Update ${save.name}, ${modeName(save.mode)}`);
+        update.disabled = state.busy || !state.ready;
+        update.addEventListener('click', () => chooseFile(save));
         // The latest Hoop Land file for this save, to put back into the game.
         exporter.textContent = 'Export';
         exporter.setAttribute('aria-label', `Export ${save.name}, ${modeName(save.mode)}`);
@@ -377,7 +375,7 @@
         open.disabled = remove.disabled = state.busy || !state.ready;
         open.addEventListener('click', () => openSave(save));
         remove.addEventListener('click', () => deleteSave(save));
-        actions.append(open, exporter, remove);
+        actions.append(open, update, exporter, remove);
         item.append(info, actions);
         return item;
       })
@@ -388,7 +386,6 @@
       state.save = save;
       state.raw = null;
       state.leagueIndex = 0;
-      state.creating = false;
       el.fileName.textContent = 'No save loaded';
       await archive.write({ meta: [{ id: 'active-save', save: save.id }] });
       await readArchive();
@@ -974,7 +971,6 @@
       meta: [{ id: 'active-save', save: record.id }],
     });
     state.save = record;
-    state.creating = false;
     state.raw = parsed;
     state.leagueIndex = 0;
     el.fileName.textContent = file.name;
@@ -2066,14 +2062,7 @@
     if (action) run(action);
   });
   el.noticeOk.addEventListener('click', () => el.noticeDialog.close());
-  el.newSaveButton.addEventListener('click', () => {
-    state.creating = true;
-    controls();
-  });
-  el.cancelNewSave.addEventListener('click', () => {
-    state.creating = false;
-    controls();
-  });
+  el.newSaveButton.addEventListener('click', () => chooseFile(null));
   el.newsroomLeague.addEventListener('change', () => {
     state.leagueIndex = Number(el.newsroomLeague.value);
     el.archiveTeam.value = '';
@@ -2090,11 +2079,8 @@
   });
   el.menuUploadSave.addEventListener('click', () => {
     siteMenu(false);
-    if (state.save) {
-      state.creating = false;
-      controls();
-      el.saveFile.click();
-    } else location.hash = '#welcome';
+    if (state.save) chooseFile(state.save);
+    else location.hash = '#welcome';
   });
   document.addEventListener('click', event => {
     if (!el.siteMenu.hidden && !event.target.closest('.site-menu')) siteMenu(false);
@@ -2106,10 +2092,19 @@
     }
   });
   window.addEventListener('hashchange', () => siteMenu(false));
-  // A file either starts a new save, named after its pro league, or updates the open one.
+  // The save the next chosen file updates: the one picked, none for a new save, else the open one.
+  let uploadFor;
+  function chooseFile(save) {
+    uploadFor = save;
+    el.saveFile.click();
+  }
+  // A file either starts a new save, named after its pro league, or updates the save it was chosen for.
   el.saveFile.addEventListener('change', () => {
     const file = el.saveFile.files[0],
-      creating = state.creating || !state.save;
+      picked = uploadFor === undefined ? state.save : uploadFor,
+      target = picked && state.saves.find(s => s.id === picked.id),
+      creating = !target;
+    uploadFor = undefined;
     el.saveFile.value = '';
     if (!file) return;
     run(async () => {
@@ -2120,11 +2115,11 @@
       } catch {
         throw new Error('This is not a Hoop Land save file.');
       }
-      const problem = saveProblem(parsed, creating ? null : state.save);
+      const problem = saveProblem(parsed, target);
       if (problem) throw new SaveRejected(problem);
       const save = creating
         ? { id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: saveName(parsed) }
-        : state.save;
+        : target;
       await loadSave(file, parsed, save);
     });
   });

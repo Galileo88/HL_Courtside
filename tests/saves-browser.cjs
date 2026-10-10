@@ -107,9 +107,10 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
       1
     );
 
-    // The welcome screen now updates the open save, and lists it.
+    // With a save, the upload card gives way to the list; each save updates from its own row.
     await welcome();
-    assert.equal(await page.locator('#loadTitle').textContent(), 'Update save');
+    assert.equal(await page.locator('#loadCard').isVisible(), false);
+    assert.equal(await page.locator('.saves-list button[aria-label="Update New League, Franchise"]').isVisible(), true);
     assert.match(
       await page.locator('.saves-list li').textContent(),
       /New League.*Franchise · NL, NL · 2026 · Day \d+ · \d+ stories/
@@ -154,6 +155,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     await welcome();
     await page.click('#newSaveButton');
     await refused(base, /^You already have a save for New League\.$/);
+    await page.click('#newSaveButton');
     await upload(copy(s => s.seasonLeagues.forEach(l => (l.season.mode = 2))));
     const both = await archived();
     assert.deepEqual(both.saves.map(s => [s.name, s.mode]).sort(), [
@@ -178,7 +180,20 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     await page.reload();
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
     await welcome();
-    assert.match(await page.locator('#loadText').textContent(), /“New League” \(Franchise\)/);
+    // Update picks the file for that save.
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.click('.saves-list button[aria-label="Update New League, Franchise"]'),
+    ]);
+    await chooser.setFiles({
+      name: 'league.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(base)),
+    });
+    await page.waitForFunction(() => location.hash === '#newsroom');
+    await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
+    await welcome();
+    assert.equal((await archived()).saves.length, 2);
     assert.equal(await page.locator('.saves-list li.is-current strong').textContent(), 'New League');
 
     // Delete the career save: its stories go, the other save's stay.
