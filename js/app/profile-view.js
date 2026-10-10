@@ -108,7 +108,8 @@
   function bioLine(p) {
     const player = p.kind === 'player';
     return [
-      player ? p.height : null,
+      // Profiles saved before heights read 7'0" stored "7-0".
+      player && p.height ? p.height.replace(/^(\d+)-(\d+)$/, `$1'$2"`) : null,
       player && p.weight ? `${p.weight} lbs` : null,
       p.age ? `Age ${p.age}` : null,
       [p.hometown, p.country ? country(p.country) : null].filter(Boolean).join(', ') || null,

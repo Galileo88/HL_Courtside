@@ -93,6 +93,8 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const profileLines = await page.locator('.profile-line').allTextContents();
     assert.match(profileLines[0], / · (?:Fr\.|So\.|Jr\.|Sr\.|Rookie|Years Pro: (?:[2-9]|\d{2,}))$/);
     assert.doesNotMatch(player, /college season|pro season|Freshman|Years Pro: 1\b/);
+    // Heights read 6'4".
+    assert.match(profileLines[1], /^\d'\d{1,2}" · /);
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
     assert.match(player, /Career/);

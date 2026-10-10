@@ -37,7 +37,7 @@
     return out;
   }
   function height(inches) {
-    return valid(inches) && inches > 0 ? `${Math.floor(inches / 12)}-${inches % 12}` : null;
+    return valid(inches) && inches > 0 ? `${Math.floor(inches / 12)}'${inches % 12}"` : null;
   }
   function awardList(person, league) {
     const names = new Map((league.awards || []).map(a => [a.id, a.name]));
