@@ -130,6 +130,42 @@
           : null,
     };
   }
+  // What the desk can say about a player in the news: role, age, scoring and place on the team, and for an
+  // injury, how much of the season it costs, counted from the day it happened.
+  function playerFacts(event, info, player, team, league, lookup, year) {
+    const kind = { 3: 'signing', 10: 'injury', 11: 'return', 30: 'extension' }[event.type];
+    if (!kind || !player || !team) return null;
+    const now = S.stats(player, league, year),
+      perGame = p => {
+        const s = S.stats(p, league, year, 'season', team.id);
+        return s?.GP >= 3 ? s.PTS / s.GP : null;
+      };
+    const scorers = (team.roster || [])
+      .map(p => ({ id: p.id, ppg: perGame(p) }))
+      .filter(x => x.ppg !== null)
+      .sort((a, b) => b.ppg - a.ppg);
+    const rank =
+      kind === 'signing' || scorers.length < 5 ? null : scorers.findIndex(x => x.id === player.id) + 1 || null;
+    const played = lookup.completed.filter(
+        x =>
+          x.dayIndex <= Number(event.date) &&
+          x.game.gameType === 0 &&
+          [x.game.homeTeam, x.game.awayTeam].includes(team.id)
+      ).length,
+      total = Number(league.season?.totalGames);
+    return {
+      kind,
+      last: player.ln || C.surname(C.playerDisplay(player)),
+      pronoun: C.pronoun(player) || null,
+      age: player.age > 0 ? player.age : null,
+      tier: R.tier(R.stature(player, league)),
+      ppg: now?.GP >= 3 ? Number((now.PTS / now.GP).toFixed(1)) : null,
+      rank,
+      years: (event.type === 30 ? info.contract?.ext?.yrs : info.contract?.yrs) || null,
+      gamesOut: kind === 'injury' && info.injury?.gamesOut > 0 ? info.injury.gamesOut : null,
+      gamesLeft: total > 0 && played <= total ? total - played : null,
+    };
+  }
   function coachSubject(c) {
     return c
       ? structuredClone({
@@ -977,6 +1013,7 @@
                                   ? Math.min(120, 60 + 2.5 * size)
                                   : 50;
       const coaching = coachEvent ? coachingFacts(event, player, team, lookup, year) : null;
+      const playerNews = coachEvent ? null : playerFacts(event, info, player, team, league, lookup, year);
       const story = {
         id: `${fp}:${year}:season:${key}`,
         eventKey: key,
@@ -1000,6 +1037,7 @@
           rows,
           newsEvent: structuredClone(event),
           ...(coaching ? { coaching } : {}),
+          ...(playerNews ? { newsPlayer: playerNews } : {}),
           source: 'season.news',
         },
       };

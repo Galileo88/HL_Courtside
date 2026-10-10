@@ -353,3 +353,43 @@ test('coaching changes carry what the desk can argue over, and nothing the save 
   const unknown = talk(28, undefined);
   assert.equal(unknown.lines.length, 3);
 });
+test('player news talks about what the player means to the team, with numbers that fit the point', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const player = (id, ppg, extra = {}) => ({
+    id,
+    tid: 1,
+    fn: 'P',
+    ln: 'No' + id,
+    gender: 0,
+    stats: [{ yr: 8, league: 0, season: [{ tid: 1, GP: 10, PTS: ppg * 10, REB: 20, AST: 10 }] }],
+    ...extra,
+  });
+  const say = (type, data, star, extra) => {
+    const l = fixture();
+    l.season.totalGames = 30;
+    l.season.currentDay = 10;
+    l.season.schedule = Array.from({ length: 10 }, (_, d) => ({
+      results: [{ gameType: 0, gId: d + 1, homeTeam: 1, awayTeam: 2, homeScore: 20, awayScore: 10, winner: 1 }],
+    }));
+    l.teams[0].roster = [
+      player(11, star, { fn: 'Alex', ln: 'Star', ...extra }),
+      ...[8, 7, 6, 5, 4].map((p, i) => player(20 + i, p)),
+    ];
+    l.season.news = [event(type, { date: 9, data })];
+    const story = N.candidates(l).find(x => x.story.seasonSnapshot?.newsPlayer)?.story;
+    return story ? B.script(story).map(t => [t.speaker, t.text]) : [];
+  };
+  const injury = say(10, { injury: { gamesOut: 12 } }, 15);
+  assert.deepEqual(injury.slice(-3, -1), [
+    [2, "And it's their leading scorer, too."],
+    [3, "Those 12 games are more than half of what's left of the regular season."],
+  ]);
+  assert.equal(new Set(injury.map(x => x[0])).size, 4);
+  const bench = say(10, { injury: { gamesOut: 2 } }, 1);
+  assert.ok(bench.some(x => /not one of their top scorers/.test(x[1])));
+  assert.ok(!bench.some(x => /of what's left/.test(x[1])));
+  const extension = say(30, { contract: { ext: { yrs: 4 } } }, 15, { age: 21 });
+  assert.ok(extension.some(x => x[1] === "He's their leading scorer. You don't let that walk."));
+  assert.ok(extension.some(x => x[1] === "And he's only 21, so there's room to grow."));
+  for (const lines of [injury, bench, extension]) assert.ok(lines.every(x => !/undefined|NaN|null/.test(x[1])));
+});
