@@ -152,6 +152,51 @@ const server = http.createServer((req, res) => {
       result.pixels.forEach((pixels, i) => pixels.forEach(pixel => assert.deepEqual(pixel, colors[i])));
       result.behind.forEach((pixel, i) => assert.deepEqual(pixel, colors[i]));
     }
+    // No ad shows twice at once. A custom sheet fills all four spots even when every slot asks for the
+    // same ad; the game's default sheet has three different ads, so its desk has three spots.
+    const desk = await page.evaluate(async () => {
+      const row = async (inputs, spots) => {
+        const studio = await HoopWireTV.render(inputs),
+          bitmap = await createImageBitmap(studio.imageBlob),
+          c = document.createElement('canvas');
+        c.width = 960;
+        c.height = 540;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        const spacing = 944 / spots;
+        return {
+          status: studio.adsStatus,
+          spots: Array.from({ length: spots }, (_, i) =>
+            Array.from(ctx.getImageData(Math.round(8 + i * spacing + (spacing - 224) / 2), 433, 224, 10).data).join()
+          ),
+          // Where a fourth spot would start in the three-spot layout's gaps stays desk blue.
+          gap: Array.from(ctx.getImageData(Math.round(8 + 944 / 3 - 30), 438, 1, 1).data),
+        };
+      };
+      return {
+        custom: await row(
+          {
+            ...HoopWireTV.inputs({ teams: [], leagueName: 'Sponsor check' }),
+            adsURL: 'https://sponsor-test.invalid/horizontal.png',
+            adSize: 256,
+            adSlots: [3, 3, 3, 3],
+          },
+          4
+        ),
+        fallback: await row(
+          { ...HoopWireTV.inputs({ teams: [], leagueName: 'Default league' }), adSlots: [0, 0, 0, 0] },
+          3
+        ),
+        random: Array.from({ length: 20 }, () => HoopWireTV.inputs({ teams: [] }).adSlots),
+      };
+    });
+    assert.equal(desk.custom.status, 'loaded');
+    assert.equal(new Set(desk.custom.spots).size, 4, 'four different custom ads');
+    assert.equal(desk.fallback.status, 'default');
+    assert.equal(new Set(desk.fallback.spots).size, 3, 'three different default ads');
+    assert.deepEqual(desk.fallback.gap, [23, 47, 101, 255]);
+    assert.ok(desk.random.every(slots => new Set(slots).size === 4));
     await page.locator('#sponsorPreview').screenshot({ path: path.join(root, 'artifacts/tv-desk-ads.png') });
     await page.reload();
     await page.waitForFunction(async () => {
@@ -164,7 +209,7 @@ const server = http.createServer((req, res) => {
     });
     assert.deepEqual(errors, []);
     console.log(
-      'Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop and saved-studio upgrade.'
+      'Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop, no ad twice at once, the game’s three default ads for leagues without their own, and saved-studio upgrade.'
     );
   } finally {
     if (browser) await browser.close();
