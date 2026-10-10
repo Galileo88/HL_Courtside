@@ -218,11 +218,12 @@
   function player(ctx, p) {
     const team = p.teamId != null ? `${p.fingerprint}:team:${p.teamId}` : null,
       teamName = p.seasons.filter(s => s.tid === p.teamId).at(-1)?.team;
-    const role = [p.number != null ? `#${p.number}` : null, p.position ? C.capitalize(p.position) : null]
+    const role = [p.number != null ? `#${p.number}` : null, p.position ? shortPosition(p.position) : null]
       .filter(Boolean)
       .join(' · ');
-    // Experience follows the team: "#34 · Point guard · Trojans · Sr.".
-    const experience = p.retired ? null : seasonLabel(p);
+    // Experience follows the team: "#34 · PG · Trojans · Sr.", and never breaks across lines.
+    const label = p.retired ? null : seasonLabel(p),
+      experience = label && el('span', 'profile-nowrap', label);
     const lines = [
       [
         role,

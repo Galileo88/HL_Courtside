@@ -132,6 +132,9 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
       // The experience ends the first line, after the team.
       const first = (await page.locator('.profile-line').first().textContent()).trim();
       assert.ok(first.endsWith(` · ${label}`), `${hash}: ${first}`);
+      // Positions are abbreviated, and the experience never splits across lines.
+      assert.match(first, /^#\d+ · (?:PG|G|SG|G\/F|SF|F|PF|F\/C|C) · /);
+      assert.equal(await page.locator('.profile-line .profile-nowrap').evaluate(e => e.getClientRects().length), 1);
     }
     // A missing profile says so instead of breaking.
     await page.evaluate(() => (location.hash = '#player/nope/1'));
