@@ -300,7 +300,7 @@
   // The welcome screen: update the open save, or start a new one; and the list of saves.
   function saveControls() {
     const creating = state.creating || !state.save;
-    el.loadTitle.textContent = creating ? 'New save' : 'Update save';
+    el.loadTitle.textContent = creating ? 'Upload save file' : 'Update save';
     el.loadText.textContent = creating
       ? 'Choose your Hoop Land save file.'
       : `Upload the latest file for “${state.save.name}” (${modeName(state.save.mode)}) to add new stories.`;

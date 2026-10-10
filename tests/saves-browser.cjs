@@ -53,7 +53,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
 
     await page.goto(url);
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
-    assert.equal(await page.locator('#loadTitle').textContent(), 'New save');
+    assert.equal(await page.locator('#loadTitle').textContent(), 'Upload save file');
     assert.equal(await page.locator('#savesCard').isVisible(), false);
 
     // Choose the file: the save takes the pro league's name, and the newsroom opens.
