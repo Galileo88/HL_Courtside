@@ -3554,21 +3554,67 @@
       .replace(/(^|[.!?]\s+)([a-z])/g, (m, before, letter) => before + letter.toUpperCase())
       .replace(/\b([Aa]) (?=(?:8|11|18|8\d)(?!\d))/g, '$1n ');
   }
+  // Each episode opens and closes in one of a few ways, the same one every time it plays. Every intro
+  // introduces all four hosts in their roles; every outro thanks them and signs off from HoopWire TV.
   function episode(story, names = defaultNames, context) {
     if (!story) return [];
-    const n = first(names);
+    const n = first(names),
+      [A, B, C2, D] = names;
+    const intro = pick(
+      story,
+      [
+        [
+          `Welcome to HoopWire TV! I'm ${A}, and this is The Daily Desk.`,
+          `${B}. I've got takes, and I'm not apologizing for any of them.`,
+          `${C2}, here to keep ${n[1]} honest.`,
+          `And I'm ${D}, with the numbers. Let's get into it.`,
+        ],
+        [
+          `Good evening, and welcome to The Daily Desk on HoopWire TV. I'm ${A}.`,
+          `${B}, and yes, I already disagree with somebody.`,
+          `${C2}. Somebody has to keep ${n[1]} in check.`,
+          `And ${D}, with the numbers. Let's go.`,
+        ],
+        [
+          `This is HoopWire TV, and you're watching The Daily Desk. I'm ${A}.`,
+          `${B}. Strong opinions, no refunds.`,
+          `${C2}, here to fact-check ${n[1]}.`,
+          `And I'm ${D}. I bring the numbers, they bring the noise. Let's get to it.`,
+        ],
+        [
+          `Welcome back to The Daily Desk on HoopWire TV. I'm ${A}, and we've got a good one tonight.`,
+          `${B}. I've been waiting all day for this one.`,
+          `${C2}. ${n[1]}'s been waiting all day to be wrong.`,
+          `And ${D}, with the numbers. Let's get into it.`,
+        ],
+      ],
+      'episode:intro'
+    );
+    const outro = pick(
+      story,
+      [
+        [
+          [0, `That's the show. ${n[1]}, ${n[2]}, ${n[3]}, thank you.`],
+          [1, "Always a pleasure. Even when they're wrong."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV. We'll see you next time!`],
+        ],
+        [
+          [0, `That'll do it for The Daily Desk. ${n[1]}, ${n[2]}, ${n[3]}, thanks.`],
+          [1, "Same time next show. I'll still be right."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV!`],
+        ],
+        [
+          [0, `And that's our show. Thanks to ${n[1]}, ${n[2]} and ${n[3]}.`],
+          [2, "We'll pick the argument back up next time."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV. Good night, everybody!`],
+        ],
+      ],
+      'episode:outro'
+    );
     return [
-      turn(0, `Welcome to HoopWire TV! I'm ${names[0]}, and this is The Daily Desk.`),
-      turn(1, `${names[1]}. I've got takes, and I'm not apologizing for any of them.`),
-      turn(2, `${names[2]}, here to keep ${n[1]} honest.`),
-      turn(3, `And I'm ${names[3]}, with the numbers. Let's get into it.`),
+      ...intro.map((text, i) => turn(i, text)),
       ...script(story, context, names),
-      turn(0, `That's the show. ${n[1]}, ${n[2]}, ${n[3]}, thank you.`),
-      turn(1, "Always a pleasure. Even when they're wrong."),
-      turn(
-        0,
-        `For ${names[1]}, ${names[2]} and ${names[3]}, I'm ${names[0]}. Thanks for watching HoopWire TV. We'll see you next time!`
-      ),
+      ...outro.map(([speaker, text]) => turn(speaker, text)),
     ];
   }
   return {

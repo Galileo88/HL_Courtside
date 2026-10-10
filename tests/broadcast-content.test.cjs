@@ -46,11 +46,36 @@ test('episodes welcome viewers, introduce all four hosts and close after the rep
       .slice(0, 4)
       .map(t => t.text)
       .join(' ');
-  assert.match(intro, /Welcome to HoopWire TV/);
+  assert.match(intro, /HoopWire TV/);
   for (const name of ['Maya Brooks', 'Jordan Price', 'Andre Cole', 'Nina Reyes']) assert.ok(intro.includes(name));
   assert.match(turns[4].text, /Stars.*Moons/);
   assert.match(turns.at(-1).text, /Thanks for watching HoopWire TV/);
   assert.deepEqual(B.episode(null), []);
+  // The show opens and closes a few different ways, each the same every time that episode plays.
+  const intros = new Set(),
+    outros = new Set();
+  for (let i = 0; i < 60; i++) {
+    const story = { ...game, id: 'episode-' + i },
+      t = B.episode(story);
+    assert.deepEqual(t, B.episode(story));
+    assert.deepEqual(
+      t.slice(0, 4).map(x => x.speaker),
+      [0, 1, 2, 3]
+    );
+    const opening = t
+      .slice(0, 4)
+      .map(x => x.text)
+      .join(' ');
+    for (const name of ['Maya Brooks', 'Jordan Price', 'Andre Cole', 'Nina Reyes']) assert.ok(opening.includes(name));
+    assert.match(opening, /HoopWire TV/);
+    assert.match(
+      t.at(-1).text,
+      /^For Jordan Price, Andre Cole and Nina Reyes, I'm Maya Brooks\. Thanks for watching HoopWire TV/
+    );
+    intros.add(t[0].text);
+    outros.add(t.at(-3).text);
+  }
+  assert.ok(intros.size >= 4 && outros.size >= 3);
 });
 test('studio names the player, uses basketball terms and does not invent a deciding play', () => {
   const s = text(game);
