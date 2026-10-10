@@ -248,7 +248,7 @@ const server = http.createServer((req, res) => {
       before.map(s => s.id)
     );
     for (let i = 0; i < before.length; i++) {
-      assert.equal(after[i].sceneInputs.version, 16);
+      assert.equal(after[i].sceneInputs.version, 17);
       assert.deepEqual(after[i].paragraphs, before[i].paragraphs);
       assert.deepEqual(after[i].playerStats, before[i].stats);
       assert.equal(after[i].createdAt, before[i].createdAt);
