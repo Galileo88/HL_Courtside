@@ -57,21 +57,21 @@
       isCoach: !!look.coach,
       wearsSuit: suited && !look.coach,
     };
-    // Shoulders up in a fixed frame, the way headshots are framed: sprite rows 4 to 25 and columns 5 to 26,
-    // so every face sits in the same place at the same size. The head starts at row 8 and the shoulders end
-    // at row 25; the tallest and widest hairstyles run a pixel or two past the edge instead of shrinking the
-    // face. Four screen pixels per sprite pixel.
-    canvas.width = canvas.height = 88;
+    // Facing right, framed on the eyes: every sprite shares the game's head, so the eyes sit at the same spot
+    // (column 16.5, row 18 facing right) and a 19 x 18 window, columns 7 to 25 and rows 9 to 26, centers them
+    // exactly with the shoulders below. Big hair runs past the edge. Five screen pixels per sprite pixel.
+    canvas.width = 95;
+    canvas.height = 90;
     sprites
       .ready()
       .then(() => {
         const small = document.createElement('canvas');
         small.width = 32;
         small.height = 42;
-        sprites.draw(small, person, look.team, 0, 0);
+        sprites.draw(small, person, look.team, 0, 0, 'idle', 'right');
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(small, 5, 4, 22, 22, 0, 0, 88, 88);
+        ctx.drawImage(small, 7, 9, 19, 18, 0, 0, 95, 90);
       })
       .catch(() => canvas.remove());
     return canvas;
