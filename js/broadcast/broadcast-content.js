@@ -1268,7 +1268,7 @@
         `That's where the series stands. Let's keep it moving.`,
       ],
       championship: [
-        `Tonight belongs to the champions. Congratulations to ${W.nick}.`,
+        `Tonight belongs to ${W.nick}. They'll remember this one for a long time.`,
         `The offseason questions can wait. Congratulations to ${W.nick}!`,
         `Champions. Hard to say it any better than that.`,
         `A title for ${W.nick}. What a way to finish.`,
