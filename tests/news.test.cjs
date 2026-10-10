@@ -427,3 +427,14 @@ test('trades and farewells get the point a desk would make, only when the save s
   r.teams[0].roster[0].awards = [];
   assert.ok(!lines(N.candidates(r)[0].story).some(x => /championship|seasons/.test(x[1])));
 });
+test('news cards hold numbers, not a restatement of the headline', () => {
+  const l = fixture();
+  l.season.news = [event(17), event(3, { data: { contract: { yrs: 2 } } })];
+  const [retired, signed] = N.candidates(l).map(x => x.story.seasonSnapshot);
+  assert.deepEqual(retired.headers, ['Stat', 'Regular season']);
+  assert.deepEqual(
+    retired.rows.map(r => r[0]),
+    ['Points per game', 'Rebounds per game', 'Assists per game', 'Games']
+  );
+  assert.ok(![...retired.rows, ...signed.rows].some(r => r[0] === 'Event'));
+});
