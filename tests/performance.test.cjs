@@ -297,7 +297,7 @@ test('archived stories from the old percentage rule still play on TV', () => {
     .map(t => t.text)
     .join(' ');
   assert.match(text, /Alex Star/);
-  assert.match(text, /20\.0/);
+  assert.match(text, /averaging 20 points|usually gets 20 points|normal night is 20 points/);
   assert.doesNotMatch(text, /undefined|NaN/);
 });
 test('stories archived under the old rule are judged again: noise leaves, real news is rewritten with its stakes', () => {

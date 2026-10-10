@@ -449,6 +449,8 @@
       : comparisons.find(c => c.qualifies) || comparisons[0];
     const name = story.playerName,
       last = C.surname(name),
+      // The hosts say averages out loud: "around three", "two and a half", "nearly five".
+      they = C.pronoun(story.sceneInputs?.player) || last,
       turns = [],
       say = (speaker, text) => turns.push({ speaker, text });
     const g = story.gameSummary,
@@ -457,7 +459,7 @@
     const mine = snapshot.team ? C.teamRef(snapshot.team) : null,
       opp = snapshot.opponent ? C.teamRef(snapshot.opponent) : C.teamRef(snapshot.team?.id === w.id ? l : w);
     const W = C.teamRef(w),
-      avg = average(focus.expected),
+      avg = spoken(focus.expected, focus.key),
       up = focus.favorable,
       r = snapshot.role || {},
       s = story.playerStats || {};
@@ -495,9 +497,9 @@
           )
         : pick(
             [
-              `Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}${where}, and the average coming in was ${avg}. ${n[1]}?`,
-              `${name}: ${stat} against ${opp.nick}${where}. Coming in, the average was ${avg}. ${n[1]}, what do you make of it?`,
-              `${name} with ${stat}${where}${who ? `, and that's ${who}` : ''}. Normal night is ${avg}. ${n[1]}, go.`,
+              `Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}${where}, and ${they} came in averaging ${avg}. ${n[1]}?`,
+              `${name}: ${stat} against ${opp.nick}${where}. ${C.capitalize(they)} usually ${focus.key === 'TO' ? 'has' : 'gets'} ${avg}. ${n[1]}, what do you make of it?`,
+              `${name} with ${stat}${where}${who ? `, and that's ${who}` : ''}. A normal night is ${avg}. ${n[1]}, go.`,
             ],
             'perf:open'
           )
@@ -615,7 +617,7 @@
           : `${C.num(secondary.actual)} ${secondary.actual === 1 ? unit[secondary.key][0] : unit[secondary.key][1]}`;
       say(
         2,
-        `${secondary.favorable === focus.favorable ? 'And' : 'But'} look at the rest of it, ${n[1]}. ${C.capitalize(label)}, against an average of ${average(secondary.expected)}.`
+        `${secondary.favorable === focus.favorable ? 'And' : 'But'} look at the rest of it, ${n[1]}. ${C.capitalize(label)}, and ${they} usually ${secondary.key === 'TO' ? 'has' : 'gets'} ${spoken(secondary.expected, secondary.key)}.`
       );
       say(
         1,

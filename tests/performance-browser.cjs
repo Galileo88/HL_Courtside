@@ -126,7 +126,10 @@ const server = http.createServer((req, res) => {
     await page.locator('.nav a[href="#tv"]').click();
     await page.locator('#tvStorySelect').selectOption({ label: poor.headline }, { force: true });
     const transcript = await page.locator('#tvTranscript').textContent();
-    assert.match(transcript, /10 points.*20\.0/);
+    assert.match(
+      transcript,
+      /10 points.*usually gets 20 points|10 points.*averaging 20 points|10 points.*normal night is 20 points/
+    );
     assert.doesNotMatch(transcript, /%|percent/i);
     const table = page.locator('#tvSegment .tv-board').first();
     assert.equal(await table.locator('tbody tr').count(), 5);
@@ -145,7 +148,10 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
     await page.locator('.nav a[href="#tv"]').click();
     await page.locator('#tvStorySelect').selectOption({ label: poor.headline }, { force: true });
-    assert.match(await page.locator('#tvTranscript').textContent(), /10 points.*20\.0/);
+    assert.match(
+      await page.locator('#tvTranscript').textContent(),
+      /10 points.*usually gets 20 points|10 points.*averaging 20 points|10 points.*normal night is 20 points/
+    );
     assert.deepEqual(errors, []);
     console.log(
       'Performance stories, comparison table, qualitative transcript, mobile layout and archive replay passed.'
