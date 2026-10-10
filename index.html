@@ -113,10 +113,7 @@
           ><label class="file-button" aria-label="Import archive"
             >Import<span class="label-more"> archive</span
             ><input id="importFile" type="file" accept=".json" disabled /></label
-          ><button id="refreshImagesButton" hidden disabled>Refresh images</button
-          ><button id="resetArchive" class="danger" aria-label="Reset archive" disabled>
-            Reset<span class="label-more"> archive</span>
-          </button>
+          ><button id="refreshImagesButton" hidden disabled>Refresh images</button>
         </div>
       </section>
       <section id="historicalStories" class="newsroom-heading hidden">
@@ -132,10 +129,10 @@
         <div class="actions"><button id="noticeOk" class="primary">OK</button></div>
       </dialog>
       <dialog id="resetDialog">
-        <h2 id="resetTitle">Reset the archive?</h2>
+        <h2 id="resetTitle">Are you sure?</h2>
         <p id="resetDescription"></p>
         <div class="actions">
-          <button id="cancelReset">Cancel</button><button id="confirmReset" class="primary">Reset archive</button>
+          <button id="cancelReset">Cancel</button><button id="confirmReset" class="primary">Delete</button>
         </div>
       </dialog>
 

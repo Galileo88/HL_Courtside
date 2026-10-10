@@ -4,7 +4,7 @@
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
   // Raise when story wording changes, so stories from the loaded save are rewritten.
-  const PROSE_EDITION = 8;
+  const PROSE_EDITION = 10;
   const el = Object.fromEntries(
     [
       'saveFile',
@@ -35,7 +35,6 @@
       'noticeDialog',
       'noticeText',
       'noticeOk',
-      'resetArchive',
       'resetDialog',
       'resetTitle',
       'resetDescription',
@@ -284,7 +283,6 @@
         });
     }
     el.saveFile.disabled = state.busy || !state.ready;
-    el.resetArchive.disabled = state.busy || !state.ready || !state.stories.size;
     for (const button of el.archiveTree.querySelectorAll('button')) button.disabled = state.busy;
     el.exportButton.disabled = state.busy || !state.ready;
     el.importFile.disabled = state.busy || !state.ready;
@@ -2062,22 +2060,6 @@
     pruneImageURLs();
     controls();
   }
-  el.resetArchive.addEventListener('click', () => {
-    confirmAction(
-      'Reset the archive?',
-      'This removes every save and every league’s stories, images, box scores, and TV episodes from this browser, pro and college alike. Export a backup first if you want to keep a copy.',
-      'Reset archive',
-      async () => {
-        await archive.resetAll();
-        state.save = null;
-        state.raw = null;
-        await readArchive();
-        archiveNavigation();
-        view();
-        status('Archive reset. Every save was cleared.');
-      }
-    );
-  });
   el.cancelReset.addEventListener('click', () => el.resetDialog.close());
   el.confirmReset.addEventListener('click', () => {
     el.resetDialog.close();

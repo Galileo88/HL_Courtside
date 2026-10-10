@@ -15,6 +15,17 @@
   };
   const valid = n => Number.isInteger(n) && n >= 0;
   const average = n => (n > 0 && n < 0.1 ? String(Number(n.toPrecision(2))) : n.toFixed(1));
+  // How a writer says an average out loud: 3.1 is "around three", 2.5 "two and a half", 4.8 "nearly five".
+  function spoken(n, key) {
+    const [one, many] = unit[key];
+    if (n < 0.8) return `fewer than one`;
+    const whole = Math.floor(n),
+      tenth = Math.round((n - whole) * 10);
+    if (tenth >= 8) return `nearly ${C.num(whole + 1)} ${whole ? many : one}`;
+    if (tenth <= 2) return `${tenth ? 'around ' : ''}${C.num(whole)} ${whole === 1 ? one : many}`;
+    const half = `${C.num(whole)} and a half ${many}`;
+    return tenth === 5 ? half : `${tenth < 5 ? 'nearly' : 'around'} ${half}`;
+  }
   // Bars are written for a full-length pro game (about 110 points a team) and
   // scaled by the league's real scoring. Steals barely scale with game length.
   const bars = {
@@ -102,8 +113,11 @@
       }
       c.score = Number(score.toFixed(3));
       c.qualifies = score >= 1;
-      // A secondary category is worth a sentence once it has moved by a real amount.
-      c.mention = c.qualifies || Math.abs(x - avg) >= b('swing') * 0.6;
+      // A secondary category is worth a sentence once it has moved by a real amount;
+      // falling short only counts against an average big enough to miss.
+      c.mention =
+        c.qualifies ||
+        (Math.abs(x - avg) >= b('swing') * 0.6 && (c.favorable || c.key === 'TO' || avg >= b('line') * 0.5));
     }
     const fg = ['FGM', 'FGA'].every(k => valid(box[k])) && box.FGA > 0 && box.FGM <= box.FGA ? box.FGM / box.FGA : null;
     return { cold: r.scorerRank <= 2 && fg !== null && box.FGA >= Math.max(8, 15 * scale) && fg <= 0.3, fg };
@@ -227,13 +241,57 @@
     if (more.length) {
       const mixed = more.filter(x => x.favorable !== c.favorable),
         same = more.filter(x => x.favorable === c.favorable);
-      const phrase = x =>
-        `${x.key === 'TO' ? (x.actual === 0 ? 'no turnovers' : count(x.actual, 'TO')) : count(x.actual, x.key)} against an average of ${average(x.expected)}`;
-      if (same.length) paragraphs.push(`${subject} also finished with ${C.listJoin(same.map(phrase))}.`);
-      if (mixed.length)
-        paragraphs.push(
-          `${c.favorable ? "It wasn't all good news" : 'There was a bright side'}: ${C.listJoin(mixed.map(phrase))}.`
-        );
+      // "four turnovers, far beyond his usual 0.6", or the plain fact when the line was empty.
+      const usual = x => {
+        const ratio = x.actual / x.expected,
+          word =
+            ratio >= 3
+              ? 'far beyond'
+              : ratio >= 2
+                ? 'more than double'
+                : ratio >= 1.5
+                  ? 'well above'
+                  : ratio > 1
+                    ? 'above'
+                    : ratio <= 0.4
+                      ? 'a fraction of'
+                      : ratio <= 0.6
+                        ? 'about half'
+                        : 'below';
+        return `${word} ${he ? `${he === 'she' ? 'her' : 'his'} usual` : 'the usual'} ${average(x.expected)}`;
+      };
+      const zero = x =>
+        x.key === 'TO'
+          ? "didn't turn the ball over"
+          : x.key === 'PTS'
+            ? "didn't score"
+            : `didn't have ${/^[aeiou]/.test(unit[x.key][0]) ? 'an' : 'a'} ${unit[x.key][0]}`;
+      // The rest of a big night reads as more of the same. A tiny average isn't worth citing.
+      const extra = same.map((x, i) =>
+        x.actual === 0
+          ? `${subject} also ${zero(x)}.`
+          : `${subject} ${x.key === 'TO' ? 'also committed' : i ? 'added' : 'also had'} ${count(x.actual, x.key)}${x.expected >= 1 ? `, ${usual(x)}` : ''}.`
+      );
+      // A line going the other way is the catch: what fell short (or held up), in words, then the usual night.
+      const doing = x =>
+        ({
+          PTS: x.favorable ? 'found ways to score, putting up' : "wasn't as productive on offense, scoring",
+          REB: x.favorable ? 'was active on the glass, grabbing' : "wasn't much of a factor on the glass, grabbing",
+          AST: x.favorable ? 'kept teammates involved, handing out' : "didn't create much for teammates, handing out",
+          STL: x.favorable
+            ? 'made plays on defense, coming up with'
+            : "wasn't as disruptive on defense, coming up with",
+          TO: x.favorable ? 'took care of the ball, committing' : 'had trouble holding onto the ball, committing',
+        })[x.key];
+      const amount = x =>
+        x.actual === 0 ? `no ${unit[x.key][1]}` : `${x.actual < x.expected ? 'just ' : ''}${count(x.actual, x.key)}`;
+      const catches = mixed.map(
+        (x, i) =>
+          `${subject} ${i ? 'also ' : ''}${doing(x)} ${amount(x)} while averaging ${spoken(x.expected, x.key)} a game this ${r.period === 'playoffs' ? 'postseason' : 'season'}.`
+      );
+      if (catches.length) catches.unshift(c.favorable ? "It wasn't all good, though." : "It wasn't all bad, though.");
+      if (extra.length) paragraphs.push(extra.join(' '));
+      if (catches.length) paragraphs.push(catches.join(' '));
     }
     return paragraphs;
   }
@@ -391,6 +449,8 @@
       : comparisons.find(c => c.qualifies) || comparisons[0];
     const name = story.playerName,
       last = C.surname(name),
+      // The hosts say averages out loud: "around three", "two and a half", "nearly five".
+      they = C.pronoun(story.sceneInputs?.player) || last,
       turns = [],
       say = (speaker, text) => turns.push({ speaker, text });
     const g = story.gameSummary,
@@ -399,7 +459,7 @@
     const mine = snapshot.team ? C.teamRef(snapshot.team) : null,
       opp = snapshot.opponent ? C.teamRef(snapshot.opponent) : C.teamRef(snapshot.team?.id === w.id ? l : w);
     const W = C.teamRef(w),
-      avg = average(focus.expected),
+      avg = spoken(focus.expected, focus.key),
       up = focus.favorable,
       r = snapshot.role || {},
       s = story.playerStats || {};
@@ -437,9 +497,9 @@
           )
         : pick(
             [
-              `Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}${where}, and the average coming in was ${avg}. ${n[1]}?`,
-              `${name}: ${stat} against ${opp.nick}${where}. Coming in, the average was ${avg}. ${n[1]}, what do you make of it?`,
-              `${name} with ${stat}${where}${who ? `, and that's ${who}` : ''}. Normal night is ${avg}. ${n[1]}, go.`,
+              `Let's talk about ${name}. ${C.capitalize(stat)} against ${opp.nick}${where}, and ${they} came in averaging ${avg}. ${n[1]}?`,
+              `${name}: ${stat} against ${opp.nick}${where}. ${C.capitalize(they)} usually ${focus.key === 'TO' ? 'has' : 'gets'} ${avg}. ${n[1]}, what do you make of it?`,
+              `${name} with ${stat}${where}${who ? `, and that's ${who}` : ''}. A normal night is ${avg}. ${n[1]}, go.`,
             ],
             'perf:open'
           )
@@ -557,7 +617,7 @@
           : `${C.num(secondary.actual)} ${secondary.actual === 1 ? unit[secondary.key][0] : unit[secondary.key][1]}`;
       say(
         2,
-        `${secondary.favorable === focus.favorable ? 'And' : 'But'} look at the rest of it, ${n[1]}. ${C.capitalize(label)}, against an average of ${average(secondary.expected)}.`
+        `${secondary.favorable === focus.favorable ? 'And' : 'But'} look at the rest of it, ${n[1]}. ${C.capitalize(label)}, and ${they} usually ${secondary.key === 'TO' ? 'has' : 'gets'} ${spoken(secondary.expected, secondary.key)}.`
       );
       say(
         1,

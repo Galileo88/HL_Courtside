@@ -146,6 +146,44 @@ test('a bench breakout needs a line that is news on its own', () => {
   assert.match(story.headline, /off the bench|sparks bench/);
   assert.match(story.paragraphs.join(' '), /mostly come off the bench this season/);
 });
+test('a line going the other way reads as the catch on a big night', () => {
+  const l = fixture(),
+    bo = l.teams[0].roster[1];
+  bo.gameStats.PTS = 35;
+  bo.stats[0].season[0].PTS += 25;
+  l.teams[0].roster[2].gameStats.PTS -= 25;
+  l.teams[0].roster[2].stats[0].season[0].PTS -= 25;
+  bo.gameStats.TO = 7;
+  bo.stats[0].season[0].TO += 5;
+  const text = P.candidates(l)
+    .find(x => x.story.playerId === 12)
+    .story.paragraphs.join(' ');
+  assert.match(
+    text,
+    /It wasn't all good, though\. He had trouble holding onto the ball, committing seven turnovers while averaging two turnovers a game this season\./
+  );
+  assert.doesNotMatch(text, /against an average|bright side/);
+  // A big man who disappears on the glass is the catch; the average is said the way a writer would.
+  bo.gameStats.TO = 2;
+  bo.stats[0].season[0].TO -= 5;
+  bo.gameStats.REB = 0;
+  bo.stats[0].season[0].REB = 83;
+  const glass = P.candidates(l)
+    .find(x => x.story.playerId === 12)
+    .story.paragraphs.join(' ');
+  assert.match(
+    glass,
+    /It wasn't all good, though\. He wasn't much of a factor on the glass, grabbing no rebounds while averaging nearly eight and a half rebounds a game this season\./
+  );
+  // Falling short of a small average isn't news.
+  bo.stats[0].season[0].REB = 31;
+  assert.doesNotMatch(
+    P.candidates(l)
+      .find(x => x.story.playerId === 12)
+      .story.paragraphs.join(' '),
+    /glass|rebounds while averaging/
+  );
+});
 test('one story per team per game keeps the strongest night', () => {
   const l = fixture(),
     bo = l.teams[0].roster[1];
@@ -259,7 +297,7 @@ test('archived stories from the old percentage rule still play on TV', () => {
     .map(t => t.text)
     .join(' ');
   assert.match(text, /Alex Star/);
-  assert.match(text, /20\.0/);
+  assert.match(text, /averaging 20 points|usually gets 20 points|normal night is 20 points/);
   assert.doesNotMatch(text, /undefined|NaN/);
 });
 test('stories archived under the old rule are judged again: noise leaves, real news is rewritten with its stakes', () => {

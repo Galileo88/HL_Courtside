@@ -291,9 +291,6 @@ dialog h2 {
   .archive-panel .actions .label-more {
     display: none;
   }
-  .archive-panel .actions button.danger {
-    margin-left: 0;
-  }
 }
 
 /* Record cards: the mark beside what it beat, then the game it came from. */
