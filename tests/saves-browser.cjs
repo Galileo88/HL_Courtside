@@ -142,6 +142,13 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const updated = await archived();
     assert.deepEqual(updated.saves, first.saves);
     assert.deepEqual(Object.keys(updated.counts).sort(), Object.keys(first.counts).sort());
+    // A league renamed in Hoop Land keeps its save, and the save takes the new name.
+    await upload(copy(s => (s.seasonLeagues[0].leagueName = 'Renamed League')));
+    assert.deepEqual(
+      (await archived()).saves.map(s => s.name),
+      ['Renamed League']
+    );
+    await upload(base);
 
     // A second save of the same league in the same mode is refused; a career save gets its own.
     await welcome();

@@ -840,6 +840,11 @@
   // How a save knows each of its leagues: the HoopWire tag when the league has one, which survives
   // renamed and added teams; otherwise the league's name, starting year and teams as they stand.
   const identity = league => C.leagueId(league) || C.buildFingerprint(league);
+  // A save is named for its pro league, or its only league.
+  function saveName(parsed) {
+    const league = parsed.seasonLeagues.find(l => l.leagueType === 0) || parsed.seasonLeagues[0];
+    return league.leagueName || league.shortName || 'League';
+  }
   // Why a file can't start a new save, or update the open one; nothing when it can.
   function saveProblem(parsed, save) {
     const leagues = parsed.seasonLeagues,
@@ -950,6 +955,8 @@
       packed = await packSaveFile(file),
       record = {
         ...save,
+        // The save follows its league's name when the league is renamed in Hoop Land.
+        name: saveName(parsed),
         file: { name: file.name, size: file.size, savedAt: now },
         mode: modeOf(parsed.seasonLeagues[0]),
         tags: parsed.seasonLeagues.map(identity),
@@ -2115,12 +2122,8 @@
       }
       const problem = saveProblem(parsed, creating ? null : state.save);
       if (problem) throw new SaveRejected(problem);
-      const league = parsed.seasonLeagues.find(l => l.leagueType === 0) || parsed.seasonLeagues[0];
       const save = creating
-        ? {
-            id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-            name: league.leagueName || league.shortName || 'League',
-          }
+        ? { id: 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: saveName(parsed) }
         : state.save;
       await loadSave(file, parsed, save);
     });
