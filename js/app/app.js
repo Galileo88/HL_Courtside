@@ -1065,7 +1065,7 @@
             const old = state.stories.get(story.id);
             // Coach stories show the coach at the podium; an archived action image is redrawn.
             const redraw = context.coachScene
-              ? old?.sceneInputs?.kind !== `coach-${context.coachScene}` || (old?.sceneInputs?.version || 0) < 32
+              ? old?.sceneInputs?.kind !== `coach-${context.coachScene}` || (old?.sceneInputs?.version || 0) < 33
               : context.injury
                 ? old?.sceneInputs?.pose !== 'injured-leg'
                 : context.coach && !old?.sceneInputs?.player?.isCoach;

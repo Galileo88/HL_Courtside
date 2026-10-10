@@ -3,6 +3,8 @@
   'use strict';
   const art = {};
   // The game's award statuettes, by the spriteName the league's awards name.
+  // How far above the podium's base a speaker's feet stand, so the hands rest on its top.
+  const PODIUM_FOOT = 25;
   const AWARDS = ['mvp', 'fmvp', 'dpoy', 'roty', '6moty', 'mip', 'asmvp', 'trophy', 'poty', 'mop', 'all_star'];
   let ready;
   const files = [
@@ -797,10 +799,26 @@
       } else {
         depth(ctx, [
           award
-            ? { data: scene.awardee, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' }
+            ? {
+                data: scene.awardee,
+                team,
+                pose: 'suit-standing',
+                frame: 0,
+                x: 192,
+                foot: base - PODIUM_FOOT,
+                facing: 'left',
+              }
             : farewell
-              ? { data: scene.retiree, team, pose: 'suit-standing', frame: 0, x: 192, foot: base - 27, facing: 'left' }
-              : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - 27, facing: 'left' },
+              ? {
+                  data: scene.retiree,
+                  team,
+                  pose: 'suit-standing',
+                  frame: 0,
+                  x: 192,
+                  foot: base - PODIUM_FOOT,
+                  facing: 'left',
+                }
+              : { data: scene.coach, team, pose: 'idle', frame: 1, x: 192, foot: base - PODIUM_FOOT, facing: 'left' },
         ]);
         ctx.drawImage(art['draft-podium'], 160, base - 64, 64, 64);
       }
@@ -1530,12 +1548,12 @@
         );
         world();
       }
-      // The pick behind the podium; the game stands the player's feet 27 pixels above the podium's base.
+      // The pick behind the podium, low enough that the hands rest on its top.
       const base = stageFloor(ctx, primary),
         podium = [160, base - 64];
       if (player) {
-        shadow(ctx, 192, base - 26, 10);
-        person(ctx, player, team, 'suit-standing', 0, 192, base - 27, 'left');
+        shadow(ctx, 192, base - PODIUM_FOOT + 1, 10);
+        person(ctx, player, team, 'suit-standing', 0, 192, base - PODIUM_FOOT, 'left');
       }
       ctx.drawImage(art['draft-podium'], ...podium, 64, 64);
       // The commissioner beside the podium, turned toward the pick.
@@ -1680,7 +1698,7 @@
       .filter(p => !(context.celebrants || []).some(c => c.id === p.id))
       .sort((a, b) => a.id - b.id);
     return {
-      version: 32,
+      version: 33,
       seed: id,
       kind: `coach-${context.coachScene}`,
       league: { name: league.leagueName || null, logoURL: league.logoURL || null },
