@@ -302,7 +302,7 @@
     const creating = state.creating || !state.save;
     el.loadTitle.textContent = creating ? 'New save' : 'Update save';
     el.loadText.textContent = creating
-      ? 'Choose your Hoop Land save file. The save takes your league’s name, and full coverage is created automatically.'
+      ? 'Choose your Hoop Land save file.'
       : `Upload the latest file for “${state.save.name}” (${modeName(state.save.mode)}) to add new stories.`;
     el.cancelNewSave.hidden = !(creating && state.save);
     el.newSaveButton.hidden = creating;
