@@ -306,7 +306,7 @@ async function getStories(page) {
     assert.deepEqual(refreshed.playerStats, original.playerStats);
     assert.equal(refreshed.createdAt, original.createdAt);
     assert.ok(refreshed.sceneInputs.coach);
-    assert.equal(refreshed.sceneInputs.version, 16);
+    assert.equal(refreshed.sceneInputs.version, 17);
     await page.locator('.nav a[href="#tv"]').click();
     await page.locator('#tv').screenshot({ path: path.join(root, 'artifacts/tv-with-ads.png') });
     await page.setViewportSize({ width: 390, height: 844 });

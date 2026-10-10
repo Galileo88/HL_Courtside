@@ -2,6 +2,8 @@
 const { launchBrowser, samplePath } = require('./helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
 const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
 
 (async () => {
@@ -60,8 +62,23 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     // Names in the story's stat cards open the same pages.
     assert.ok((await page.locator('.article-body .tv-board .board-link[href^="#player/"]').count()) > 0);
 
+    // Players and coaches get a portrait in the game's sprite; it has to actually draw.
+    const portrait = async name => {
+      await page.waitForFunction(() => {
+        const c = document.querySelector('.profile-portrait');
+        if (!c) return false;
+        const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        let filled = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i]) filled++;
+        return filled > 1000;
+      });
+      await page
+        .locator('.profile-header')
+        .screenshot({ path: path.join(root, `artifacts/profile-${name}-header.png`) });
+    };
     await page.click('.article-body .entity-link[href^="#player/"]');
     await page.waitForSelector('.profile-header');
+    await portrait('player');
     const player = await page.textContent('.profile');
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
@@ -75,12 +92,14 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     if (hrefs.some(h => h.startsWith('#coach/'))) {
       await page.click('.article-body .entity-link[href^="#coach/"]');
       await page.waitForSelector('.profile-header');
+      await portrait('coach');
       assert.match(await page.textContent('.profile'), /Head coach[\s\S]*Coaching record/);
       await openStory();
     }
     await page.click('.article-body .entity-link[href^="#team/"]');
     await page.waitForSelector('.profile-header');
     const team = await page.textContent('.profile');
+    assert.equal(await page.locator('.profile-portrait').count(), 0);
     assert.match(team, /Team ·[\s\S]*team stats[\s\S]*League rank[\s\S]*Roster[\s\S]*Results/i);
     // Roster names open player pages.
     await page.click('.profile .board-link[href^="#player/"]');

@@ -59,6 +59,21 @@
     };
   }
 
+  // What the portrait needs: the person's look, their gear or suit, and the team's home uniform and colors.
+  function look(person, team, coach = false) {
+    if (!person?.appearance) return null;
+    const copy = v => (v == null ? null : JSON.parse(JSON.stringify(v)));
+    return {
+      appearance: copy(person.appearance),
+      accessories: copy((person.accessories || []).slice(0, 1)),
+      suits: copy((person.suits || []).slice(0, 1)),
+      num: Number.isInteger(person.num) ? person.num : null,
+      coach,
+      team: team
+        ? { uniforms: copy((team.uniforms || []).slice(0, 1)), teamColors: copy(team.teamColors || null) }
+        : null,
+    };
+  }
   // Everyone a story can name: rostered players, the showcase teams, free agents, prospects and retirees.
   function people(league) {
     const players = new Map(),
@@ -143,6 +158,7 @@
         retired: retired.has(p.id),
         ...bio(p),
         seasons: seasons.sort((a, b) => a.yr - b.yr || (a.period === b.period ? 0 : a.period === 'season' ? -1 : 1)),
+        look: look(p, teams.has(p.tid) && !retired.has(p.id) ? teams.get(p.tid) : null),
         highs,
         awards: awardList(p, league),
       });
@@ -164,6 +180,7 @@
           playoffs: totals(career.playoffs, ['GP', 'W', 'L']),
         },
         current: team ? totals((team.season || []).find(x => x.yr === year)?.seasonStats, ['GP', 'W', 'L']) : null,
+        look: look(c, team, true),
         awards: awardList(c, league),
       });
     }

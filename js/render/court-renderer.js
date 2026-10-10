@@ -104,7 +104,9 @@
     ]);
     return colors;
   }
-  const hoopFiles = ['hoop-shadow', 'hoop-base', 'hoop-pole', 'backboard', 'hoop-connector', 'rim'];
+  // The game's net hangs from the rim: its frame shares the rim's center, so the front of the rim in the net
+  // sprite lands on the rim's front edge.
+  const hoopFiles = ['hoop-shadow', 'hoop-base', 'hoop-pole', 'backboard', 'hoop-connector', 'rim', 'net'];
   const positions = [
     [110, 148],
     [110, 148],
@@ -112,6 +114,7 @@
     [110, 148],
     [134, 197],
     [214, 184],
+    [206, 176],
   ];
   function drawHoops(ctx, images, court, team, part = 'all') {
     const colors = hoopPalette(court, team);
@@ -124,7 +127,7 @@
       images.forEach((image, i) => {
         if ((part === 'shadow' && i !== 0) || (part === 'structure' && i === 0)) return;
         ctx.globalAlpha = i === 0 ? 0.25 : 1;
-        ctx.drawImage(i === 0 || i === 5 ? image : recolor(image, null, colors), ...positions[i]);
+        ctx.drawImage(i === 0 || i >= 5 ? image : recolor(image, null, colors), ...positions[i]);
       });
       ctx.restore();
     }

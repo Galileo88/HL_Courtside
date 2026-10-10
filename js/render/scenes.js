@@ -269,7 +269,7 @@
     const action = actionDesign(story.id);
     return {
       ...saved,
-      version: 16,
+      version: 17,
       seed: story.id,
       attackDirection: action.side,
       action,
@@ -296,7 +296,7 @@
     // An injury story shows the player down on the floor in an action scene.
     const action = actionDesign(id, ctx.injury ? C.choose(id, injuryVariants, 'injury-framing') : undefined);
     return {
-      version: 16,
+      version: 17,
       seed: id,
       league: { name: league.leagueName || ctx.leagueName, logoURL: league.logoURL || null },
       attackDirection: action.side,
@@ -577,7 +577,8 @@
           (s.sceneInputs?.kind === 'interview' &&
             ((s.sceneInputs.version || 0) < 16 ||
               leagues.some(l => l.id === s.fingerprint && l.logoURL && l.logoURL !== s.sceneInputs.league?.logoURL))) ||
-          (s.sceneInputs?.kind === 'action' && (s.sceneInputs.version || 0) < 10)
+          // Version 17 hangs the game's net under the rim.
+          (s.sceneInputs?.kind === 'action' && (s.sceneInputs.version || 0) < 17)
       ),
       updated = [];
     for (let i = 0; i < pending.length; i += 4) {

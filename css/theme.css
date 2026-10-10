@@ -582,6 +582,15 @@ dialog h2 {
   flex: none;
   object-fit: contain;
 }
+.profile-portrait {
+  width: 88px;
+  height: 88px;
+  flex: none;
+  image-rendering: pixelated;
+  background: var(--hw-panel-deep);
+  border: 1px solid var(--hw-line);
+  border-radius: 8px;
+}
 .profile-heading {
   min-width: 0;
 }
@@ -649,6 +658,10 @@ dialog h2 {
   .profile-logo {
     width: 56px;
     height: 56px;
+  }
+  .profile-portrait {
+    width: 60px;
+    height: 60px;
   }
   .profile-line {
     font-size: 14px;

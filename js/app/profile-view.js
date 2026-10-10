@@ -39,8 +39,47 @@
     wrap.append(el('h2', 'profile-section-title', title), ...content.filter(Boolean));
     return wrap;
   }
+  // A player's or coach's head and shoulders in the game's sprite: a player in the team's home uniform,
+  // a coach (or a retired player with a suit) in the suit.
+  function portrait(profile) {
+    const look = profile.look,
+      sprites = window.HoopWirePlayer;
+    if (!look?.appearance || !sprites) return null;
+    const canvas = el('canvas', 'profile-portrait');
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', `Portrait of ${profile.name}`);
+    const suited = look.coach || (profile.retired && look.suits?.length > 0);
+    const person = {
+      appearance: look.appearance,
+      accessories: look.accessories || [],
+      suits: look.suits || [],
+      num: suited ? null : look.num,
+      isCoach: !!look.coach,
+      wearsSuit: suited && !look.coach,
+    };
+    // Shoulders up in a fixed frame, the way headshots are framed: sprite rows 4 to 25 and columns 5 to 26,
+    // so every face sits in the same place at the same size. The head starts at row 8 and the shoulders end
+    // at row 25; the tallest and widest hairstyles run a pixel or two past the edge instead of shrinking the
+    // face. Four screen pixels per sprite pixel.
+    canvas.width = canvas.height = 88;
+    sprites
+      .ready()
+      .then(() => {
+        const small = document.createElement('canvas');
+        small.width = 32;
+        small.height = 42;
+        sprites.draw(small, person, look.team, 0, 0);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(small, 5, 4, 22, 22, 0, 0, 88, 88);
+      })
+      .catch(() => canvas.remove());
+    return canvas;
+  }
   function header(profile, kicker, lines, logo) {
     const head = el('header', 'profile-header');
+    const face = logo ? null : portrait(profile);
+    if (face) head.append(face);
     if (logo && window.HoopWireCourt?.validURL(logo)) {
       // The logo takes its space only once it has loaded.
       const img = el('img', 'profile-logo');
