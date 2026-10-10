@@ -570,11 +570,21 @@ dialog h2 {
 
 /* Profile pages. */
 .profile-header {
-  display: flex;
-  gap: 18px;
-  align-items: center;
+  /* The label sits above in the text column; the portrait or logo starts on the name's row, so its top lines up
+     with the name however many lines the label takes. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: start;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--hw-line);
+}
+.profile-logo,
+.profile-portrait {
+  grid-column: 1;
+  grid-row: 2 / span 4;
+  /* From the top of the name's line down to the top of its capitals. */
+  margin-top: 7px;
 }
 .profile-logo {
   width: 84px;
@@ -583,8 +593,10 @@ dialog h2 {
   object-fit: contain;
 }
 .profile-portrait {
-  width: 88px;
-  height: 88px;
+  /* The border sits outside the drawing, so the sprite keeps whole screen pixels per sprite pixel. */
+  box-sizing: content-box;
+  width: 95px;
+  height: 90px;
   flex: none;
   image-rendering: pixelated;
   background: var(--hw-panel-deep);
@@ -592,7 +604,14 @@ dialog h2 {
   border-radius: 8px;
 }
 .profile-heading {
+  display: contents;
+}
+.profile-heading > * {
+  grid-column: 2;
   min-width: 0;
+}
+.profile-heading > .article-meta {
+  margin-top: 0;
 }
 .profile-name {
   margin-bottom: 8px;
@@ -653,15 +672,19 @@ dialog h2 {
 }
 @media (max-width: 640px) {
   .profile-header {
-    gap: 12px;
+    column-gap: 12px;
+  }
+  .profile-logo,
+  .profile-portrait {
+    margin-top: 4px;
   }
   .profile-logo {
     width: 56px;
     height: 56px;
   }
   .profile-portrait {
-    width: 60px;
-    height: 60px;
+    width: 76px;
+    height: 72px;
   }
   .profile-line {
     font-size: 14px;
