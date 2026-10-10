@@ -30,7 +30,7 @@
 
   function assertSave(data) {
     if (!data || !Array.isArray(data.seasonLeagues) || data.seasonLeagues.length === 0) {
-      throw new Error('This file does not contain a Hoop Land seasonLeagues array.');
+      throw new Error('This is not a Hoop Land save file.');
     }
   }
 

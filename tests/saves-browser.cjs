@@ -53,8 +53,18 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
 
     await page.goto(url);
     await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
-    assert.equal(await page.locator('#loadTitle').textContent(), 'New save');
+    assert.equal(await page.locator('#loadTitle').textContent(), 'Upload save file');
     assert.equal(await page.locator('#savesCard').isVisible(), false);
+
+    // A file that isn't a Hoop Land save says so, plainly.
+    for (const buffer of [Buffer.from('not json'), Buffer.from(JSON.stringify({ leagues: [] }))]) {
+      await page.waitForFunction(() => !document.getElementById('saveFile').disabled);
+      await page.evaluate(() => (document.getElementById('status').textContent = ''));
+      await page.locator('#saveFile').setInputFiles({ name: 'other.json', mimeType: 'application/json', buffer });
+      await page.waitForFunction(() => document.getElementById('status').textContent.trim().length > 0);
+      assert.equal((await page.locator('#status').textContent()).trim(), 'This is not a Hoop Land save file.');
+    }
+    assert.deepEqual((await archived()).saves, []);
 
     // Choose the file: the save takes the pro league's name, and the newsroom opens.
     await upload(base);

@@ -18,9 +18,6 @@
     'passing-arms',
     'dunking',
     'dunking-arms',
-    'coach-jacket',
-    'coach-undershirt',
-    'coach-tie',
     'staff-idle',
     'staff-idle-alt',
     'jersey-numbers',
@@ -49,9 +46,6 @@
         'passing-arms',
         'dunking',
         'dunking-arms',
-        'coach-jacket',
-        'coach-undershirt',
-        'coach-tie',
         'staff-idle',
         'staff-idle-alt',
         'jersey-numbers',
@@ -115,6 +109,10 @@
   }
   const skinShades = { '220,129,88': 1, '215,85,66': 0.78, '225,174,120': 1.15, '195,36,58': 0.65, '210,53,48': 0.7 };
   // Ball pixels use their own native palette markers, separate from accessories.
+  const ramp = (value, shades) => {
+    const base = rgb(hex(value, '#E37033'));
+    return Object.fromEntries(Object.entries(shades).map(([marker, scale]) => [marker, shade(base, scale)]));
+  };
   function ballPalette(ball = {}) {
     const primary = rgb(hex(ball.pri, '#E37033'));
     return {
@@ -123,6 +121,15 @@
       '226,150,0': primary,
       '227,200,0': shade(rgb(hex(ball.sec, '#E37033')), 1.3),
       '228,255,0': shade(rgb(hex(ball.ter, '#E37033')), 1.6),
+      // The game's ball has two more panel families, dark to light; the poses that hold the ball use them.
+      ...ramp(ball.sec, { '231,106,66': 0.7, '232,155,75': 1, '233,207,92': 1.3 }),
+      ...ramp(ball.ter, {
+        '234,69,59': 0.6,
+        '238,83,113': 0.75,
+        '235,112,139': 0.9,
+        '236,172,190': 1.15,
+        '237,224,231': 1.35,
+      }),
     };
   }
   const shortsStarts = [21, 22, 23, 22];
@@ -181,21 +188,41 @@
       row.max = Math.max(row.max, x);
     }
     const gearRgb = (key, fallback) => rgb(color(gear[key], team, fallback));
-    const accessory = {
-      L_Shoulder: gearRgb('L_Shoulder', skinColor),
-      R_Shoulder: gearRgb('R_Shoulder', skinColor),
-      L_Elbow: gearRgb('L_Elbow', skinColor),
-      R_Elbow: gearRgb('R_Elbow', skinColor),
-      L_Wrist: gearRgb('L_Wrist', skinColor),
-      R_Wrist: gearRgb('R_Wrist', skinColor),
-      L_Knee: gearRgb('L_Knee', skinColor),
-      R_Knee: gearRgb('R_Knee', skinColor),
-      L_Shin: gearRgb('L_Shin', skinColor),
-      R_Shin: gearRgb('R_Shin', skinColor),
-      sockC: gearRgb('sockC', '#ffffff'),
-      shoeC: gearRgb('shoeC', '#ffffff'),
-      soleC: gearRgb('soleC', '#202020'),
-    };
+    // In a player's pose, a suit covers the arms and legs: sleeves to the wrist, where the hands show,
+    // and trousers down to the shoes.
+    const sleeve = suit && rgb(color(suit.jacketC, team, '#262539')),
+      trousers = suit && rgb(color(suit.pantC, team, '#262539'));
+    const accessory = suit
+      ? {
+          L_Shoulder: sleeve,
+          R_Shoulder: sleeve,
+          L_Elbow: sleeve,
+          R_Elbow: sleeve,
+          L_Wrist: skin,
+          R_Wrist: skin,
+          L_Knee: trousers,
+          R_Knee: trousers,
+          L_Shin: trousers,
+          R_Shin: trousers,
+          sockC: trousers,
+          shoeC: gearRgb('shoeC', '#000000'),
+          soleC: gearRgb('soleC', '#000000'),
+        }
+      : {
+          L_Shoulder: gearRgb('L_Shoulder', skinColor),
+          R_Shoulder: gearRgb('R_Shoulder', skinColor),
+          L_Elbow: gearRgb('L_Elbow', skinColor),
+          R_Elbow: gearRgb('R_Elbow', skinColor),
+          L_Wrist: gearRgb('L_Wrist', skinColor),
+          R_Wrist: gearRgb('R_Wrist', skinColor),
+          L_Knee: gearRgb('L_Knee', skinColor),
+          R_Knee: gearRgb('R_Knee', skinColor),
+          L_Shin: gearRgb('L_Shin', skinColor),
+          R_Shin: gearRgb('R_Shin', skinColor),
+          sockC: gearRgb('sockC', '#ffffff'),
+          shoeC: gearRgb('shoeC', '#ffffff'),
+          soleC: gearRgb('soleC', '#202020'),
+        };
     for (let i = 0; i < pixels.data.length; i += 4) {
       if (!pixels.data[i + 3]) continue;
       const r = source[i],
@@ -275,6 +302,21 @@
         pixels.data[i + 2] = next[2];
       }
     }
+    // The tie hangs from the middle of the V collar, which the sprite marks with (5,200,255) pixels.
+    if (suit && !nativeSuit) {
+      const collar = [];
+      for (let i = 0; i < source.length; i += 4)
+        if (source[i + 3] && source[i] === 5 && source[i + 1] === 200 && source[i + 2] === 255) collar.push(i / 4);
+      const knot = collar.map(n => [n % 32, Math.floor(n / 32)]).sort((a, b) => b[1] - a[1])[0];
+      if (collar.length === 3 && knot) {
+        const tie = rgb(color(suit.tieC, team, '#66718a'));
+        for (let y = knot[1]; y <= knot[1] + 3; y++) {
+          const i = (y * 32 + knot[0]) * 4;
+          if (!pixels.data[i + 3]) continue;
+          pixels.data.set(y === knot[1] ? tie : shade(tie, 0.85), i);
+        }
+      }
+    }
     layer.putImageData(pixels, 0, 0);
     ctx.drawImage(off, 0, 0);
     return { uniform, shortsStart };
@@ -312,15 +354,6 @@
     sceneCtx.translate(0, offsetY);
     const bodyState = body(sceneCtx, frame, player, team, uniformIndex, pose, ball);
     sceneCtx.restore();
-    if ((player.isCoach || player.wearsSuit) && pose !== 'idle' && pose !== 'suit-standing' && pose !== 'sitting') {
-      const suit = player.suits?.[0] || {};
-      sceneCtx.save();
-      sceneCtx.translate(0, offsetY);
-      paint(sceneCtx, images['coach-jacket'], 0, 0, color(suit.jacketC, team, '#262539'));
-      paint(sceneCtx, images['coach-undershirt'], 0, 0, color(suit.shirtC, team, '#ffffff'));
-      paint(sceneCtx, images['coach-tie'], 0, 0, color(suit.tieC, team, '#66718a'));
-      sceneCtx.restore();
-    }
     // The staging area adds eight logical pixels above the body.
     // The injured player sits lower in the game's sprite, the head bobbing a pixel
     // between frames; a running stride lifts the head a pixel on alternate frames.
