@@ -92,10 +92,10 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     // College players read by class; pros by years in the league.
     const profileLines = await page.locator('.profile-line').allTextContents();
     assert.ok(
-      profileLines.some(l => /^(?:Fr|So|Jr|Sr)\.$|^Years Pro: \d+$/.test(l.trim())),
+      profileLines.some(l => /^(?:Fr|So|Jr|Sr)\.$|^Rookie$|^Years Pro: (?:[2-9]|\d{2,})$/.test(l.trim())),
       profileLines.join(' | ')
     );
-    assert.doesNotMatch(player, /college season|pro season|Freshman|Rookie/);
+    assert.doesNotMatch(player, /college season|pro season|Freshman|Years Pro: 1\b/);
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
     assert.match(player, /Career/);
