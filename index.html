@@ -56,19 +56,18 @@
           <p>News and broadcasts for your Hoop Land league</p>
         </header>
         <div class="menu-grid">
-          <article class="menu-card load-card">
+          <article id="loadCard" class="menu-card load-card">
             <svg class="menu-icon" viewBox="0 0 32 32" aria-hidden="true">
               <path d="M5 21v7h22v-7M16 23V4M9 11l7-7 7 7" />
             </svg>
             <h2 id="loadTitle">Upload save file</h2>
-            <p id="loadText">Choose your Hoop Land save file.</p>
+            <p>Choose your Hoop Land save file.</p>
             <div class="file-row">
               <label class="file-button"
                 >Choose save <span aria-hidden="true">↑</span
                 ><input id="saveFile" type="file" accept=".json,*/*" disabled /></label
               ><span id="fileName">No save loaded</span>
             </div>
-            <button id="cancelNewSave" class="text-action" type="button" hidden>Cancel</button>
           </article>
           <article id="savesCard" class="menu-card saves-card" hidden>
             <h2>Your saves</h2>
