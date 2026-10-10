@@ -158,8 +158,31 @@ test('a line going the other way reads as the catch on a big night', () => {
   const text = P.candidates(l)
     .find(x => x.story.playerId === 12)
     .story.paragraphs.join(' ');
-  assert.match(text, /He did have seven turnovers, though, (?:far beyond|more than double) his usual 2\.0\./);
-  assert.doesNotMatch(text, /against an average|wasn't all good news|bright side/);
+  assert.match(
+    text,
+    /It wasn't all good, though\. He had trouble holding onto the ball, committing seven turnovers while averaging two turnovers a game this season\./
+  );
+  assert.doesNotMatch(text, /against an average|bright side/);
+  // A big man who disappears on the glass is the catch; the average is said the way a writer would.
+  bo.gameStats.TO = 2;
+  bo.stats[0].season[0].TO -= 5;
+  bo.gameStats.REB = 0;
+  bo.stats[0].season[0].REB = 83;
+  const glass = P.candidates(l)
+    .find(x => x.story.playerId === 12)
+    .story.paragraphs.join(' ');
+  assert.match(
+    glass,
+    /It wasn't all good, though\. He wasn't much of a factor on the glass, grabbing no rebounds while averaging nearly eight and a half rebounds a game this season\./
+  );
+  // Falling short of a small average isn't news.
+  bo.stats[0].season[0].REB = 31;
+  assert.doesNotMatch(
+    P.candidates(l)
+      .find(x => x.story.playerId === 12)
+      .story.paragraphs.join(' '),
+    /glass|rebounds while averaging/
+  );
 });
 test('one story per team per game keeps the strongest night', () => {
   const l = fixture(),

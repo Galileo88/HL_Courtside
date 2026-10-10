@@ -15,6 +15,17 @@
   };
   const valid = n => Number.isInteger(n) && n >= 0;
   const average = n => (n > 0 && n < 0.1 ? String(Number(n.toPrecision(2))) : n.toFixed(1));
+  // How a writer says an average out loud: 3.1 is "around three", 2.5 "two and a half", 4.8 "nearly five".
+  function spoken(n, key) {
+    const [one, many] = unit[key];
+    if (n < 0.8) return `fewer than one`;
+    const whole = Math.floor(n),
+      tenth = Math.round((n - whole) * 10);
+    if (tenth >= 8) return `nearly ${C.num(whole + 1)} ${whole ? many : one}`;
+    if (tenth <= 2) return `${tenth ? 'around ' : ''}${C.num(whole)} ${whole === 1 ? one : many}`;
+    const half = `${C.num(whole)} and a half ${many}`;
+    return tenth === 5 ? half : `${tenth < 5 ? 'nearly' : 'around'} ${half}`;
+  }
   // Bars are written for a full-length pro game (about 110 points a team) and
   // scaled by the league's real scoring. Steals barely scale with game length.
   const bars = {
@@ -102,8 +113,11 @@
       }
       c.score = Number(score.toFixed(3));
       c.qualifies = score >= 1;
-      // A secondary category is worth a sentence once it has moved by a real amount.
-      c.mention = c.qualifies || Math.abs(x - avg) >= b('swing') * 0.6;
+      // A secondary category is worth a sentence once it has moved by a real amount;
+      // falling short only counts against an average big enough to miss.
+      c.mention =
+        c.qualifies ||
+        (Math.abs(x - avg) >= b('swing') * 0.6 && (c.favorable || c.key === 'TO' || avg >= b('line') * 0.5));
     }
     const fg = ['FGM', 'FGA'].every(k => valid(box[k])) && box.FGA > 0 && box.FGM <= box.FGA ? box.FGM / box.FGA : null;
     return { cold: r.scorerRank <= 2 && fg !== null && box.FGA >= Math.max(8, 15 * scale) && fg <= 0.3, fg };
@@ -247,27 +261,35 @@
         return `${word} ${he ? `${he === 'she' ? 'her' : 'his'} usual` : 'the usual'} ${average(x.expected)}`;
       };
       const zero = x =>
-          x.key === 'TO'
-            ? "didn't turn the ball over"
-            : x.key === 'PTS'
-              ? "didn't score"
-              : `didn't have ${/^[aeiou]/.test(unit[x.key][0]) ? 'an' : 'a'} ${unit[x.key][0]}`,
-        had = x => `${x.actual < x.expected ? 'just ' : ''}${count(x.actual, x.key)}`;
-      // The rest of a big night reads as more of the same; a line going the other way reads as the catch.
+        x.key === 'TO'
+          ? "didn't turn the ball over"
+          : x.key === 'PTS'
+            ? "didn't score"
+            : `didn't have ${/^[aeiou]/.test(unit[x.key][0]) ? 'an' : 'a'} ${unit[x.key][0]}`;
+      // The rest of a big night reads as more of the same. A tiny average isn't worth citing.
       const extra = same.map((x, i) =>
         x.actual === 0
           ? `${subject} also ${zero(x)}.`
-          : `${subject} ${x.key === 'TO' ? 'also committed' : i ? 'added' : 'also had'} ${count(x.actual, x.key)}, ${usual(x)}.`
+          : `${subject} ${x.key === 'TO' ? 'also committed' : i ? 'added' : 'also had'} ${count(x.actual, x.key)}${x.expected >= 1 ? `, ${usual(x)}` : ''}.`
       );
-      const catches = mixed.map((x, i) =>
-        x.actual === 0
-          ? `${subject}${i ? ' also' : ''} ${zero(x)}${i ? '' : ', though'}${x.key === 'TO' ? '' : `, after averaging ${average(x.expected)}`}.`
-          : x.key === 'TO' && x.favorable
-            ? `${subject} did take care of the ball${i ? '' : ', though'}: ${had(x)}, ${usual(x)}.`
-            : i
-              ? `${subject} also had ${had(x)}, ${usual(x)}.`
-              : `${subject} did have ${had(x)}, though, ${usual(x)}.`
+      // A line going the other way is the catch: what fell short (or held up), in words, then the usual night.
+      const doing = x =>
+        ({
+          PTS: x.favorable ? 'found ways to score, putting up' : "wasn't as productive on offense, scoring",
+          REB: x.favorable ? 'was active on the glass, grabbing' : "wasn't much of a factor on the glass, grabbing",
+          AST: x.favorable ? 'kept teammates involved, handing out' : "didn't create much for teammates, handing out",
+          STL: x.favorable
+            ? 'made plays on defense, coming up with'
+            : "wasn't as disruptive on defense, coming up with",
+          TO: x.favorable ? 'took care of the ball, committing' : 'had trouble holding onto the ball, committing',
+        })[x.key];
+      const amount = x =>
+        x.actual === 0 ? `no ${unit[x.key][1]}` : `${x.actual < x.expected ? 'just ' : ''}${count(x.actual, x.key)}`;
+      const catches = mixed.map(
+        (x, i) =>
+          `${subject} ${i ? 'also ' : ''}${doing(x)} ${amount(x)} while averaging ${spoken(x.expected, x.key)} a game this ${r.period === 'playoffs' ? 'postseason' : 'season'}.`
       );
+      if (catches.length) catches.unshift(c.favorable ? "It wasn't all good, though." : "It wasn't all bad, though.");
       if (extra.length) paragraphs.push(extra.join(' '));
       if (catches.length) paragraphs.push(catches.join(' '));
     }

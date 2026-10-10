@@ -4,7 +4,7 @@
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
   // Raise when story wording changes, so stories from the loaded save are rewritten.
-  const PROSE_EDITION = 9;
+  const PROSE_EDITION = 10;
   const el = Object.fromEntries(
     [
       'saveFile',

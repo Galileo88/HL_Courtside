@@ -312,7 +312,7 @@ async function openPage(browser, url, seed) {
     assert.deepEqual(errors, []);
     await context.close();
     console.log(
-      'Browser checks passed: automatic Full coverage in all leagues, always-on quotes, repeat uploads, frozen images/stats, current-day upgrades, rollover, nested team/year/day navigation, historical TV, backups, migration, reset cancellation/failure/success, legacy reset persistence, and storage errors.'
+      'Browser checks passed: automatic Full coverage in all leagues, always-on quotes, repeat uploads, frozen images/stats, current-day upgrades, rollover, nested team/year/day navigation, historical TV, backups, migration, and storage errors.'
     );
   } finally {
     await browser.close();
