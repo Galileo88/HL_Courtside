@@ -39,8 +39,44 @@
     wrap.append(el('h2', 'profile-section-title', title), ...content.filter(Boolean));
     return wrap;
   }
+  // A player's or coach's head and shoulders in the game's sprite: a player in the team's home uniform,
+  // a coach (or a retired player with a suit) in the suit.
+  function portrait(profile) {
+    const look = profile.look,
+      sprites = window.HoopWirePlayer;
+    if (!look?.appearance || !sprites) return null;
+    const canvas = el('canvas', 'profile-portrait');
+    canvas.width = canvas.height = 112;
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', `Portrait of ${profile.name}`);
+    const suited = look.coach || (profile.retired && look.suits?.length > 0);
+    const person = {
+      appearance: look.appearance,
+      accessories: look.accessories || [],
+      suits: look.suits || [],
+      num: suited ? null : look.num,
+      isCoach: !!look.coach,
+      wearsSuit: suited && !look.coach,
+    };
+    // The sprite at four screen pixels per sprite pixel, cropped to the 28 x 28 around the head and shoulders.
+    sprites
+      .ready()
+      .then(() => {
+        const full = document.createElement('canvas');
+        full.width = 128;
+        full.height = 168;
+        sprites.draw(full, person, look.team, 0, 0);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(full, 8, 8, 112, 112, 0, 0, 112, 112);
+      })
+      .catch(() => canvas.remove());
+    return canvas;
+  }
   function header(profile, kicker, lines, logo) {
     const head = el('header', 'profile-header');
+    const face = logo ? null : portrait(profile);
+    if (face) head.append(face);
     if (logo && window.HoopWireCourt?.validURL(logo)) {
       // The logo takes its space only once it has loaded.
       const img = el('img', 'profile-logo');
