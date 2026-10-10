@@ -583,6 +583,8 @@ dialog h2 {
   object-fit: contain;
 }
 .profile-portrait {
+  /* The border sits outside the drawing, so the sprite keeps whole screen pixels per sprite pixel. */
+  box-sizing: content-box;
   width: 95px;
   height: 90px;
   flex: none;
@@ -660,8 +662,8 @@ dialog h2 {
     height: 56px;
   }
   .profile-portrait {
-    width: 57px;
-    height: 54px;
+    width: 76px;
+    height: 72px;
   }
   .profile-line {
     font-size: 14px;

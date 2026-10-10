@@ -79,6 +79,15 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     await page.click('.article-body .entity-link[href^="#player/"]');
     await page.waitForSelector('.profile-header');
     await portrait('player');
+    assert.deepEqual(await page.locator('.profile-portrait').evaluate(c => [c.clientWidth, c.clientHeight]), [95, 90]);
+    // On a phone the portrait keeps four screen pixels per sprite pixel beside the name.
+    const desktop = page.viewportSize();
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.deepEqual(await page.locator('.profile-portrait').evaluate(c => [c.clientWidth, c.clientHeight]), [76, 72]);
+    await page
+      .locator('.profile-header')
+      .screenshot({ path: path.join(root, 'artifacts/profile-player-header-mobile.png') });
+    await page.setViewportSize(desktop);
     const player = await page.textContent('.profile');
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
