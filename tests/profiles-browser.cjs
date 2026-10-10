@@ -89,6 +89,13 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
       .screenshot({ path: path.join(root, 'artifacts/profile-player-header-mobile.png') });
     await page.setViewportSize(desktop);
     const player = await page.textContent('.profile');
+    // College players read by class; pros by years in the league.
+    const profileLines = await page.locator('.profile-line').allTextContents();
+    assert.ok(
+      profileLines.some(l => /^(?:Fr|So|Jr|Sr)\.$|^Years Pro: \d+$/.test(l.trim())),
+      profileLines.join(' | ')
+    );
+    assert.doesNotMatch(player, /college season|pro season|Freshman|Rookie/);
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
     assert.match(player, /Career/);

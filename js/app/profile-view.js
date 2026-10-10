@@ -116,10 +116,13 @@
       .filter(Boolean)
       .join(' · ');
   }
+  // College players by class, as the stories write it (Fr., So., Jr., Sr.); pros by seasons in the league,
+  // this one included.
   function seasonLabel(p) {
     if (p.years == null) return null;
-    const word = p.leagueType === 1 ? 'college' : 'pro';
-    return p.years === 0 ? (p.leagueType === 1 ? 'Freshman' : 'Rookie') : `${ordinal(p.years + 1)} ${word} season`;
+    return p.leagueType === 1
+      ? ['Fr.', 'So.', 'Jr.', 'Sr.'][Math.min(3, Math.max(0, p.years))]
+      : `Years Pro: ${p.years + 1}`;
   }
   function stories(ctx, profile) {
     const name = profile.name;
