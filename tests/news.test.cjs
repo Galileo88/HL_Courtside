@@ -305,3 +305,125 @@ test('option headlines name the move and coach stories carry the coach for a pre
   const hire = N.candidates({ ...l, season: { ...l.season, news: [event(26, { pid: 91 })] } })[0];
   assert.equal(hire.context.coachScene, 'hire');
 });
+test('coaching changes carry what the desk can argue over, and nothing the save does not know', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const season = (tid, W, L, L10 = []) => ({ tid, GP: W + L, W, L, L10 });
+  const talk = (type, career) => {
+    const l = fixture();
+    l.teams[0].season = [{ yr: 7, seasonStats: { W: 9, L: 21, GP: 30 } }];
+    const coach = l.teams[0].frontOffice.staff[0];
+    coach.career = career;
+    if (type !== 26) {
+      l.teams[0].frontOffice.staff = [];
+      l.coaches.push({ ...coach, tid: -1 });
+    }
+    l.season.news = [event(type, { pid: 91 })];
+    const story = N.candidates(l).find(x => x.story.type === 'Coaching change').story;
+    return { story, lines: B.script(story).map(t => [t.speaker, t.text]) };
+  };
+  const fired = talk(28, {
+    season: { W: 52, L: 57 },
+    teamHistory: [
+      { yr: 6, season: [season(1, 18, 12)] },
+      { yr: 7, season: [season(1, 16, 14)] },
+      { yr: 8, season: [season(1, 4, 9, [0, 0, 1, 0, 0, 0, 1, 0, 0, 1])] },
+    ],
+  });
+  assert.deepEqual(fired.story.seasonSnapshot.coaching.recent, { W: 3, G: 10 });
+  assert.deepEqual(fired.lines.slice(2, 4), [
+    [2, "You could see it coming. They'd lost seven of their last ten."],
+    [3, 'To be fair, Coach had two winning seasons there.'],
+  ]);
+  assert.deepEqual(new Set(fired.lines.map(x => x[0])).size, 4);
+  const hired = talk(26, {
+    season: { W: 70, L: 50 },
+    teamHistory: [
+      { yr: 6, season: [season(2, 46, 14)] },
+      { yr: 7, season: [season(2, 24, 36)] },
+    ],
+  });
+  assert.deepEqual(
+    hired.lines.slice(2, 4).map(x => x[1]),
+    [
+      "Nobody takes that job thinking it's easy. They went 9-21 last season.",
+      'Coach has done it before. That 70-50 came with the Moons over two seasons.',
+    ]
+  );
+  // A coach the save knows nothing about gets the plain segment, not filler.
+  const unknown = talk(28, undefined);
+  assert.equal(unknown.lines.length, 3);
+});
+test('player news talks about what the player means to the team, with numbers that fit the point', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const player = (id, ppg, extra = {}) => ({
+    id,
+    tid: 1,
+    fn: 'P',
+    ln: 'No' + id,
+    gender: 0,
+    stats: [{ yr: 8, league: 0, season: [{ tid: 1, GP: 10, PTS: ppg * 10, REB: 20, AST: 10 }] }],
+    ...extra,
+  });
+  const say = (type, data, star, extra) => {
+    const l = fixture();
+    l.season.totalGames = 30;
+    l.season.currentDay = 10;
+    l.season.schedule = Array.from({ length: 10 }, (_, d) => ({
+      results: [{ gameType: 0, gId: d + 1, homeTeam: 1, awayTeam: 2, homeScore: 20, awayScore: 10, winner: 1 }],
+    }));
+    l.teams[0].roster = [
+      player(11, star, { fn: 'Alex', ln: 'Star', ...extra }),
+      ...[8, 7, 6, 5, 4].map((p, i) => player(20 + i, p)),
+    ];
+    l.season.news = [event(type, { date: 9, data })];
+    const story = N.candidates(l).find(x => x.story.seasonSnapshot?.newsPlayer)?.story;
+    return story ? B.script(story).map(t => [t.speaker, t.text]) : [];
+  };
+  const injury = say(10, { injury: { gamesOut: 12 } }, 15);
+  assert.deepEqual(injury.slice(-3, -1), [
+    [2, "And it's their leading scorer, too."],
+    [3, "Those 12 games are more than half of what's left of the regular season."],
+  ]);
+  assert.equal(new Set(injury.map(x => x[0])).size, 4);
+  const bench = say(10, { injury: { gamesOut: 2 } }, 1);
+  assert.ok(bench.some(x => /not one of their top scorers/.test(x[1])));
+  assert.ok(!bench.some(x => /of what's left/.test(x[1])));
+  const extension = say(30, { contract: { ext: { yrs: 4 } } }, 15, { age: 21 });
+  assert.ok(extension.some(x => x[1] === "He's their leading scorer. You don't let that walk."));
+  assert.ok(extension.some(x => x[1] === "And he's only 21, so there's room to grow."));
+  for (const lines of [injury, bench, extension]) assert.ok(lines.every(x => !/undefined|NaN|null/.test(x[1])));
+});
+test('trades and farewells get the point a desk would make, only when the save supports it', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const lines = story => B.script(story).map(t => [t.speaker, t.text]);
+  const l = fixture();
+  l.teams[0].season = [{ yr: 8, seasonStats: { W: 4, L: 12 } }];
+  l.teams[1].season = [{ yr: 8, seasonStats: { W: 12, L: 4 } }];
+  l.season.news = [
+    event(7, {
+      data: {
+        trade: {
+          status: 1,
+          teams: [
+            { tid: 1, assets: [{ pid: 11, tid: 2 }] },
+            { tid: 2, assets: [{ pid: 0, tid: 1, draftPick: { yr: 9, rd: 1 } }] },
+          ],
+        },
+      },
+    }),
+  ];
+  const trade = lines(N.candidates(l)[0].story);
+  assert.deepEqual(trade.slice(3, 5), [
+    [2, "The Moons are 12-4. They're going for it."],
+    [3, "And the Stars get a pick back. At 4-12, that's a team thinking about next year."],
+  ]);
+  // Without records, the take stands alone.
+  l.teams[0].season = l.teams[1].season = [];
+  assert.ok(!lines(N.candidates(l)[0].story).some(x => /going for it|next year/.test(x[1])));
+  const r = fixture();
+  r.teams[0].roster[0].awards = [{ id: 0, league: 0, yearsWon: [3, 6] }];
+  r.season.news = [event(17)];
+  assert.ok(lines(N.candidates(r)[0].story).some(x => x[1].startsWith("And don't forget the two championships.")));
+  r.teams[0].roster[0].awards = [];
+  assert.ok(!lines(N.candidates(r)[0].story).some(x => /championship|seasons/.test(x[1])));
+});

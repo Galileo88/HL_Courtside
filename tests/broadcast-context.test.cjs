@@ -298,6 +298,11 @@ test('stable variants provide distinct openings and endings for each game angle'
       assert.ok(turns.every(t => Number.isInteger(t.speaker) && t.speaker >= 0 && t.speaker < 4));
       // "The Stars" has to fit the sentence: never "Enjoy it, the Stars." or "3-1, the Stars."
       for (const t of turns) assert.doesNotMatch(t.text, /, the (Stars|Moons)[.!?]/, t.text);
+      // Each episode is one story, so its last word goes straight into the outro: nothing that promises more.
+      assert.doesNotMatch(
+        turns.at(-1).text,
+        /(?:^|\. )(?:all right\. )?(?:moving on|next topic|let's move on|let's keep it moving)\b/i
+      );
     }
     assert.ok(openings.size >= 4, expected + ' openings');
     assert.ok(closings.size >= 4, expected + ' closings');

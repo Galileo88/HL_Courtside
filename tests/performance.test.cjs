@@ -120,6 +120,10 @@ test('coverage goes to breakouts by regulars and quiet nights by go-to scorers, 
     assert.equal(story.performanceSnapshot.baseline.GP, 10);
     const prose = [story.headline, ...story.paragraphs, ...B.script(story).map(t => t.text)].join(' ');
     assert.doesNotMatch(prose, /%|percent|player of the game|undefined|NaN/i);
+    // Every host has a say, and the segment ends on the game, not a promise of more.
+    const turns = B.script(story);
+    assert.equal(new Set(turns.map(t => t.speaker)).size, 4, story.headline);
+    assert.doesNotMatch(turns.at(-1).text, /next topic|moving on/i);
   }
   assert.deepEqual(
     P.candidates(l).map(x => x.story.id),

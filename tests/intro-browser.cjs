@@ -108,7 +108,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('.tv-speech').count(), 1);
     assert.equal(await page.locator('.tv-speech').isVisible(), true);
     assert.equal(await page.locator('#tvBubbles').evaluate(e => e.hidden), false);
-    assert.match(await page.locator('.tv-speech').textContent(), /Welcome to HoopWire TV/);
+    assert.match(await page.locator('.tv-speech').textContent(), /HoopWire TV/);
     await page.locator('#tvStage').click({ position: { x: 100, y: 100 } });
     await page.setViewportSize({ width: 1100, height: 1000 });
     await page.locator('#tvStage').screenshot({ path: path.join(root, 'artifacts/tv-intro-host-reveal.png') });

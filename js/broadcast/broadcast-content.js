@@ -1217,34 +1217,34 @@
       p = e.player;
     const options = {
       routine: [
-        `${cap(W.nick)} ${C.verb(W, 'get')} the W. Let's keep it moving.`,
+        `${cap(W.nick)} ${C.verb(W, 'get')} the W. Nothing more to it than that.`,
         `Business as usual for ${W.nick}. We'll leave it there.`,
-        `All right. Good win for ${W.nick}. Moving on.`,
+        `All right. Good win for ${W.nick}.`,
         `${cap(L.nick)} will want that one back. That's the desk on this game.`,
       ],
       close: [
         `A ${e.margin}-point game. We could argue about this one all day, but we won't.`,
         `Tight one, and ${W.nick} ${C.verb(W, 'come')} out on the right side of it.`,
         `One possession. That's the difference tonight.`,
-        `${cap(W.nick)} ${C.verb(W, 'take')} the close one. Let's move on.`,
+        `${cap(W.nick)} ${C.verb(W, 'take')} the close one. They'll take it.`,
       ],
       blowout: [
         `${cap(L.nick)} will want to burn the tape on that one.`,
         `${cap(W.nick)} by ${e.margin}. Enough said.`,
-        `Statement made. Let's move on.`,
+        `Statement made.`,
         `Ugly night for ${L.nick}. Big one for ${W.nick}.`,
       ],
       upset: [
         `Don't sleep on ${W.nick}. That's the lesson tonight.`,
         `The records said one thing. The scoreboard said another.`,
         `We'll find out soon enough if ${W.nick} can back it up.`,
-        `Upset of the night. Let's keep it moving.`,
+        `Upset of the night. Nobody saw that coming.`,
       ],
       streak: [
         `That's the streak watch. We'll keep an eye on it.`,
         `We'll see where it goes from here.`,
         `Streaks make the season interesting. This one's no exception.`,
-        `All right. Next topic.`,
+        `That one's going to sting for a while.`,
       ],
       performance: [
         `${p?.last} owned the night. That's where we'll leave it.`,
@@ -1265,7 +1265,7 @@
         `On to Game ${(e.series?.gameNumber || 0) + 1}.`,
         `Game ${(e.series?.gameNumber || 0) + 1} can't come soon enough.`,
         `${e.series?.wins > e.series?.losses ? `${cap(W.nick)} ${C.verb(W, 'lead')} the series ${e.series?.wins}-${e.series?.losses}` : e.series?.wins === e.series?.losses ? `The series is tied ${e.series?.wins}-${e.series?.losses}` : `${cap(L.nick)} ${C.verb(L, 'lead')} the series ${e.series?.losses}-${e.series?.wins}`}. Stay tuned.`,
-        `That's where the series stands. Let's keep it moving.`,
+        `That's where the series stands.`,
       ],
       championship: [
         `Tonight belongs to ${W.nick}. They'll remember this one for a long time.`,
@@ -2181,7 +2181,7 @@
         "They'll want more next year.",
         "That's the season. On to what's next.",
         "We'll see what they do with it.",
-        "Grade's in. Moving on.",
+        "Grade's in.",
       ],
       body
     );
@@ -2245,6 +2245,182 @@
       body
     );
   }
+  // After the take on a coaching change, the desk argues it out, but only with what the save backs up:
+  // how the last stretch went, how the coach did there, the job a new coach walks into and their last stop.
+  // A point the save can't support is left out rather than filled with a stat that doesn't fit.
+  function coachingTalk(story, detailed) {
+    const f = story.seasonSnapshot?.coaching;
+    if (!f) return [];
+    const lines = [],
+      pct = r => r.W / Math.max(1, r.W + r.L),
+      count = g => (g === 10 ? 'ten' : C.num(g));
+    if (f.change === 'hired') {
+      const p = f.prior;
+      // The article's second paragraph already says when it's one of the best jobs in the league.
+      if (p && pct(p) >= 0.6 && !detailed)
+        lines.push(turn(2, `It's a good job to walk into, though. They went ${p.W}-${p.L} last season.`));
+      else if (p && pct(p) <= 0.4)
+        lines.push(turn(2, `Nobody takes that job thinking it's easy. They went ${p.W}-${p.L} last season.`));
+      const s = f.lastStop;
+      // When the last stop was the whole career, the anchor already read that record.
+      const whole = s && f.career && s.W === f.career.W && s.L === f.career.L,
+        where = s && `with the ${s.team}${s.seasons > 1 ? ` over ${C.num(s.seasons)} seasons` : ''}`;
+      if (s && pct(s) >= 0.55)
+        lines.push(
+          turn(
+            3,
+            whole
+              ? `${f.last} has done it before. That ${s.W}-${s.L} came ${where}.`
+              : `${f.last} has won before, too. ${s.W}-${s.L} ${where}.`
+          )
+        );
+      else if (s && pct(s) <= 0.45)
+        lines.push(
+          turn(
+            3,
+            whole
+              ? `For what it's worth, that ${s.W}-${s.L} all came ${where}.`
+              : `${possessive(f.last)} last stop didn't go great, for what it's worth. ${s.W}-${s.L} ${where}.`
+          )
+        );
+      return lines;
+    }
+    const r = f.recent,
+      slide = r && r.G - r.W >= Math.ceil(r.G * 0.6),
+      hot = r && r.W >= Math.ceil(r.G * 0.6);
+    if (slide)
+      lines.push(turn(2, `You could see it coming. They'd lost ${C.num(r.G - r.W)} of their last ${count(r.G)}.`));
+    else if (hot)
+      lines.push(
+        turn(2, `Now? They'd won ${C.num(r.W)} of their last ${count(r.G)}. That's a strange time to make a change.`)
+      );
+    // The counterpoint answers whatever came before it.
+    if (f.seasons >= 2) {
+      const record =
+        f.winningSeasons === f.seasons
+          ? `${f.last} had a winning record every season there`
+          : f.winningSeasons
+            ? `${f.last} had ${C.plural(f.winningSeasons, 'winning season')} there`
+            : null;
+      lines.push(
+        turn(
+          3,
+          record
+            ? `${hot ? 'And' : 'To be fair,'} ${record}.`
+            : slide
+              ? `And it wasn't just this year. ${f.last} never had a winning season there.`
+              : hot
+                ? `Still, ${f.last} never had a winning season there.`
+                : `For what it's worth, ${f.last} never had a winning season there.`
+        )
+      );
+    }
+    return lines;
+  }
+  // A team's season scoring high or low: how the game ended, then how far it was from their usual night.
+  function scoringTalk(story) {
+    const e = (story.seasonSnapshot?.evidence || []).find(x => /^Team season scoring/.test(x.label));
+    if (!e || typeof e.won !== 'boolean' || !Number.isFinite(e.opponentScore)) return [];
+    const margin = Math.abs(e.value - e.opponentScore),
+      them = e.opponent ? `The ${e.opponent}` : 'The other side',
+      lines = [];
+    if (e.direction === 'high')
+      lines.push(
+        turn(
+          2,
+          !e.won
+            ? `They still lost, though. ${them} put up ${e.opponentScore}.`
+            : margin <= 3
+              ? `And they needed every one of them. They won by ${C.num(margin)}.`
+              : `And it got them a ${margin}-point win.`
+        )
+      );
+    else
+      lines.push(
+        turn(
+          2,
+          e.won
+            ? `They still found a way to win, though. Held the ${e.opponent || 'other side'} to ${e.opponentScore}.`
+            : `They lost by ${margin}. Not a night anybody wants to watch back.`
+        )
+      );
+    if (Number.isFinite(e.average) && Math.abs(e.value - e.average) >= 3)
+      lines.push(turn(3, `They'd been averaging ${e.average} coming in.`));
+    return lines;
+  }
+  // A signing, extension, injury or return: what the player means to the team, then a number that fits
+  // the point (age against the length of a deal, how much of the season an injury takes).
+  function playerTalk(story) {
+    const f = story.seasonSnapshot?.newsPlayer;
+    if (!f) return [];
+    if (f.kind === 'farewell') {
+      // One thing worth saying about the whole career: the rings, a career in one place, or how long it ran.
+      const said = f.titles
+        ? `And don't forget the ${f.titles === 1 ? 'championship' : `${C.num(f.titles)} championships`}. That's how you want to be remembered.`
+        : f.oneTeam
+          ? `${C.capitalize(C.num(f.seasons))} seasons, all with the ${f.oneTeam}. You don't see that much anymore.`
+          : f.seasons >= 12
+            ? `${C.capitalize(C.num(f.seasons))} seasons in the league. That's a long run.`
+            : null;
+      return said ? [turn(2, said)] : [];
+    }
+    const is =
+        f.pronoun === 'she' ? "She's" : f.pronoun === 'he' ? "He's" : f.pronoun === 'they' ? "They're" : `${f.last} is`,
+      lower = is.replace(/^(She|He|They)/, m => m.toLowerCase()),
+      lines = [];
+    const top = f.rank === 1 ? 'their leading scorer' : f.rank && f.rank <= 3 ? 'one of their top scorers' : null;
+    if (f.kind === 'signing') {
+      if (f.ppg >= 15) lines.push(turn(2, `That's a real piece. ${f.ppg} points a game is hard to find.`));
+      else if (f.tier === 'role' && (f.ppg === null || f.ppg < 5))
+        lines.push(turn(2, "Let's not get carried away. It's a depth move."));
+    } else if (f.kind === 'extension') {
+      if (f.rank === 1) lines.push(turn(2, `${is} their leading scorer. You don't let that walk.`));
+      else if (f.tier === 'role') lines.push(turn(2, "It's a depth move, but every team needs those."));
+    } else if (f.kind === 'injury') {
+      if (top) lines.push(turn(2, `And it's ${top}, too.`));
+      else if (f.rank >= 5) lines.push(turn(2, "At least it's not one of their top scorers. They can cover for that."));
+    } else if (f.kind === 'return' && top) lines.push(turn(2, `That's ${top} back in the lineup. It changes things.`));
+    if ((f.kind === 'signing' || f.kind === 'extension') && f.age && f.years) {
+      if (f.age <= 22) lines.push(turn(3, `And ${lower} only ${f.age}, so there's room to grow.`));
+      else if (f.age >= 33)
+        lines.push(
+          turn(
+            3,
+            f.years <= 2
+              ? `${is} ${f.age}, so ${C.plural(f.years, 'year')} is about right.`
+              : `${is} ${f.age}, though. That's a lot of years.`
+          )
+        );
+    } else if (f.kind === 'injury' && f.gamesOut && f.gamesLeft > 0) {
+      const share = f.gamesOut / f.gamesLeft;
+      if (share >= 1) lines.push(turn(3, `Those ${f.gamesOut} games are the rest of the regular season.`));
+      else if (share >= 0.5)
+        lines.push(turn(3, `Those ${f.gamesOut} games are more than half of what's left of the regular season.`));
+      else if (share >= 0.25)
+        lines.push(turn(3, `Those ${f.gamesOut} games are about a quarter of what's left of the regular season.`));
+    } else if (f.kind === 'return' && f.gamesLeft > 0 && f.gamesLeft <= 8)
+      lines.push(turn(3, `Just in time, too. Only ${C.plural(f.gamesLeft, 'game')} left in the regular season.`));
+    return lines;
+  }
+  // A two-team trade: a winning team taking on players for picks is going for it; a losing team taking
+  // the picks is thinking about next year. Without picks or records, the take stands on its own.
+  function tradeTalk(story) {
+    const sides = story.seasonSnapshot?.trade?.sides;
+    if (!sides) return [];
+    const pct = x => (Number.isInteger(x.W) && x.W + x.L > 0 ? x.W / (x.W + x.L) : null);
+    const buyer = sides.find(x => x.players && pct(x) >= 0.55 && sides.some(y => y !== x && y.picks)),
+      seller = sides.find(x => x.picks && pct(x) !== null && pct(x) <= 0.45);
+    const lines = [];
+    if (buyer) lines.push(turn(2, `The ${buyer.team} are ${buyer.W}-${buyer.L}. They're going for it.`));
+    if (seller)
+      lines.push(
+        turn(
+          buyer ? 3 : 2,
+          `${buyer ? 'And the' : 'The'} ${seller.team} get ${seller.picks === 1 ? 'a pick' : 'picks'} back. At ${seller.W}-${seller.L}, that's a team thinking about next year.`
+        )
+      );
+    return lines;
+  }
   function genericScript(story, n = first()) {
     const headline = sentence(String(story.headline || 'More news from around the league'));
     const paragraphs = (story.paragraphs || []).filter(
@@ -2257,17 +2433,21 @@
       .find(p => p !== lede && !p.startsWith(String(story.headline)))
       ?.replace(
         /^(.+?) (?:is averaging|averaged) (.+?) (?:per game )?in (?:\w+|\d+) games? this season\.(.*)$/,
-        (m, who, line, rest) => `${who}'s been good for ${line.replace(/ per game$/, '')} a game this season.${rest}`
+        (m, who, line, rest) =>
+          `${who}${parseFloat(line) >= 10 ? "'s been good for" : ' is putting up'} ${line.replace(/ per game$/, '')} a game this season.${rest}`
       );
     const type = story.type || '',
-      J = detail ? n[2] : n[1],
+      // The game files a hire (26), a release (27) and a firing (28) all as coaching changes.
+      hired = story.seasonSnapshot?.newsEvent?.type === 26 || /\bhires?\b/i.test(story.headline || ''),
+      // The numbers host reads a stat line; otherwise the opinion host takes it first.
+      J = detail ? n[3] : n[1],
       evidence = story.seasonSnapshot?.evidence || [];
     const openings = lede
       ? [
           `${lede} ${J}?`,
           `Around the league: ${lede}`,
           `News of the day. ${lede}`,
-          `Here's the latest. ${lede} ${J}, your reaction.`,
+          `Here's the latest. ${lede} ${J}, ${detail ? 'what are the numbers?' : 'your reaction.'}`,
         ]
       : [
           `${headline} ${J}?`,
@@ -2294,49 +2474,56 @@
                   "I like it. Somebody's trying to get better.",
                   'Interesting move. I want to see how it fits before I hand out grades.',
                 ]
-              : /sign|commit|option|extend/i.test(type)
-                ? ['Good business. You keep your guys, you build continuity.', 'I like the move. Now earn it.']
-                : /retir|hall|jersey/i.test(type)
-                  ? [
-                      'Give it up for that career. That deserves a moment.',
-                      "That's a legacy. Take a second and appreciate it.",
-                    ]
-                  : /coach/i.test(type)
+              : /^signing$/i.test(type)
+                ? ['I like the move. Now earn it.']
+                : /sign|commit|option|exten/i.test(type)
+                  ? ['Good business. You keep your guys, you build continuity.', 'I like the move. Now earn it.']
+                  : /retir|hall|jersey/i.test(type)
                     ? [
-                        'Coaching changes always come with pressure. Now we find out if it was the right call.',
-                        "That's a big decision. The next hire has to be right.",
+                        'Give it up for that career. That deserves a moment.',
+                        "That's a legacy. Take a second and appreciate it.",
                       ]
-                    : /team record/i.test(type)
-                      ? /low/i.test(story.headline || '') || evidence.some(e => /low/.test(e.label))
+                    : /coach/i.test(type) && hired
+                      ? [
+                          'New voice in that building. Now we find out if it was the right call.',
+                          "Big hire. Now they have to win with this staff, and that's the hard part.",
+                        ]
+                      : /coach/i.test(type)
                         ? [
-                            "That's ugly. I don't know what else to say about that. You have to score.",
-                            "Rock bottom. The only good news is it can't get much worse.",
+                            "That's a big decision. The next hire has to be right.",
+                            'Somebody has to answer for the results, and it usually ends up being the coach.',
                           ]
-                        : [
-                            "The offense was cooking. Best scoring night of the year, and I'm here for it.",
-                            "That's what it looks like when everything's falling.",
-                          ]
-                      : /record watch/i.test(type)
-                        ? [
-                            "Get your popcorn ready. That record's in trouble.",
-                            'I want to see this one fall. Go get it.',
-                          ]
-                        : /milestone/i.test(type)
-                          ? [
-                              "That's a lot of buckets. Longevity matters, and that's proof.",
-                              "Put that on the résumé. Milestones don't happen by accident.",
-                            ]
-                          : /record/i.test(type)
+                        : /team record/i.test(type)
+                          ? /low/i.test(story.headline || '') || evidence.some(e => /low/.test(e.label))
                             ? [
-                                "That's history. Put it in the books.",
-                                "That's a number that's going to stick around for a while.",
+                                "That's ugly. I don't know what else to say about that. You have to score.",
+                                "Rock bottom. The only good news is it can't get much worse.",
                               ]
-                            : /poll/i.test(type)
+                            : [
+                                "The offense was cooking. Best scoring night of the year, and I'm here for it.",
+                                "That's what it looks like when everything's falling.",
+                              ]
+                          : /record watch/i.test(type)
+                            ? [
+                                "Get your popcorn ready. That record's in trouble.",
+                                'I want to see this one fall. Go get it.',
+                              ]
+                            : /milestone/i.test(type)
                               ? [
-                                  'Preseason polls are made to be wrong. Somebody has to earn that spot.',
-                                  'No. 1 in the preseason just means everybody circles your game.',
+                                  "That's a lot of buckets. Longevity matters, and that's proof.",
+                                  "Put that on the résumé. Milestones don't happen by accident.",
                                 ]
-                              : ["That's worth watching.", "Noted. We'll see where it goes."];
+                              : /record/i.test(type)
+                                ? [
+                                    "That's history. Put it in the books.",
+                                    "That's a number that's going to stick around for a while.",
+                                  ]
+                                : /poll/i.test(type)
+                                  ? [
+                                      'Preseason polls are made to be wrong. Somebody has to earn that spot.',
+                                      'No. 1 in the preseason just means everybody circles your game.',
+                                    ]
+                                  : ["That's worth watching.", "Noted. We'll see where it goes."];
     const closings = /trade request/i.test(type)
       ? [
           "No deal yet. We'll see how the team handles it.",
@@ -2365,31 +2552,84 @@
                 'Get well soon. That one stings.',
                 "Somebody's getting more minutes. Let's see who takes them.",
               ]
-            : /team record/i.test(type)
-              ? ["That's the number of the night.", 'Moving on.', "We'll see if it holds up.", 'Next topic.']
-              : /record/i.test(type)
+            : /coach retirement/i.test(type)
+              ? [
+                  'Tip of the cap to a career on the sideline.',
+                  "That's a lot of years on the bench. Enjoy retirement.",
+                  'Coaches like that shape a lot of careers.',
+                  'What a run on the sideline.',
+                ]
+              : /coach/i.test(type) && hired
                 ? [
-                    "We'll keep watching the record book.",
-                    'History made. Moving on.',
-                    "That one's going in the archive.",
+                    "New era. We'll see how it starts.",
+                    'Welcome to the job. Now go win some games.',
+                    "We'll see how fast they can turn it into wins.",
+                    'First practice is going to be interesting.',
                   ]
-                : /poll/i.test(type)
+                : /coach/i.test(type)
                   ? [
-                      "We'll see how long it holds.",
-                      'Now they have to play the games.',
-                      'Ask us again in a month.',
-                      'The games will sort it out.',
+                      'Now the search begins.',
+                      'Whoever gets that job next inherits a lot.',
+                      "We'll keep an eye on who they bring in.",
+                      "That's a tough day for that locker room.",
                     ]
-                  : [
-                      "We'll come back to it when there's more to report.",
-                      "That's the latest.",
-                      'Moving on.',
-                      'More on that as it develops.',
-                    ];
+                  : /retir|hall|jersey/i.test(type)
+                    ? [
+                        'What a career.',
+                        'Tip of the cap.',
+                        'That one deserves the moment.',
+                        'They earned every bit of that.',
+                      ]
+                    : /sign|commit|option|exten/i.test(type)
+                      ? [
+                          'Now they have to earn it.',
+                          "We'll see how it pays off.",
+                          'Good business. Now go play.',
+                          'Ink is dry.',
+                        ]
+                      : /trade/i.test(type)
+                        ? [
+                            "We'll see who wins this one.",
+                            "Grades come later. Let's see it on the floor.",
+                            'New uniform, new role.',
+                            "That's a shake-up.",
+                          ]
+                        : /team record/i.test(type)
+                          ? [
+                              "That's the number of the night.",
+                              'Mark it down.',
+                              "We'll see if it holds up.",
+                              'Write that one down.',
+                            ]
+                          : /record/i.test(type)
+                            ? [
+                                "We'll keep watching the record book.",
+                                'History made.',
+                                "That one's going in the archive.",
+                              ]
+                            : /poll/i.test(type)
+                              ? [
+                                  "We'll see how long it holds.",
+                                  'Now they have to play the games.',
+                                  'Ask us again in a month.',
+                                  'The games will sort it out.',
+                                ]
+                              : [
+                                  "We'll come back to it when there's more to report.",
+                                  "That's the latest.",
+                                  "That's where it stands for now.",
+                                  'More on that as it develops.',
+                                ];
     const body = detail
-      ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
+      ? [turn(3, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
-    return frame(story, 'brief', openings, closings, body.slice(0, 2));
+    const talk = [...coachingTalk(story, !!detail), ...scoringTalk(story), ...playerTalk(story), ...tradeTalk(story)];
+    // When the numbers host has read the stat line and nobody else answers, the second host takes the reply.
+    if (detail && !talk.some(t => t.speaker === 2)) {
+      const reply = talk.find(t => t.speaker === 3);
+      if (reply) reply.speaker = 2;
+    }
+    return frame(story, 'brief', openings, closings, [...body.slice(0, 2), ...talk]);
   }
   // Offseason roundups: the desk argues about the names at the top.
   function roundupScript(story, n = first()) {
@@ -2401,6 +2641,12 @@
       line = c => (c ? `${c.PTS} points${c.REB ? ` and ${c.REB} rebounds` : ''}` : ''),
       last = x => C.surname(x.name),
       [, J, A] = n;
+    // "Freddie Murphy, Charles Bwambale and Omar Ammar to the Hurricanes", not the team once per name.
+    const byTeam = items => {
+      const groups = new Map();
+      for (const x of items) groups.set(T(x), [...(groups.get(T(x)) || []), x.name]);
+      return [...groups].map(([team, names]) => `${join(names)} to ${team}`);
+    };
     const body = [];
     let open, close;
     if (r.type === 2) {
@@ -2505,7 +2751,7 @@
           body.push(
             turn(
               3,
-              `Also moving: ${join(vets.slice(1, 4).map(x => `${x.name} to ${T(x)}`))}.${rookies ? ` And ${C.plural(rookies, 'rookie')} signed first deals.` : ''}`
+              `${vets.slice(1, 4).every(x => T(x) === T(top)) ? `${C.capitalize(T(top))} also added ${join(vets.slice(1, 4).map(x => x.name))}` : `Also moving: ${join(byTeam(vets.slice(1, 4)))}`}.${rookies ? ` And ${C.plural(rookies, 'rookie')} signed first deals.` : ''}`
             )
           );
       } else
@@ -3308,21 +3554,67 @@
       .replace(/(^|[.!?]\s+)([a-z])/g, (m, before, letter) => before + letter.toUpperCase())
       .replace(/\b([Aa]) (?=(?:8|11|18|8\d)(?!\d))/g, '$1n ');
   }
+  // Each episode opens and closes in one of a few ways, the same one every time it plays. Every intro
+  // introduces all four hosts in their roles; every outro thanks them and signs off from HoopWire TV.
   function episode(story, names = defaultNames, context) {
     if (!story) return [];
-    const n = first(names);
+    const n = first(names),
+      [A, B, C2, D] = names;
+    const intro = pick(
+      story,
+      [
+        [
+          `Welcome to HoopWire TV! I'm ${A}, and this is The Daily Desk.`,
+          `${B}. I've got takes, and I'm not apologizing for any of them.`,
+          `${C2}, here to keep ${n[1]} honest.`,
+          `And I'm ${D}, with the numbers. Let's get into it.`,
+        ],
+        [
+          `Good evening, and welcome to The Daily Desk on HoopWire TV. I'm ${A}.`,
+          `${B}, and yes, I already disagree with somebody.`,
+          `${C2}. Somebody has to keep ${n[1]} in check.`,
+          `And ${D}, with the numbers. Let's go.`,
+        ],
+        [
+          `This is HoopWire TV, and you're watching The Daily Desk. I'm ${A}.`,
+          `${B}. Strong opinions, no refunds.`,
+          `${C2}, here to fact-check ${n[1]}.`,
+          `And I'm ${D}. I bring the numbers, they bring the noise. Let's get to it.`,
+        ],
+        [
+          `Welcome back to The Daily Desk on HoopWire TV. I'm ${A}, and we've got a good one tonight.`,
+          `${B}. I've been waiting all day for this one.`,
+          `${C2}. ${n[1]}'s been waiting all day to be wrong.`,
+          `And ${D}, with the numbers. Let's get into it.`,
+        ],
+      ],
+      'episode:intro'
+    );
+    const outro = pick(
+      story,
+      [
+        [
+          [0, `That's the show. ${n[1]}, ${n[2]}, ${n[3]}, thank you.`],
+          [1, "Always a pleasure. Even when they're wrong."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV. We'll see you next time!`],
+        ],
+        [
+          [0, `That'll do it for The Daily Desk. ${n[1]}, ${n[2]}, ${n[3]}, thanks.`],
+          [1, "Same time next show. I'll still be right."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV!`],
+        ],
+        [
+          [0, `And that's our show. Thanks to ${n[1]}, ${n[2]} and ${n[3]}.`],
+          [2, "We'll pick the argument back up next time."],
+          [0, `For ${B}, ${C2} and ${D}, I'm ${A}. Thanks for watching HoopWire TV. Good night, everybody!`],
+        ],
+      ],
+      'episode:outro'
+    );
     return [
-      turn(0, `Welcome to HoopWire TV! I'm ${names[0]}, and this is The Daily Desk.`),
-      turn(1, `${names[1]}. I've got takes, and I'm not apologizing for any of them.`),
-      turn(2, `${names[2]}, here to keep ${n[1]} honest.`),
-      turn(3, `And I'm ${names[3]}, with the numbers. Let's get into it.`),
+      ...intro.map((text, i) => turn(i, text)),
       ...script(story, context, names),
-      turn(0, `That's the show. ${n[1]}, ${n[2]}, ${n[3]}, thank you.`),
-      turn(1, "Always a pleasure. Even when they're wrong."),
-      turn(
-        0,
-        `For ${names[1]}, ${names[2]} and ${names[3]}, I'm ${names[0]}. Thanks for watching HoopWire TV. We'll see you next time!`
-      ),
+      ...outro.map(([speaker, text]) => turn(speaker, text)),
     ];
   }
   return {

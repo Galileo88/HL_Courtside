@@ -128,7 +128,14 @@ test('team season low requires complete schedule; highs do not imply personal lo
     results: [{ ...g, gId: i + 1, homeScore: score }],
   }));
   l.teams[0].season[0].seasonStats.GP = 6;
-  assert.ok(R.candidates(l).some(x => x.story.eventKey === 'team-scoring-low-1-6'));
+  const low = R.candidates(l).find(x => x.story.eventKey === 'team-scoring-low-1-6').story;
+  // The desk hears how the game ended and how far it was from the usual night.
+  const B = require('../js/broadcast/broadcast-content.js');
+  const said = B.script(low).map(t => [t.speaker, t.text]);
+  assert.deepEqual(said.slice(2, 4), [
+    [2, 'They still found a way to win, though. Held the Moons to 8.'],
+    [3, "They'd been averaging 50 coming in."],
+  ]);
   l.teams[0].season[0].seasonStats.GP = 7;
   assert.ok(!R.candidates(l).some(x => x.story.type === 'Team record'));
   assert.ok(!R.candidates(l).some(x => /career low/.test(x.story.paragraphs.join(' '))));
