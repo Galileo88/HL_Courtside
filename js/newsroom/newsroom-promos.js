@@ -243,9 +243,9 @@
       bg: '#17314b',
       title: 'Horizon Airways',
       logo: 'brand2.png',
-      subtitle: 'THE AWAY GAME COLLECTION',
+      subtitle: 'NONSTOP TO EVERY ROAD GAME',
       tagline: 'Your next destination awaits.',
-      alt: 'Suited sprite traveler against a sunset skyline',
+      alt: 'A Horizon Airways jet crossing the sunset above a suited sprite traveler and the skyline',
       cls: 'wire-airways-ad',
     },
     streaming: {
