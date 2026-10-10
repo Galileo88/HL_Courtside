@@ -2317,6 +2317,37 @@
     }
     return lines;
   }
+  // A team's season scoring high or low: how the game ended, then how far it was from their usual night.
+  function scoringTalk(story) {
+    const e = (story.seasonSnapshot?.evidence || []).find(x => /^Team season scoring/.test(x.label));
+    if (!e || typeof e.won !== 'boolean' || !Number.isFinite(e.opponentScore)) return [];
+    const margin = Math.abs(e.value - e.opponentScore),
+      them = e.opponent ? `The ${e.opponent}` : 'The other side',
+      lines = [];
+    if (e.direction === 'high')
+      lines.push(
+        turn(
+          2,
+          !e.won
+            ? `They still lost, though. ${them} put up ${e.opponentScore}.`
+            : margin <= 3
+              ? `And they needed every one of them. They won by ${C.num(margin)}.`
+              : `And it got them a ${margin}-point win.`
+        )
+      );
+    else
+      lines.push(
+        turn(
+          2,
+          e.won
+            ? `They still found a way to win, though. Held the ${e.opponent || 'other side'} to ${e.opponentScore}.`
+            : `They lost by ${margin}. Not a night anybody wants to watch back.`
+        )
+      );
+    if (Number.isFinite(e.average) && Math.abs(e.value - e.average) >= 3)
+      lines.push(turn(3, `They'd been averaging ${e.average} coming in.`));
+    return lines;
+  }
   function genericScript(story, n = first()) {
     const headline = sentence(String(story.headline || 'More news from around the league'));
     const paragraphs = (story.paragraphs || []).filter(
@@ -2515,7 +2546,11 @@
     const body = detail
       ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
-    return frame(story, 'brief', openings, closings, [...body.slice(0, 2), ...coachingTalk(story, !!detail)]);
+    return frame(story, 'brief', openings, closings, [
+      ...body.slice(0, 2),
+      ...coachingTalk(story, !!detail),
+      ...scoringTalk(story),
+    ]);
   }
   // Offseason roundups: the desk argues about the names at the top.
   function roundupScript(story, n = first()) {
