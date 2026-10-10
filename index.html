@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>HoopWire — Hoop Land News Generator</title>
+    <meta name="description" content="News and broadcasts for your Hoop Land league." />
+    <meta name="application-name" content="HoopWire" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0d3971" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png" />
@@ -37,6 +39,13 @@
           <a href="#archive">Archive</a>
           <button id="menuUploadSave" type="button">Update save</button>
           <a href="#welcome">Your saves</a>
+          <a
+            class="suite-menu-link"
+            href="https://galileo88.github.io/Hoop-League-Studio/"
+            target="_blank"
+            rel="noopener"
+            >Hoop League Studio <span aria-hidden="true">↗</span></a
+          >
         </div>
       </div>
     </header>
@@ -75,6 +84,13 @@
             <button id="newSaveButton" class="new-save" type="button">+ New save</button>
           </article>
         </div>
+        <p class="suite-note">
+          Building a league?
+          <a href="https://galileo88.github.io/Hoop-League-Studio/" target="_blank" rel="noopener"
+            >Hoop League Studio</a
+          >
+          creates and edits Hoop Land leagues, and its exports carry a HoopWire tag.
+        </p>
       </section>
       <section id="newsroom" class="newsroom-heading hidden">
         <div>
@@ -201,10 +217,10 @@
           <figcaption id="tvStudioCaption" class="sr-only"></figcaption>
         </figure>
         <div class="tv-controls tv-playback" role="group" aria-label="Story navigation">
-          <button id="tvPrevious" aria-label="Previous Story" disabled>
-            <span aria-hidden="true">←</span> Previous Story
+          <button id="tvPrevious" aria-label="Previous story" disabled>
+            <span aria-hidden="true">←</span> Previous story
           </button>
-          <button id="tvNext" aria-label="Next Story" disabled>Next Story <span aria-hidden="true">→</span></button>
+          <button id="tvNext" aria-label="Next story" disabled>Next story <span aria-hidden="true">→</span></button>
           <input id="tvVoice" type="checkbox" checked hidden aria-hidden="true" />
         </div>
         <div hidden>
