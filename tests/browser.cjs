@@ -145,8 +145,6 @@ async function openPage(browser, url, seed) {
     assert.equal(await page.locator('#archive').isVisible(), false);
     await openArchive(page);
     await page.locator('#archive').screenshot({ path: path.join(root, 'artifacts/archive-tree.png') });
-    await page.locator('#resetArchive').click();
-    await page.locator('#cancelReset').click();
     assert.deepEqual(await records(page), original);
     const later = structuredClone(sample),
       l = later.seasonLeagues[0],
@@ -273,31 +271,6 @@ async function openPage(browser, url, seed) {
     await ready(fresh.page);
     assert.match(await fresh.page.locator('#status').textContent(), /invalid article/);
     assert.deepEqual(await records(fresh.page), all);
-    await fresh.page.evaluate(() => {
-      window.savedReset = HoopWireArchive.prototype.resetAll;
-      HoopWireArchive.prototype.resetAll = async () => {
-        throw Error('Reset storage failure');
-      };
-    });
-    await fresh.page.locator('#resetArchive').click();
-    await fresh.page.locator('#confirmReset').click();
-    await ready(fresh.page);
-    assert.match(await fresh.page.locator('#status').textContent(), /Reset storage failure/);
-    assert.deepEqual(await records(fresh.page), all);
-    const resetLeague = await fresh.page.locator('#archiveLeague').inputValue();
-    const beforeSnaps = await records(fresh.page, 'snapshots'),
-      beforeLeagues = await records(fresh.page, 'leagues');
-    await fresh.page.evaluate(() => (HoopWireArchive.prototype.resetAll = window.savedReset));
-    await fresh.page.locator('#resetArchive').click();
-    await fresh.page.locator('#confirmReset').click();
-    await ready(fresh.page);
-    assert.ok(resetLeague && beforeSnaps.length && beforeLeagues.length > 1);
-    assert.deepEqual(await records(fresh.page), []);
-    assert.deepEqual(await records(fresh.page, 'snapshots'), []);
-    assert.deepEqual(await records(fresh.page, 'leagues'), []);
-    await fresh.page.reload();
-    await ready(fresh.page);
-    assert.deepEqual(await records(fresh.page), []);
     await fresh.context.close();
     const legacy = { ...original[0] };
     delete legacy.imageBytes;

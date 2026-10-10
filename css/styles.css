@@ -1148,15 +1148,6 @@ select {
   padding: 10px 15px;
   line-height: 1.2;
 }
-.archive-panel .actions button.danger {
-  margin-left: auto;
-  background: none;
-  color: #ff9aa8;
-  border-color: #a8404f;
-}
-.archive-panel .actions button.danger:hover:not(:disabled) {
-  background: #4a1520;
-}
 
 /* Site menu: the topbar's one way back to loading a save. */
 .site-menu {

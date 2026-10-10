@@ -227,13 +227,49 @@
     if (more.length) {
       const mixed = more.filter(x => x.favorable !== c.favorable),
         same = more.filter(x => x.favorable === c.favorable);
-      const phrase = x =>
-        `${x.key === 'TO' ? (x.actual === 0 ? 'no turnovers' : count(x.actual, 'TO')) : count(x.actual, x.key)} against an average of ${average(x.expected)}`;
-      if (same.length) paragraphs.push(`${subject} also finished with ${C.listJoin(same.map(phrase))}.`);
-      if (mixed.length)
-        paragraphs.push(
-          `${c.favorable ? "It wasn't all good news" : 'There was a bright side'}: ${C.listJoin(mixed.map(phrase))}.`
-        );
+      // "four turnovers, far beyond his usual 0.6", or the plain fact when the line was empty.
+      const usual = x => {
+        const ratio = x.actual / x.expected,
+          word =
+            ratio >= 3
+              ? 'far beyond'
+              : ratio >= 2
+                ? 'more than double'
+                : ratio >= 1.5
+                  ? 'well above'
+                  : ratio > 1
+                    ? 'above'
+                    : ratio <= 0.4
+                      ? 'a fraction of'
+                      : ratio <= 0.6
+                        ? 'about half'
+                        : 'below';
+        return `${word} ${he ? `${he === 'she' ? 'her' : 'his'} usual` : 'the usual'} ${average(x.expected)}`;
+      };
+      const zero = x =>
+          x.key === 'TO'
+            ? "didn't turn the ball over"
+            : x.key === 'PTS'
+              ? "didn't score"
+              : `didn't have ${/^[aeiou]/.test(unit[x.key][0]) ? 'an' : 'a'} ${unit[x.key][0]}`,
+        had = x => `${x.actual < x.expected ? 'just ' : ''}${count(x.actual, x.key)}`;
+      // The rest of a big night reads as more of the same; a line going the other way reads as the catch.
+      const extra = same.map((x, i) =>
+        x.actual === 0
+          ? `${subject} also ${zero(x)}.`
+          : `${subject} ${x.key === 'TO' ? 'also committed' : i ? 'added' : 'also had'} ${count(x.actual, x.key)}, ${usual(x)}.`
+      );
+      const catches = mixed.map((x, i) =>
+        x.actual === 0
+          ? `${subject}${i ? ' also' : ''} ${zero(x)}${i ? '' : ', though'}${x.key === 'TO' ? '' : `, after averaging ${average(x.expected)}`}.`
+          : x.key === 'TO' && x.favorable
+            ? `${subject} did take care of the ball${i ? '' : ', though'}: ${had(x)}, ${usual(x)}.`
+            : i
+              ? `${subject} also had ${had(x)}, ${usual(x)}.`
+              : `${subject} did have ${had(x)}, though, ${usual(x)}.`
+      );
+      if (extra.length) paragraphs.push(extra.join(' '));
+      if (catches.length) paragraphs.push(catches.join(' '));
     }
     return paragraphs;
   }

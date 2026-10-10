@@ -146,6 +146,21 @@ test('a bench breakout needs a line that is news on its own', () => {
   assert.match(story.headline, /off the bench|sparks bench/);
   assert.match(story.paragraphs.join(' '), /mostly come off the bench this season/);
 });
+test('a line going the other way reads as the catch on a big night', () => {
+  const l = fixture(),
+    bo = l.teams[0].roster[1];
+  bo.gameStats.PTS = 35;
+  bo.stats[0].season[0].PTS += 25;
+  l.teams[0].roster[2].gameStats.PTS -= 25;
+  l.teams[0].roster[2].stats[0].season[0].PTS -= 25;
+  bo.gameStats.TO = 7;
+  bo.stats[0].season[0].TO += 5;
+  const text = P.candidates(l)
+    .find(x => x.story.playerId === 12)
+    .story.paragraphs.join(' ');
+  assert.match(text, /He did have seven turnovers, though, (?:far beyond|more than double) his usual 2\.0\./);
+  assert.doesNotMatch(text, /against an average|wasn't all good news|bright side/);
+});
 test('one story per team per game keeps the strongest night', () => {
   const l = fixture(),
     bo = l.teams[0].roster[1];
