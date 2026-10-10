@@ -4,7 +4,9 @@
    - label: muted capitals for league, season and day
    - title: the UI face, heavy, tight; prose alone uses the serif
    - panel: deep navy, a hairline border, a red rule on top
-   - active state: teal underline */
+   - active state: teal underline
+   Hoop League Studio's assets/css/suite.css copies these tokens so both apps look like one suite;
+   change both together. */
 :root {
   --hw-font-ui: 'Segoe UI', Arial, Helvetica, sans-serif;
   --hw-font-serif: Georgia, 'Times New Roman', serif;
