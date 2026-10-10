@@ -91,10 +91,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const player = await page.textContent('.profile');
     // College players read by class; pros by years in the league.
     const profileLines = await page.locator('.profile-line').allTextContents();
-    assert.ok(
-      profileLines.some(l => /^(?:Fr|So|Jr|Sr)\.$|^Rookie$|^Years Pro: (?:[2-9]|\d{2,})$/.test(l.trim())),
-      profileLines.join(' | ')
-    );
+    assert.match(profileLines[0], / · (?:Fr\.|So\.|Jr\.|Sr\.|Rookie|Years Pro: (?:[2-9]|\d{2,}))$/);
     assert.doesNotMatch(player, /college season|pro season|Freshman|Years Pro: 1\b/);
     assert.match(player, /Player ·/);
     assert.match(player, /Latest game/);
@@ -132,8 +129,9 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     ]) {
       await page.evaluate(h => (location.hash = h), hash);
       await page.waitForFunction(h => location.hash === h && document.querySelector('.profile-line'), hash);
-      const shown = (await page.locator('.profile-line').allTextContents()).map(l => l.trim());
-      assert.ok(shown.includes(label), `${hash}: ${shown.join(' | ')}`);
+      // The experience ends the first line, after the team.
+      const first = (await page.locator('.profile-line').first().textContent()).trim();
+      assert.ok(first.endsWith(` · ${label}`), `${hash}: ${first}`);
     }
     // A missing profile says so instead of breaking.
     await page.evaluate(() => (location.hash = '#player/nope/1'));

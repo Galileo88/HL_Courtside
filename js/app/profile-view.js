@@ -221,10 +221,15 @@
     const role = [p.number != null ? `#${p.number}` : null, p.position ? C.capitalize(p.position) : null]
       .filter(Boolean)
       .join(' · ');
+    // Experience follows the team: "#34 · Point guard · Trojans · Sr.".
+    const experience = p.retired ? null : seasonLabel(p);
     const lines = [
-      [role, ...(team && teamName ? [role ? ' · ' : '', link(teamName, href(team))] : p.retired ? [' · Retired'] : [])],
+      [
+        role,
+        ...(team && teamName ? [role ? ' · ' : '', link(teamName, href(team))] : p.retired ? [' · Retired'] : []),
+        ...(experience ? [role || (team && teamName) ? ' · ' : '', experience] : []),
+      ],
       bioLine(p),
-      seasonLabel(p),
     ];
     const out = [header(p, `Player · ${p.leagueName}`, lines)];
     const year = p.asOf.season,
