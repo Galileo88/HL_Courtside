@@ -117,12 +117,11 @@
       .join(' · ');
   }
   // College players by class, as the stories write it (Fr., So., Jr., Sr.); pros by seasons in the league,
-  // this one included.
+  // this one included, with a first-year pro called a rookie.
   function seasonLabel(p) {
     if (p.years == null) return null;
-    return p.leagueType === 1
-      ? ['Fr.', 'So.', 'Jr.', 'Sr.'][Math.min(3, Math.max(0, p.years))]
-      : `Years Pro: ${p.years + 1}`;
+    if (p.leagueType === 1) return ['Fr.', 'So.', 'Jr.', 'Sr.'][Math.min(3, Math.max(0, p.years))];
+    return p.years === 0 ? 'Rookie' : `Years Pro: ${p.years + 1}`;
   }
   function stories(ctx, profile) {
     const name = profile.name;

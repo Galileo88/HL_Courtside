@@ -124,6 +124,17 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     );
     assert.match(await page.textContent('.profile'), /Player ·/);
 
+    // A pro rookie, a third-year pro and a college freshman from the save.
+    for (const [hash, label] of [
+      ['#player/hw-smallpro-franchise/38', 'Rookie'],
+      ['#player/hw-smallpro-franchise/2', 'Years Pro: 3'],
+      ['#player/hw-smallcollege-franchise/6', 'Fr.'],
+    ]) {
+      await page.evaluate(h => (location.hash = h), hash);
+      await page.waitForFunction(h => location.hash === h && document.querySelector('.profile-line'), hash);
+      const shown = (await page.locator('.profile-line').allTextContents()).map(l => l.trim());
+      assert.ok(shown.includes(label), `${hash}: ${shown.join(' | ')}`);
+    }
     // A missing profile says so instead of breaking.
     await page.evaluate(() => (location.hash = '#player/nope/1'));
     await page.waitForSelector('.panel.muted');
