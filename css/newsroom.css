@@ -1,6 +1,9 @@
 .shell:has(.front-page:not(.hidden)) {
   width: min(1280px, calc(100% - 28px));
   max-width: 1280px;
+  /* The score ticker sits right under the navigation bar. */
+  margin-top: 0;
+  padding-top: 0;
 }
 .front-page {
   gap: 28px;
@@ -368,7 +371,6 @@ a.wire-score:focus-visible {
   }
   .shell:has(.front-page:not(.hidden)) {
     width: 100%;
-    padding-top: 12px;
   }
   .front-page {
     gap: 24px;
