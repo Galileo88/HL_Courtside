@@ -116,10 +116,12 @@
       .filter(Boolean)
       .join(' · ');
   }
+  // College players by class, as the stories write it (Fr., So., Jr., Sr.); pros by seasons in the league,
+  // this one included, with a first-year pro called a rookie.
   function seasonLabel(p) {
     if (p.years == null) return null;
-    const word = p.leagueType === 1 ? 'college' : 'pro';
-    return p.years === 0 ? (p.leagueType === 1 ? 'Freshman' : 'Rookie') : `${ordinal(p.years + 1)} ${word} season`;
+    if (p.leagueType === 1) return ['Fr.', 'So.', 'Jr.', 'Sr.'][Math.min(3, Math.max(0, p.years))];
+    return p.years === 0 ? 'Rookie' : `Years Pro: ${p.years + 1}`;
   }
   function stories(ctx, profile) {
     const name = profile.name;
@@ -219,10 +221,15 @@
     const role = [p.number != null ? `#${p.number}` : null, p.position ? C.capitalize(p.position) : null]
       .filter(Boolean)
       .join(' · ');
+    // Experience follows the team: "#34 · Point guard · Trojans · Sr.".
+    const experience = p.retired ? null : seasonLabel(p);
     const lines = [
-      [role, ...(team && teamName ? [role ? ' · ' : '', link(teamName, href(team))] : p.retired ? [' · Retired'] : [])],
+      [
+        role,
+        ...(team && teamName ? [role ? ' · ' : '', link(teamName, href(team))] : p.retired ? [' · Retired'] : []),
+        ...(experience ? [role || (team && teamName) ? ' · ' : '', experience] : []),
+      ],
       bioLine(p),
-      seasonLabel(p),
     ];
     const out = [header(p, `Player · ${p.leagueName}`, lines)];
     const year = p.asOf.season,
