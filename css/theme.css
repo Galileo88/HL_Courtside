@@ -570,12 +570,21 @@ dialog h2 {
 
 /* Profile pages. */
 .profile-header {
-  display: flex;
-  gap: 18px;
-  /* The portrait or logo lines up with the top of the text beside it. */
-  align-items: flex-start;
+  /* The label sits above in the text column; the portrait or logo starts on the name's row, so its top lines up
+     with the name however many lines the label takes. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: start;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--hw-line);
+}
+.profile-logo,
+.profile-portrait {
+  grid-column: 1;
+  grid-row: 2 / span 4;
+  /* From the top of the name's line down to the top of its capitals. */
+  margin-top: 7px;
 }
 .profile-logo {
   width: 84px;
@@ -589,14 +598,16 @@ dialog h2 {
   width: 95px;
   height: 90px;
   flex: none;
-  /* Its top edge meets the top of the label's capitals, not the label's line box. */
-  margin-top: 3px;
   image-rendering: pixelated;
   background: var(--hw-panel-deep);
   border: 1px solid var(--hw-line);
   border-radius: 8px;
 }
 .profile-heading {
+  display: contents;
+}
+.profile-heading > * {
+  grid-column: 2;
   min-width: 0;
 }
 .profile-heading > .article-meta {
@@ -661,7 +672,11 @@ dialog h2 {
 }
 @media (max-width: 640px) {
   .profile-header {
-    gap: 12px;
+    column-gap: 12px;
+  }
+  .profile-logo,
+  .profile-portrait {
+    margin-top: 4px;
   }
   .profile-logo {
     width: 56px;
