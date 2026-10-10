@@ -1176,12 +1176,12 @@
         b = h.meetings - h.winnerWins;
       notes.push(
         a === h.meetings
-          ? `${capitalize(W.short)} ${shortVerb(W, 'have')} won ${h.meetings === 2 ? 'both' : `all ${num(h.meetings)}`} meetings this season.`
+          ? `${capitalize(W.short)} ${shortVerb(W, 'have')} won ${h.meetings === 2 ? 'both' : `all ${num(h.meetings)}`} meetings with ${L.short} this season.`
           : a === b
-            ? `The teams have split ${num(h.meetings)} meetings this season.`
+            ? `${capitalize(W.short)} and ${L.short} have split ${num(h.meetings)} meetings this season.`
             : a > b
-              ? `${capitalize(W.short)} ${shortVerb(W, 'lead')} the season series ${a}-${b}.`
-              : `${capitalize(L.short)} still ${shortVerb(L, 'lead')} the season series ${b}-${a}.`
+              ? `${capitalize(W.short)} ${shortVerb(W, 'lead')} the season series with ${L.short}, ${a}-${b}.`
+              : `${capitalize(L.short)} still ${shortVerb(L, 'lead')} the season series with ${W.short}, ${b}-${a}.`
       );
     }
     return notes.slice(0, 2).join(' ');
@@ -1387,7 +1387,7 @@
       headline: headline(ctx, seed),
       paragraphs: paragraphs.filter(Boolean),
       templateVersion: 3,
-      editorialVersion: 3,
+      editorialVersion: 4,
       leagueName: ctx.leagueName,
       playerStats: ctx.potgStats ? structuredClone(ctx.potgStats) : null,
       playerId: ctx.potg?.id ?? null,
@@ -1432,7 +1432,7 @@
       (existing.templateVersion === 3 &&
         ((!existing.playerStats && ctx.potgStatsTrusted) ||
           (!existing.coach && !!ctx.coach) ||
-          (existing.editorialVersion || 0) < 3))
+          (existing.editorialVersion || 0) < 4))
     );
   }
   function coachParagraph(ctx, seed) {
