@@ -441,7 +441,7 @@
         el.noticeText.textContent = error.message;
         el.noticeDialog.showModal();
         el.status.classList.add('hidden');
-      } else status(`${error.message} Nothing was confirmed as archived. Your existing archive has been retained.`);
+      } else status(error.message);
     } finally {
       state.busy = false;
       controls();
@@ -2129,8 +2129,13 @@
     el.saveFile.value = '';
     if (!file) return;
     run(async () => {
-      const parsed = JSON.parse(await file.text());
-      C.assertSave(parsed);
+      let parsed;
+      try {
+        parsed = JSON.parse(await file.text());
+        C.assertSave(parsed);
+      } catch {
+        throw new Error('This is not a Hoop Land save file.');
+      }
       const problem = saveProblem(parsed, creating ? null : state.save);
       if (problem) throw new SaveRejected(problem);
       const league = parsed.seasonLeagues.find(l => l.leagueType === 0) || parsed.seasonLeagues[0];
