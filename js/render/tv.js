@@ -1,7 +1,7 @@
 /* The HoopWire TV studio: four hosts at the announcer desk with the league's ad artwork. */
 (() => {
   'use strict';
-  const VERSION = 7;
+  const VERSION = 8;
   const cache = new Map();
   const names = [
     ['Maya', 'Brooks'],
@@ -77,7 +77,7 @@
   }
   async function compose(input, withHosts = true) {
     const C = window.HoopWireCourt;
-    const [table, graphic, tvLogo, banner, ads] = await Promise.all([
+    const [table, graphic, tvLogo, banner, custom] = await Promise.all([
       C.loadImage('assets/scene/announce-table.png'),
       C.loadImage('assets/scene/announce-table-graphic.png'),
       C.loadImage('assets/brand/hoopwire_logo.png'),
@@ -85,6 +85,9 @@
       C.validURL(input.adsURL) ? C.loadImage(input.adsURL, true).catch(() => null) : null,
       window.HoopWirePlayer.ready(),
     ]);
+    // A league without its own ad sheet, or whose sheet won't load, gets the game's default ads.
+    const ads = custom || (await C.loadImage('assets/scene/billboard-ads.png').catch(() => null)),
+      adSize = custom ? input.adSize : 128;
     const canvas = document.createElement('canvas');
     canvas.width = 960;
     canvas.height = 540;
@@ -133,8 +136,9 @@
     drawLogo(ctx, tvLogo, 480, 369, 34);
     // Pick from the first seven atlas tiles; the eighth repeats the first.
     if (ads) {
-      const tileWidth = Math.min(Math.max(1, Number(input.adSize) || 256), ads.width);
-      const tileHeight = ads.height <= tileWidth / 4 ? ads.height : Math.min(32, ads.height);
+      const tileWidth = Math.min(Math.max(1, Number(adSize) || 256), ads.width);
+      // The game's sheet stacks eight bands, each an eighth of its width tall.
+      const tileHeight = ads.height <= tileWidth / 4 ? ads.height : Math.min(custom ? 32 : tileWidth / 8, ads.height);
       const columns = Math.max(1, Math.floor(ads.width / tileWidth));
       const count = Math.min(7, columns * Math.max(1, Math.floor(ads.height / tileHeight)));
       for (let i = 0; i < 4; i++) {
@@ -171,7 +175,7 @@
       ...(backdropBlob ? { backdropBlob } : {}),
       inputs: structuredClone(input),
       imageAlt: `HoopWire TV studio with four announcers: ${input.announcers.map(p => window.HoopWireCore.playerDisplay(p)).join(', ')}, behind the Hoop Land announcer desk.`,
-      adsStatus: ads ? 'loaded' : input.adsURL ? 'unavailable' : 'none',
+      adsStatus: custom ? 'loaded' : input.adsURL ? 'unavailable' : 'default',
       adsWidth: ads?.width || null,
       adsHeight: ads?.height || null,
     };

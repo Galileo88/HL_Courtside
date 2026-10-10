@@ -152,6 +152,25 @@ const server = http.createServer((req, res) => {
       result.pixels.forEach((pixels, i) => pixels.forEach(pixel => assert.deepEqual(pixel, colors[i])));
       result.behind.forEach((pixel, i) => assert.deepEqual(pixel, colors[i]));
     }
+    // A league without its own ad sheet gets the game's default ads on the desk.
+    const fallback = await page.evaluate(async () => {
+      const studio = await HoopWireTV.render({
+          ...HoopWireTV.inputs({ teams: [], leagueName: 'Default league' }),
+          adSlots: [0, 0, 0, 0],
+        }),
+        bitmap = await createImageBitmap(studio.imageBlob),
+        c = document.createElement('canvas');
+      c.width = 960;
+      c.height = 540;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      // The Koality Game ad is mostly white letters on blue across its window.
+      const row = Array.from({ length: 224 }, (_, x) => Array.from(ctx.getImageData(14 + x, 438, 1, 1).data));
+      return { status: studio.adsStatus, white: row.filter(([r, g, b]) => r > 200 && g > 200 && b > 200).length };
+    });
+    assert.equal(fallback.status, 'default');
+    assert.ok(fallback.white > 20, `default ad drawn (${fallback.white} white pixels)`);
     await page.locator('#sponsorPreview').screenshot({ path: path.join(root, 'artifacts/tv-desk-ads.png') });
     await page.reload();
     await page.waitForFunction(async () => {
@@ -164,7 +183,7 @@ const server = http.createServer((req, res) => {
     });
     assert.deepEqual(errors, []);
     console.log(
-      'Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop and saved-studio upgrade.'
+      'Desk sponsor checks passed: larger ad windows, random selection from ads 1–7 across all four spots for horizontal and vertical atlases, matching backdrop, the game’s default ads for leagues without their own, and saved-studio upgrade.'
     );
   } finally {
     if (browser) await browser.close();
