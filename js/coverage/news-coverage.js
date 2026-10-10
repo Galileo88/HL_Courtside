@@ -133,6 +133,23 @@
   // What the desk can say about a player in the news: role, age, scoring and place on the team, and for an
   // injury, how much of the season it costs, counted from the day it happened.
   function playerFacts(event, info, player, team, league, lookup, year) {
+    if ([16, 17, 22, 25].includes(event.type) && player) {
+      // A farewell or an honor: titles, how long the career ran, and whether it was all in one place.
+      const own = (player.stats || []).filter(x => x.league === league.leagueType),
+        seasons = new Set(own.map(x => x.yr)).size,
+        teams = new Set(own.flatMap(x => (x.season || []).map(y => y.tid))),
+        only = teams.size === 1 ? lookup.teams.get([...teams][0]) : null;
+      return {
+        kind: 'farewell',
+        last: player.ln || C.surname(C.playerDisplay(player)),
+        pronoun: C.pronoun(player) || null,
+        titles: (player.awards || [])
+          .filter(a => a.id === 0 && a.league === league.leagueType)
+          .reduce((k, a) => k + (a.yearsWon || []).length, 0),
+        seasons,
+        oneTeam: only && seasons >= 7 ? C.teamRef(only).nickname : null,
+      };
+    }
     const kind = { 3: 'signing', 10: 'injury', 11: 'return', 30: 'extension' }[event.type];
     if (!kind || !player || !team) return null;
     const now = S.stats(player, league, year),
@@ -165,6 +182,24 @@
       gamesOut: kind === 'injury' && info.injury?.gamesOut > 0 ? info.injury.gamesOut : null,
       gamesLeft: total > 0 && played <= total ? total - played : null,
     };
+  }
+  // A trade, side by side: each team's record and whether it took on players or picks.
+  function tradeFacts(event, lookup, year) {
+    const teams = event.type === 7 ? event.data?.trade?.teams : null;
+    if (!Array.isArray(teams) || teams.length !== 2) return null;
+    const sides = teams.map(side => {
+      const t = lookup.teams.get(side.tid),
+        r = (t?.season || []).find(x => x.yr === year)?.seasonStats,
+        incoming = teams.filter(x => x !== side).flatMap(x => x.assets || []);
+      return {
+        team: t ? C.teamRef(t).nickname : null,
+        W: r?.W ?? null,
+        L: r?.L ?? null,
+        players: incoming.filter(a => a.pid > 0).length,
+        picks: incoming.filter(a => !(a.pid > 0) && a.draftPick?.rd > 0).length,
+      };
+    });
+    return sides.every(x => x.team) ? { sides } : null;
   }
   function coachSubject(c) {
     return c
@@ -1014,6 +1049,7 @@
                                   : 50;
       const coaching = coachEvent ? coachingFacts(event, player, team, lookup, year) : null;
       const playerNews = coachEvent ? null : playerFacts(event, info, player, team, league, lookup, year);
+      const trade = tradeFacts(event, lookup, year);
       const story = {
         id: `${fp}:${year}:season:${key}`,
         eventKey: key,
@@ -1038,6 +1074,7 @@
           newsEvent: structuredClone(event),
           ...(coaching ? { coaching } : {}),
           ...(playerNews ? { newsPlayer: playerNews } : {}),
+          ...(trade ? { trade } : {}),
           source: 'season.news',
         },
       };

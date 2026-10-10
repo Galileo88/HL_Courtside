@@ -2353,6 +2353,17 @@
   function playerTalk(story) {
     const f = story.seasonSnapshot?.newsPlayer;
     if (!f) return [];
+    if (f.kind === 'farewell') {
+      // One thing worth saying about the whole career: the rings, a career in one place, or how long it ran.
+      const said = f.titles
+        ? `And don't forget the ${f.titles === 1 ? 'championship' : `${C.num(f.titles)} championships`}. That's how you want to be remembered.`
+        : f.oneTeam
+          ? `${C.capitalize(C.num(f.seasons))} seasons, all with the ${f.oneTeam}. You don't see that much anymore.`
+          : f.seasons >= 12
+            ? `${C.capitalize(C.num(f.seasons))} seasons in the league. That's a long run.`
+            : null;
+      return said ? [turn(2, said)] : [];
+    }
     const is =
         f.pronoun === 'she' ? "She's" : f.pronoun === 'he' ? "He's" : f.pronoun === 'they' ? "They're" : `${f.last} is`,
       lower = is.replace(/^(She|He|They)/, m => m.toLowerCase()),
@@ -2389,6 +2400,25 @@
         lines.push(turn(3, `Those ${f.gamesOut} games are about a quarter of what's left of the regular season.`));
     } else if (f.kind === 'return' && f.gamesLeft > 0 && f.gamesLeft <= 8)
       lines.push(turn(3, `Just in time, too. Only ${C.plural(f.gamesLeft, 'game')} left in the regular season.`));
+    return lines;
+  }
+  // A two-team trade: a winning team taking on players for picks is going for it; a losing team taking
+  // the picks is thinking about next year. Without picks or records, the take stands on its own.
+  function tradeTalk(story) {
+    const sides = story.seasonSnapshot?.trade?.sides;
+    if (!sides) return [];
+    const pct = x => (Number.isInteger(x.W) && x.W + x.L > 0 ? x.W / (x.W + x.L) : null);
+    const buyer = sides.find(x => x.players && pct(x) >= 0.55 && sides.some(y => y !== x && y.picks)),
+      seller = sides.find(x => x.picks && pct(x) !== null && pct(x) <= 0.45);
+    const lines = [];
+    if (buyer) lines.push(turn(2, `The ${buyer.team} are ${buyer.W}-${buyer.L}. They're going for it.`));
+    if (seller)
+      lines.push(
+        turn(
+          buyer ? 3 : 2,
+          `${buyer ? 'And the' : 'The'} ${seller.team} get ${seller.picks === 1 ? 'a pick' : 'picks'} back. At ${seller.W}-${seller.L}, that's a team thinking about next year.`
+        )
+      );
     return lines;
   }
   function genericScript(story, n = first()) {
@@ -2593,7 +2623,7 @@
     const body = detail
       ? [turn(3, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
-    const talk = [...coachingTalk(story, !!detail), ...scoringTalk(story), ...playerTalk(story)];
+    const talk = [...coachingTalk(story, !!detail), ...scoringTalk(story), ...playerTalk(story), ...tradeTalk(story)];
     // When the numbers host has read the stat line and nobody else answers, the second host takes the reply.
     if (detail && !talk.some(t => t.speaker === 2)) {
       const reply = talk.find(t => t.speaker === 3);
@@ -2611,6 +2641,12 @@
       line = c => (c ? `${c.PTS} points${c.REB ? ` and ${c.REB} rebounds` : ''}` : ''),
       last = x => C.surname(x.name),
       [, J, A] = n;
+    // "Freddie Murphy, Charles Bwambale and Omar Ammar to the Hurricanes", not the team once per name.
+    const byTeam = items => {
+      const groups = new Map();
+      for (const x of items) groups.set(T(x), [...(groups.get(T(x)) || []), x.name]);
+      return [...groups].map(([team, names]) => `${join(names)} to ${team}`);
+    };
     const body = [];
     let open, close;
     if (r.type === 2) {
@@ -2715,7 +2751,7 @@
           body.push(
             turn(
               3,
-              `Also moving: ${join(vets.slice(1, 4).map(x => `${x.name} to ${T(x)}`))}.${rookies ? ` And ${C.plural(rookies, 'rookie')} signed first deals.` : ''}`
+              `${vets.slice(1, 4).every(x => T(x) === T(top)) ? `${C.capitalize(T(top))} also added ${join(vets.slice(1, 4).map(x => x.name))}` : `Also moving: ${join(byTeam(vets.slice(1, 4)))}`}.${rookies ? ` And ${C.plural(rookies, 'rookie')} signed first deals.` : ''}`
             )
           );
       } else

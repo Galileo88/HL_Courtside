@@ -393,3 +393,37 @@ test('player news talks about what the player means to the team, with numbers th
   assert.ok(extension.some(x => x[1] === "And he's only 21, so there's room to grow."));
   for (const lines of [injury, bench, extension]) assert.ok(lines.every(x => !/undefined|NaN|null/.test(x[1])));
 });
+test('trades and farewells get the point a desk would make, only when the save supports it', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const lines = story => B.script(story).map(t => [t.speaker, t.text]);
+  const l = fixture();
+  l.teams[0].season = [{ yr: 8, seasonStats: { W: 4, L: 12 } }];
+  l.teams[1].season = [{ yr: 8, seasonStats: { W: 12, L: 4 } }];
+  l.season.news = [
+    event(7, {
+      data: {
+        trade: {
+          status: 1,
+          teams: [
+            { tid: 1, assets: [{ pid: 11, tid: 2 }] },
+            { tid: 2, assets: [{ pid: 0, tid: 1, draftPick: { yr: 9, rd: 1 } }] },
+          ],
+        },
+      },
+    }),
+  ];
+  const trade = lines(N.candidates(l)[0].story);
+  assert.deepEqual(trade.slice(3, 5), [
+    [2, "The Moons are 12-4. They're going for it."],
+    [3, "And the Stars get a pick back. At 4-12, that's a team thinking about next year."],
+  ]);
+  // Without records, the take stands alone.
+  l.teams[0].season = l.teams[1].season = [];
+  assert.ok(!lines(N.candidates(l)[0].story).some(x => /going for it|next year/.test(x[1])));
+  const r = fixture();
+  r.teams[0].roster[0].awards = [{ id: 0, league: 0, yearsWon: [3, 6] }];
+  r.season.news = [event(17)];
+  assert.ok(lines(N.candidates(r)[0].story).some(x => x[1].startsWith("And don't forget the two championships.")));
+  r.teams[0].roster[0].awards = [];
+  assert.ok(!lines(N.candidates(r)[0].story).some(x => /championship|seasons/.test(x[1])));
+});
