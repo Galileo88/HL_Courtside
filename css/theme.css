@@ -572,7 +572,8 @@ dialog h2 {
 .profile-header {
   display: flex;
   gap: 18px;
-  align-items: center;
+  /* The portrait or logo lines up with the top of the text beside it. */
+  align-items: flex-start;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--hw-line);
 }
@@ -588,6 +589,8 @@ dialog h2 {
   width: 95px;
   height: 90px;
   flex: none;
+  /* Its top edge meets the top of the label's capitals, not the label's line box. */
+  margin-top: 3px;
   image-rendering: pixelated;
   background: var(--hw-panel-deep);
   border: 1px solid var(--hw-line);
@@ -595,6 +598,9 @@ dialog h2 {
 }
 .profile-heading {
   min-width: 0;
+}
+.profile-heading > .article-meta {
+  margin-top: 0;
 }
 .profile-name {
   margin-bottom: 8px;
