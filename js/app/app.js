@@ -4,7 +4,7 @@
   const C = window.HoopWireCore;
   const archive = new window.HoopWireArchive();
   // Raise when story wording changes, so stories from the loaded save are rewritten.
-  const PROSE_EDITION = 6;
+  const PROSE_EDITION = 7;
   const el = Object.fromEntries(
     [
       'saveFile',
@@ -1482,13 +1482,17 @@
     if (story.type === 'Team season review') return ['Regular season', 'Team leaders'];
     if (story.type === 'Regular-season review') return ['Standings', 'Best records'];
     if (story.type === 'Season leaders') return ['League leaders', 'Per game'];
+    // A player's career line from a retirement or honor story.
+    if (headers[0] === 'Stat' && headers[1] === 'Regular season') return ['By the numbers', 'Career'];
     return ['By the numbers', headers[0] || ''];
   }
   function tvBoard(story, headers, rows) {
     const [kicker, title] = tvBoardCaption(story, headers);
     // College standings switch between the bracket seed and the poll behind it.
     const toggle = headers.includes('Seed') && headers.includes('Poll') ? ['Seed', 'Poll'] : null;
-    return statBoard({ kicker, title, headers, rows, ranked: story.type === 'Regular-season review', toggle });
+    // A career line has no leader to mark.
+    const marker = title !== 'Career';
+    return statBoard({ kicker, title, headers, rows, ranked: story.type === 'Regular-season review', toggle, marker });
   }
   // The one stat-table style for TV and articles. subs puts a small line
   // (a team) under each name; tags marks a row (player of the game).

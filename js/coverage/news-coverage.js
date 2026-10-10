@@ -708,7 +708,8 @@
         related = team ? [team] : [],
         headline = '',
         paragraphs = [],
-        rows = [];
+        rows = [],
+        headers = ['Category', 'Value', 'Context'];
       const name = player ? C.playerDisplay(player) : '',
         teamName = team ? C.teamDisplay(team) : '',
         type = types[event.type];
@@ -846,6 +847,7 @@
             headline = `${name} wins ${award.name}`;
             paragraphs = [`${name} has won the ${year} ${award.name}${/award$/i.test(award.name) ? '' : ' award'}.`];
             rows = [[award.name, name, year]];
+            headers = ['Award', 'Winner', 'Season'];
             break;
           }
           case 14:
@@ -948,16 +950,18 @@
           const career = R.history(player, league);
           if (career && [16, 17, 22, 25].includes(event.type)) {
             paragraphs.push(
-              `${C.surname(name)} averaged ${(career.PTS / career.GP).toFixed(1)} points, ${(career.REB / career.GP).toFixed(1)} rebounds and ${(career.AST / career.GP).toFixed(1)} assists over ${career.GP} regular-season games in ${league.shortName || league.leagueName}.`
+              `${C.surname(name)} averaged ${(career.PTS / career.GP).toFixed(1)} points, ${(career.REB / career.GP).toFixed(1)} rebounds and ${(career.AST / career.GP).toFixed(1)} assists over ${career.GP} regular-season games in the ${league.shortName || league.leagueName}.`
             );
+            // The card is the career line; the headline already says what happened.
+            headers = ['Stat', 'Regular season'];
             rows.push(
-              ['Career PPG', (career.PTS / career.GP).toFixed(1), 'Regular season'],
-              ['Career RPG', (career.REB / career.GP).toFixed(1), 'Regular season'],
-              ['Career APG', (career.AST / career.GP).toFixed(1), 'Regular season']
+              ['Points per game', (career.PTS / career.GP).toFixed(1)],
+              ['Rebounds per game', (career.REB / career.GP).toFixed(1)],
+              ['Assists per game', (career.AST / career.GP).toFixed(1)],
+              ['Games', String(career.GP)]
             );
           }
         }
-        if (event.type !== 12) rows.unshift(['Event', type, name]);
       }
       if (event.type === 10 && team) {
         const record = (team.season || []).find(r => r.yr === year);
@@ -1069,7 +1073,7 @@
         createdAt: new Date().toISOString(),
         relatedTeams: related.map(t => ({ id: t.id, name: C.teamDisplay(t), logoURL: t.logoURL || null })),
         seasonSnapshot: {
-          headers: event.type === 7 ? ['From', 'Asset', 'To'] : ['Category', 'Value', 'Context'],
+          headers: event.type === 7 ? ['From', 'Asset', 'To'] : headers,
           rows,
           newsEvent: structuredClone(event),
           ...(coaching ? { coaching } : {}),

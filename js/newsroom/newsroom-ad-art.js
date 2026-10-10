@@ -105,6 +105,42 @@
     image.onerror = reject;
     image.src = 'assets/scene/burger.png';
   });
+  // A side-view airliner in Horizon colors, drawn pixel by pixel so it matches the sprites.
+  const AIRLINER = [
+    'ooo...............................................',
+    'onno..............................................',
+    'onnno.............................................',
+    'onnnno............................................',
+    'onnnnnoooooooooooooooooooooooooooooooooooo........',
+    '.onnnnwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwoo.....',
+    '.onnnwwbwwbwwbwwbwwbwwbwwbwwbwwbwwbwwbwwwwwwwoo...',
+    '..onwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwbbbwwo.',
+    '..oggggggggggggggggggggggggggggggggggggggggggggggo',
+    '...osssssssssssssssssssssssssssssssssssssssssssso.',
+    '....ooooooooooooooonnnnnnnnnnnnoooooooooooooooo...',
+    '.................onnnnnnnnnnno....................',
+    '...............onnnnnnnnnno.......................',
+    '.............onnnnnnoossso........................',
+    '............onnnnno.osssso........................',
+    '...........ooooooo...oooo.........................',
+  ];
+  const AIRLINER_COLORS = {
+    o: '#1a2433',
+    n: '#1f4a6e',
+    w: '#f2efe8',
+    s: '#c3c8d0',
+    g: '#e2b863',
+    b: '#26405e',
+  };
+  function airliner(ctx, x, y, size) {
+    AIRLINER.forEach((row, r) =>
+      [...row].forEach((key, c) => {
+        if (!AIRLINER_COLORS[key]) return;
+        ctx.fillStyle = AIRLINER_COLORS[key];
+        ctx.fillRect(x + c * size, y + r * size, size, size);
+      })
+    );
+  }
   async function compose(product, hosts) {
     await HoopWirePlayer.ready();
     const canvas = document.createElement('canvas');
@@ -193,6 +229,14 @@
       ctx.beginPath();
       ctx.arc(231, 54, 32, 0, Math.PI * 2);
       ctx.fill();
+      // A Horizon jet crosses the sun, its contrail fading behind it.
+      const trail = ctx.createLinearGradient(20, 0, 152, 0);
+      trail.addColorStop(0, 'rgba(255,248,232,0)');
+      trail.addColorStop(1, 'rgba(255,248,232,.55)');
+      ctx.fillStyle = trail;
+      ctx.fillRect(20, 23, 132, 2);
+      ctx.fillRect(40, 28, 112, 1);
+      airliner(ctx, 150, 8, 2);
       for (let i = 0; i < 8; i++) {
         ctx.fillStyle = '#213b53';
         ctx.fillRect(180 + i * 16, 112 - ((i * 19) % 43), 14, 80);
