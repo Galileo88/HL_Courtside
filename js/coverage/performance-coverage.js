@@ -535,11 +535,26 @@
     );
     const extra = c => c !== focus && (scored ? c.mention : c.qualifies);
     const secondary = comparisons.find(c => extra(c) && c.favorable !== focus.favorable) || comparisons.find(extra);
+    // With nothing else in the box score to argue about, the second host weighs the night against the result.
+    const margin = w.score - l.score;
+    if (!secondary && !early && !S?.title) {
+      if (up)
+        say(
+          2,
+          snapshot.won
+            ? "And it came in a win. That's the part that matters."
+            : margin <= 3
+              ? `It wasn't enough, though. They came up ${C.num(margin)} short.`
+              : "It wasn't enough, though. They still lost."
+        );
+      else if (snapshot.won && margin >= 5) say(2, `The rest of the team picked up the slack. They won by ${margin}.`);
+      else if (!snapshot.won) say(2, `It cost them, too. They lost by ${margin}.`);
+    }
     if (secondary) {
       const label =
         secondary.key === 'TO' && secondary.actual === 0
           ? 'no turnovers'
-          : `${secondary.actual} ${secondary.actual === 1 ? unit[secondary.key][0] : unit[secondary.key][1]}`;
+          : `${C.num(secondary.actual)} ${secondary.actual === 1 ? unit[secondary.key][0] : unit[secondary.key][1]}`;
       say(
         2,
         `${secondary.favorable === focus.favorable ? 'And' : 'But'} look at the rest of it, ${n[1]}. ${C.capitalize(label)}, against an average of ${average(secondary.expected)}.`
@@ -561,15 +576,15 @@
       S?.title
         ? `And for the record, ${W.nick} won the ${snapshot.college ? 'national championship' : 'title'}, ${w.score}-${l.score}.`
         : S
-          ? `${C.capitalize(W.nick)} won Game ${S.gameNumber}, ${w.score}-${l.score}. Next topic.`.replace(
+          ? `${C.capitalize(W.nick)} won Game ${S.gameNumber}, ${w.score}-${l.score}.`.replace(
               /won Game \d+/,
               S.firstTo > 1 ? `won Game ${S.gameNumber}` : 'won it'
             )
           : pick(
               [
-                `${C.capitalize(W.nick)} won it, ${w.score}-${l.score}. Next topic.`,
+                `${C.capitalize(W.nick)} won it, ${w.score}-${l.score}. That's the night.`,
                 `Final was ${W.nickname} ${w.score}, ${C.teamRef(l).nickname} ${l.score}. We'll see what ${last} does for an encore.`,
-                `For the record, ${W.nick} won ${w.score}-${l.score}. Moving on.`,
+                `For the record, ${W.nick} won ${w.score}-${l.score}.`,
               ],
               'perf:close'
             )
