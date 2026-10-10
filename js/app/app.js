@@ -846,26 +846,17 @@
       tags = leagues.map(C.leagueId).filter(Boolean),
       ids = leagues.map(identity),
       mode = modeOf(leagues[0]);
-    if (new Set(tags).size !== tags.length)
-      return 'Two leagues in this file have the same HoopWire tag. Export each league from Hoop League Studio so each gets its own.';
+    if (new Set(tags).size !== tags.length) return 'Two leagues in this file have the same HoopWire tag.';
     if (!save) {
       const archived = leagues.map(l => C.buildFingerprint(l)),
         taken = state.saves.find(s => s.leagueIds.some(id => archived.includes(id)));
       const league = taken && leagues[archived.findIndex(id => taken.leagueIds.includes(id))];
-      return taken
-        ? `You already have a ${modeName(mode)} save for ${league.leagueName || 'this league'}. Open it from Your saves to update it, or delete it to start over.`
-        : null;
+      return taken ? `You already have a save for ${league.leagueName || 'this league'}.` : null;
     }
-    if (mode !== save.mode)
-      return `This is a ${modeName(mode)} save, but the open save, “${save.name}”, is a ${modeName(save.mode)} save.`;
-    const stranger = leagues.find((l, i) => !save.tags.includes(ids[i]));
-    if (stranger)
-      return C.leagueId(stranger)
-        ? `${stranger.leagueName || 'A league in this file'} has a different HoopWire tag than the open save, “${save.name}”, so this file is from a different save.`
-        : `${stranger.leagueName || 'A league in this file'} doesn’t match the open save, “${save.name}”. Without a HoopWire tag, a league with renamed or added teams looks like a different league. Start a new save for it.`;
+    if (mode !== save.mode) return `This is a ${modeName(mode)} save, not a ${modeName(save.mode)} save.`;
+    if (leagues.some((l, i) => !save.tags.includes(ids[i]))) return 'This file is from a different save.';
     const missing = save.tags.findIndex(t => !ids.includes(t));
-    if (missing >= 0)
-      return `This file doesn’t include ${save.leagueNames?.[missing] || 'every league'} from the open save, “${save.name}”.`;
+    if (missing >= 0) return `This file is missing ${save.leagueNames?.[missing] || 'a league'}.`;
     return null;
   }
   // The exact Hoop Land file, compressed, so it can be handed back to the game byte for byte.
