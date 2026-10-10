@@ -1217,34 +1217,34 @@
       p = e.player;
     const options = {
       routine: [
-        `${cap(W.nick)} ${C.verb(W, 'get')} the W. Let's keep it moving.`,
+        `${cap(W.nick)} ${C.verb(W, 'get')} the W. Nothing more to it than that.`,
         `Business as usual for ${W.nick}. We'll leave it there.`,
-        `All right. Good win for ${W.nick}. Moving on.`,
+        `All right. Good win for ${W.nick}.`,
         `${cap(L.nick)} will want that one back. That's the desk on this game.`,
       ],
       close: [
         `A ${e.margin}-point game. We could argue about this one all day, but we won't.`,
         `Tight one, and ${W.nick} ${C.verb(W, 'come')} out on the right side of it.`,
         `One possession. That's the difference tonight.`,
-        `${cap(W.nick)} ${C.verb(W, 'take')} the close one. Let's move on.`,
+        `${cap(W.nick)} ${C.verb(W, 'take')} the close one. They'll take it.`,
       ],
       blowout: [
         `${cap(L.nick)} will want to burn the tape on that one.`,
         `${cap(W.nick)} by ${e.margin}. Enough said.`,
-        `Statement made. Let's move on.`,
+        `Statement made.`,
         `Ugly night for ${L.nick}. Big one for ${W.nick}.`,
       ],
       upset: [
         `Don't sleep on ${W.nick}. That's the lesson tonight.`,
         `The records said one thing. The scoreboard said another.`,
         `We'll find out soon enough if ${W.nick} can back it up.`,
-        `Upset of the night. Let's keep it moving.`,
+        `Upset of the night. Nobody saw that coming.`,
       ],
       streak: [
         `That's the streak watch. We'll keep an eye on it.`,
         `We'll see where it goes from here.`,
         `Streaks make the season interesting. This one's no exception.`,
-        `All right. Next topic.`,
+        `That one's going to sting for a while.`,
       ],
       performance: [
         `${p?.last} owned the night. That's where we'll leave it.`,
@@ -1265,7 +1265,7 @@
         `On to Game ${(e.series?.gameNumber || 0) + 1}.`,
         `Game ${(e.series?.gameNumber || 0) + 1} can't come soon enough.`,
         `${e.series?.wins > e.series?.losses ? `${cap(W.nick)} ${C.verb(W, 'lead')} the series ${e.series?.wins}-${e.series?.losses}` : e.series?.wins === e.series?.losses ? `The series is tied ${e.series?.wins}-${e.series?.losses}` : `${cap(L.nick)} ${C.verb(L, 'lead')} the series ${e.series?.losses}-${e.series?.wins}`}. Stay tuned.`,
-        `That's where the series stands. Let's keep it moving.`,
+        `That's where the series stands.`,
       ],
       championship: [
         `Tonight belongs to ${W.nick}. They'll remember this one for a long time.`,
@@ -2181,7 +2181,7 @@
         "They'll want more next year.",
         "That's the season. On to what's next.",
         "We'll see what they do with it.",
-        "Grade's in. Moving on.",
+        "Grade's in.",
       ],
       body
     );
@@ -2260,6 +2260,8 @@
         (m, who, line, rest) => `${who}'s been good for ${line.replace(/ per game$/, '')} a game this season.${rest}`
       );
     const type = story.type || '',
+      // The game files a hire (26), a release (27) and a firing (28) all as coaching changes.
+      hired = story.seasonSnapshot?.newsEvent?.type === 26 || /\bhires?\b/i.test(story.headline || ''),
       J = detail ? n[2] : n[1],
       evidence = story.seasonSnapshot?.evidence || [];
     const openings = lede
@@ -2294,49 +2296,54 @@
                   "I like it. Somebody's trying to get better.",
                   'Interesting move. I want to see how it fits before I hand out grades.',
                 ]
-              : /sign|commit|option|extend/i.test(type)
+              : /sign|commit|option|exten/i.test(type)
                 ? ['Good business. You keep your guys, you build continuity.', 'I like the move. Now earn it.']
                 : /retir|hall|jersey/i.test(type)
                   ? [
                       'Give it up for that career. That deserves a moment.',
                       "That's a legacy. Take a second and appreciate it.",
                     ]
-                  : /coach/i.test(type)
+                  : /coach/i.test(type) && hired
                     ? [
-                        'Coaching changes always come with pressure. Now we find out if it was the right call.',
-                        "That's a big decision. The next hire has to be right.",
+                        'New voice in that building. Now we find out if it was the right call.',
+                        "Big hire. Now they have to win with this staff, and that's the hard part.",
                       ]
-                    : /team record/i.test(type)
-                      ? /low/i.test(story.headline || '') || evidence.some(e => /low/.test(e.label))
-                        ? [
-                            "That's ugly. I don't know what else to say about that. You have to score.",
-                            "Rock bottom. The only good news is it can't get much worse.",
-                          ]
-                        : [
-                            "The offense was cooking. Best scoring night of the year, and I'm here for it.",
-                            "That's what it looks like when everything's falling.",
-                          ]
-                      : /record watch/i.test(type)
-                        ? [
-                            "Get your popcorn ready. That record's in trouble.",
-                            'I want to see this one fall. Go get it.',
-                          ]
-                        : /milestone/i.test(type)
+                    : /coach/i.test(type)
+                      ? [
+                          "That's a big decision. The next hire has to be right.",
+                          'Somebody has to answer for the results, and it usually ends up being the coach.',
+                        ]
+                      : /team record/i.test(type)
+                        ? /low/i.test(story.headline || '') || evidence.some(e => /low/.test(e.label))
                           ? [
-                              "That's a lot of buckets. Longevity matters, and that's proof.",
-                              "Put that on the résumé. Milestones don't happen by accident.",
+                              "That's ugly. I don't know what else to say about that. You have to score.",
+                              "Rock bottom. The only good news is it can't get much worse.",
                             ]
-                          : /record/i.test(type)
+                          : [
+                              "The offense was cooking. Best scoring night of the year, and I'm here for it.",
+                              "That's what it looks like when everything's falling.",
+                            ]
+                        : /record watch/i.test(type)
+                          ? [
+                              "Get your popcorn ready. That record's in trouble.",
+                              'I want to see this one fall. Go get it.',
+                            ]
+                          : /milestone/i.test(type)
                             ? [
-                                "That's history. Put it in the books.",
-                                "That's a number that's going to stick around for a while.",
+                                "That's a lot of buckets. Longevity matters, and that's proof.",
+                                "Put that on the résumé. Milestones don't happen by accident.",
                               ]
-                            : /poll/i.test(type)
+                            : /record/i.test(type)
                               ? [
-                                  'Preseason polls are made to be wrong. Somebody has to earn that spot.',
-                                  'No. 1 in the preseason just means everybody circles your game.',
+                                  "That's history. Put it in the books.",
+                                  "That's a number that's going to stick around for a while.",
                                 ]
-                              : ["That's worth watching.", "Noted. We'll see where it goes."];
+                              : /poll/i.test(type)
+                                ? [
+                                    'Preseason polls are made to be wrong. Somebody has to earn that spot.',
+                                    'No. 1 in the preseason just means everybody circles your game.',
+                                  ]
+                                : ["That's worth watching.", "Noted. We'll see where it goes."];
     const closings = /trade request/i.test(type)
       ? [
           "No deal yet. We'll see how the team handles it.",
@@ -2365,27 +2372,74 @@
                 'Get well soon. That one stings.',
                 "Somebody's getting more minutes. Let's see who takes them.",
               ]
-            : /team record/i.test(type)
-              ? ["That's the number of the night.", 'Moving on.', "We'll see if it holds up.", 'Next topic.']
-              : /record/i.test(type)
+            : /coach retirement/i.test(type)
+              ? [
+                  'Tip of the cap to a career on the sideline.',
+                  "That's a lot of years on the bench. Enjoy retirement.",
+                  'Coaches like that shape a lot of careers.',
+                  'What a run on the sideline.',
+                ]
+              : /coach/i.test(type) && hired
                 ? [
-                    "We'll keep watching the record book.",
-                    'History made. Moving on.',
-                    "That one's going in the archive.",
+                    "New era. We'll see how it starts.",
+                    'Welcome to the job. Now go win some games.',
+                    "We'll see how fast they can turn it into wins.",
+                    'First practice is going to be interesting.',
                   ]
-                : /poll/i.test(type)
+                : /coach/i.test(type)
                   ? [
-                      "We'll see how long it holds.",
-                      'Now they have to play the games.',
-                      'Ask us again in a month.',
-                      'The games will sort it out.',
+                      'Now the search begins.',
+                      'Whoever gets that job next inherits a lot.',
+                      "We'll keep an eye on who they bring in.",
+                      "That's a tough day for that locker room.",
                     ]
-                  : [
-                      "We'll come back to it when there's more to report.",
-                      "That's the latest.",
-                      'Moving on.',
-                      'More on that as it develops.',
-                    ];
+                  : /retir|hall|jersey/i.test(type)
+                    ? [
+                        'What a career.',
+                        'Tip of the cap.',
+                        'That one deserves the moment.',
+                        'They earned every bit of that.',
+                      ]
+                    : /sign|commit|option|exten/i.test(type)
+                      ? [
+                          'Now they have to earn it.',
+                          "We'll see how it pays off.",
+                          'Good business. Now go play.',
+                          'Ink is dry.',
+                        ]
+                      : /trade/i.test(type)
+                        ? [
+                            "We'll see who wins this one.",
+                            "Grades come later. Let's see it on the floor.",
+                            'New uniform, new role.',
+                            "That's a shake-up.",
+                          ]
+                        : /team record/i.test(type)
+                          ? [
+                              "That's the number of the night.",
+                              'Mark it down.',
+                              "We'll see if it holds up.",
+                              'Write that one down.',
+                            ]
+                          : /record/i.test(type)
+                            ? [
+                                "We'll keep watching the record book.",
+                                'History made.',
+                                "That one's going in the archive.",
+                              ]
+                            : /poll/i.test(type)
+                              ? [
+                                  "We'll see how long it holds.",
+                                  'Now they have to play the games.',
+                                  'Ask us again in a month.',
+                                  'The games will sort it out.',
+                                ]
+                              : [
+                                  "We'll come back to it when there's more to report.",
+                                  "That's the latest.",
+                                  "That's where it stands for now.",
+                                  'More on that as it develops.',
+                                ];
     const body = detail
       ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];

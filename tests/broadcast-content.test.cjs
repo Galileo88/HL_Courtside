@@ -375,3 +375,48 @@ test('team reviews lead with how the season ended, so a middling champion is cel
     /no postseason/
   );
 });
+test('news segments end on the story, not a promise of more, and coaching hires are not read as firings', () => {
+  const types = {
+    'Coaching change': [26, 27, 28],
+    'Coach retirement': [29],
+    Signing: [3],
+    Trade: [7],
+    Injury: [10],
+    'Injury return': [11],
+    'Retirement announcement': [16],
+    'Jersey retirement': [25],
+    'Contract extension': [30],
+    'Trade request': [31],
+    'Roster move': [5],
+  };
+  const lines = (type, event) => {
+    const takes = new Set(),
+      ends = new Set();
+    for (let i = 0; i < 60; i++) {
+      const headline = event === 26 ? 'The Lassos hire Jackie Farmer' : 'The Lassos part ways with Jackie Farmer';
+      const turns = B.script({
+        id: `news-${event}-${i}`,
+        kind: 'news',
+        type,
+        headline,
+        paragraphs: [headline + '.'],
+        seasonSnapshot: { newsEvent: { type: event } },
+      });
+      takes.add(turns.at(-2).text);
+      ends.add(turns.at(-1).text);
+    }
+    return { takes: [...takes], ends: [...ends] };
+  };
+  for (const [type, events] of Object.entries(types))
+    for (const event of events)
+      for (const end of lines(type, event).ends)
+        assert.doesNotMatch(
+          end,
+          /(?:^|\. )(?:all right\. )?(?:moving on|next topic|let's move on|let's keep it moving)\b/i,
+          `${type}: ${end}`
+        );
+  const hire = lines('Coaching change', 26),
+    firing = lines('Coaching change', 28);
+  assert.ok(hire.takes.concat(hire.ends).every(t => !/search|next hire|answer for the results/.test(t)));
+  assert.ok(firing.ends.every(t => /search|next|bring in|locker room/.test(t)));
+});
