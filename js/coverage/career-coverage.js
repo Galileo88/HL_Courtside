@@ -71,7 +71,9 @@
     },
   };
   const positionLabels = ['PG', 'G', 'SG', 'G/F', 'SF', 'F', 'PF', 'F/C', 'C'];
-  const height = inches => (Number.isFinite(inches) && inches > 0 ? `${Math.floor(inches / 12)}-${inches % 12}` : null);
+  // 84 inches reads 7'0"; prose spells it out as "7-foot", 80 as "6-foot-8".
+  const feet = inches => (Number.isFinite(inches) && inches > 0 ? [Math.floor(inches / 12), inches % 12] : null),
+    height = inches => feet(inches) && `${feet(inches)[0]}'${feet(inches)[1]}"`;
   const current = (p, key) => (Array.isArray(p.attributes?.[key]) ? Number(p.attributes[key][0]) || 0 : 0);
 
   // The league running the career and the player in it, found on a team or a showcase roster.
@@ -192,7 +194,10 @@
     // "a 17-year-old wing from Slovenia", with whatever the save knows.
     const age = player.age > 0 ? `${/^(8|11|18)/.test(String(player.age)) ? 'an' : 'a'} ${player.age}-year-old` : '',
       bio = [age || (position && 'a'), position, from && `from ${from}`].filter(Boolean).join(' ');
-    const size = [height(player.ht)?.replace('-', '-foot-'), player.wt > 0 && `${player.wt} pounds`]
+    const size = [
+      feet(player.ht) && `${feet(player.ht)[0]}-foot${feet(player.ht)[1] ? `-${feet(player.ht)[1]}` : ''}`,
+      player.wt > 0 && `${player.wt} pounds`,
+    ]
       .filter(Boolean)
       .join(' and ');
     const others = countrymen.map(p => C.playerDisplay(p));

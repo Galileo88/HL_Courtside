@@ -108,7 +108,8 @@
   function bioLine(p) {
     const player = p.kind === 'player';
     return [
-      player ? p.height : null,
+      // Profiles saved before heights read 7'0" stored "7-0".
+      player && p.height ? p.height.replace(/^(\d+)-(\d+)$/, `$1'$2"`) : null,
       player && p.weight ? `${p.weight} lbs` : null,
       p.age ? `Age ${p.age}` : null,
       [p.hometown, p.country ? country(p.country) : null].filter(Boolean).join(', ') || null,
@@ -218,11 +219,12 @@
   function player(ctx, p) {
     const team = p.teamId != null ? `${p.fingerprint}:team:${p.teamId}` : null,
       teamName = p.seasons.filter(s => s.tid === p.teamId).at(-1)?.team;
-    const role = [p.number != null ? `#${p.number}` : null, p.position ? C.capitalize(p.position) : null]
+    const role = [p.number != null ? `#${p.number}` : null, p.position ? shortPosition(p.position) : null]
       .filter(Boolean)
       .join(' · ');
-    // Experience follows the team: "#34 · Point guard · Trojans · Sr.".
-    const experience = p.retired ? null : seasonLabel(p);
+    // Experience follows the team: "#34 · PG · Trojans · Sr.", and never breaks across lines.
+    const label = p.retired ? null : seasonLabel(p),
+      experience = label && el('span', 'profile-nowrap', label);
     const lines = [
       [
         role,
