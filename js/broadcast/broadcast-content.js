@@ -422,14 +422,14 @@
               : S.wins === S.firstTo - 1
                 ? [
                     `${cap(W.nick)} ${C.verb(W, 'are')} one win away. ${score}, and they lead ${lead}. ${J}?`,
-                    `${lead}, ${W.nick}. ${score} in Game ${S.gameNumber}. ${J}, is it over?`,
+                    `${lead}, ${W.nickname}. ${score} in Game ${S.gameNumber}. ${J}, is it over?`,
                     `${score}. ${cap(L.nick)} ${C.verb(L, 'are')} on the brink. ${J}?`,
                     `${cap(W.nick)} ${C.verb(W, 'go')} up ${lead}. ${score}. ${J}, can ${L.nick} come back?`,
                   ]
                 : S.wins > S.losses
                   ? [
                       `${cap(W.nick)} ${C.verb(W, 'take')} a ${lead} lead. ${score}. ${J}?`,
-                      `${lead}, ${W.nick}. ${score} in Game ${S.gameNumber}. ${J}?`,
+                      `${lead}, ${W.nickname}. ${score} in Game ${S.gameNumber}. ${J}?`,
                       `${score}. ${J}, are ${L.nick} in trouble?`,
                       `${cap(W.nick)} ${C.verb(W, 'are')} in control, ${lead}. ${J}?`,
                     ]
@@ -1264,12 +1264,12 @@
       series: [
         `On to Game ${(e.series?.gameNumber || 0) + 1}.`,
         `Game ${(e.series?.gameNumber || 0) + 1} can't come soon enough.`,
-        `Series ${e.series?.wins > e.series?.losses ? `${e.series?.wins}-${e.series?.losses}, ${W.nick}` : e.series?.wins === e.series?.losses ? `tied ${e.series?.wins}-${e.series?.losses}` : `${e.series?.losses}-${e.series?.wins}, ${L.nick}`}. Stay tuned.`,
+        `Series ${e.series?.wins > e.series?.losses ? `${e.series?.wins}-${e.series?.losses}, ${W.nickname}` : e.series?.wins === e.series?.losses ? `tied ${e.series?.wins}-${e.series?.losses}` : `${e.series?.losses}-${e.series?.wins}, ${L.nickname}`}. Stay tuned.`,
         `That's where the series stands. Let's keep it moving.`,
       ],
       championship: [
         `Tonight belongs to the champions. Congratulations to ${W.nick}.`,
-        `The offseason questions can wait. Enjoy it, ${W.nick}.`,
+        `The offseason questions can wait. Enjoy it, ${W.nickname}.`,
         `Champions. Hard to say it any better than that.`,
         `A title for ${W.nick}. What a way to finish.`,
       ],
