@@ -254,39 +254,23 @@
         )
       );
     const games = gameLog(ctx, p);
-    if (games.length) {
+    // Recent games, newest first; a lone "latest game" reads oddly when updates are weeks apart.
+    if (games.length)
       out.push(
         section(
-          'Latest game',
+          'Game log',
           ctx.statBoard({
-            kicker: `${games[0].season} · Box score`,
-            title: games[0].label,
+            kicker: 'Recent games',
+            title: `Last ${Math.min(10, games.length)}`,
             headers: BOX,
-            rows: boxRows([{ ...games[0], label: games[0].href ? 'Recap' : 'Box score' }]),
-            links: [games[0].href],
+            rows: boxRows(games.slice(0, 10)),
+            links: games.slice(0, 10).map(g => g.href),
             highlight: false,
             marker: false,
             optional: ['MIN', 'STL', 'BLK', 'FT'],
           })
         )
       );
-      if (games.length > 1)
-        out.push(
-          section(
-            'Game log',
-            ctx.statBoard({
-              kicker: 'Recent games',
-              title: `Last ${Math.min(10, games.length)}`,
-              headers: BOX,
-              rows: boxRows(games.slice(0, 10)),
-              links: games.slice(0, 10).map(g => g.href),
-              highlight: false,
-              marker: false,
-              optional: ['MIN', 'STL', 'BLK', 'FT'],
-            })
-          )
-        );
-    }
     for (const period of ['season', 'playoffs']) {
       const rows = p.seasons.filter(s => s.period === period);
       if (!rows.length) continue;
