@@ -44,11 +44,14 @@ save, so their stories never mix.
 **Lost your game?** HoopWire keeps a copy of the last save file you gave it. Tap **Export** next to a save to get
 the file back, then load it into Hoop Land.
 
-**HoopWire tags.** A HoopWire tag gives each league an ID that never changes. Export your league from Hoop League
-Studio, start your game from that file, and the tag comes with it. Saves work without a tag too. HoopWire then
+**HoopWire tags.** A HoopWire tag gives each league an ID that never changes. Export your league from [Hoop League
+Studio](https://galileo88.github.io/Hoop-League-Studio/), start your game from that file, and the tag comes with it. Saves work without a tag too. HoopWire then
 knows your league by its name and teams, so if you rename a team or add one, HoopWire sees a different league and
 you'll need to start a new save. If you pick a file that doesn't match the save you have open, HoopWire tells
 you why and doesn't change anything.
+
+**Hoop League Studio.** HoopWire's companion app creates and edits Hoop Land leagues. Both apps share the same look,
+and each links to the other from its menu.
 
 ## Put HoopWire on your Home Screen
 

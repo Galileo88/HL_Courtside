@@ -4,7 +4,9 @@
    - label: muted capitals for league, season and day
    - title: the UI face, heavy, tight; prose alone uses the serif
    - panel: deep navy, a hairline border, a red rule on top
-   - active state: teal underline */
+   - active state: teal underline
+   Hoop League Studio's assets/css/suite.css copies these tokens so both apps look like one suite;
+   change both together. */
 :root {
   --hw-font-ui: 'Segoe UI', Arial, Helvetica, sans-serif;
   --hw-font-serif: Georgia, 'Times New Roman', serif;
@@ -968,4 +970,37 @@ body {
 #noticeDialog p {
   max-width: 34em;
   line-height: 1.5;
+}
+
+/* Suite: Hoop League Studio, one tap away. It opens in a new tab, so the arrow points out; Studio's
+   sidebar links back the same way. */
+.site-menu-panel .suite-menu-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  border-top: 1px solid var(--hw-line);
+  padding-top: 13px;
+}
+.suite-menu-link > span {
+  color: var(--hw-accent);
+}
+.suite-note {
+  margin: 26px auto 0;
+  max-width: 440px;
+  color: var(--hw-muted);
+  font-family: var(--hw-font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+.suite-note a {
+  color: var(--hw-accent);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+.suite-note a:focus-visible {
+  outline: 3px solid var(--hw-accent);
+  outline-offset: 2px;
 }
