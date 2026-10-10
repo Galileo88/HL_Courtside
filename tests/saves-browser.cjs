@@ -118,15 +118,15 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     // Files that don't belong to this save are refused, and say why.
     await refused(
       copy(s => s.seasonLeagues.forEach(l => (l.season.mode = 2))),
-      /This is a Career save, but the open save, “New League”, is a Franchise save\./
+      /^This is a Career save, not a Franchise save\.$/
     );
     await refused(
       copy(s => (s.seasonLeagues[0].commissioner.tag = 'hoopwire:hw-someoneelse')),
-      /New League has a different HoopWire tag than the open save, “New League”/
+      /^This file is from a different save\.$/
     );
     await refused(
       copy(s => s.seasonLeagues.pop()),
-      /doesn’t include New League from the open save, “New League”/
+      /^This file is missing New League\.$/
     );
 
     // The same league after an expansion team and a renamed team still updates it.
@@ -142,11 +142,18 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     const updated = await archived();
     assert.deepEqual(updated.saves, first.saves);
     assert.deepEqual(Object.keys(updated.counts).sort(), Object.keys(first.counts).sort());
+    // A league renamed in Hoop Land keeps its save, and the save takes the new name.
+    await upload(copy(s => (s.seasonLeagues[0].leagueName = 'Renamed League')));
+    assert.deepEqual(
+      (await archived()).saves.map(s => s.name),
+      ['Renamed League']
+    );
+    await upload(base);
 
     // A second save of the same league in the same mode is refused; a career save gets its own.
     await welcome();
     await page.click('#newSaveButton');
-    await refused(base, /You already have a Franchise save for New League/);
+    await refused(base, /^You already have a save for New League\.$/);
     await upload(copy(s => s.seasonLeagues.forEach(l => (l.season.mode = 2))));
     const both = await archived();
     assert.deepEqual(both.saves.map(s => [s.name, s.mode]).sort(), [
@@ -208,7 +215,7 @@ const url = process.env.HOOPWIRE_URL || 'http://127.0.0.1:8123';
     assert.deepEqual((await archived()).saves.find(s => s.ids[0] === plain.ids[0]).ids, plain.ids);
     await refused(
       untagged(s => (s.seasonLeagues[0].teams[1].name = 'Renamed')),
-      /New League doesn’t match the open save, “New League”\. Without a HoopWire tag/
+      /^This file is from a different save\.$/
     );
     assert.deepEqual(errors, []);
     console.log(
