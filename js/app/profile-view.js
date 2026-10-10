@@ -57,8 +57,11 @@
       isCoach: !!look.coach,
       wearsSuit: suited && !look.coach,
     };
-    // Shoulders up, framed from the sprite itself: from just above the hair down to the last row before the
-    // arms widen past the shoulders, at four screen pixels per sprite pixel.
+    // Shoulders up in a fixed frame, the way headshots are framed: sprite rows 4 to 25 and columns 5 to 26,
+    // so every face sits in the same place at the same size. The head starts at row 8 and the shoulders end
+    // at row 25; the tallest and widest hairstyles run a pixel or two past the edge instead of shrinking the
+    // face. Four screen pixels per sprite pixel.
+    canvas.width = canvas.height = 88;
     sprites
       .ready()
       .then(() => {
@@ -66,25 +69,9 @@
         small.width = 32;
         small.height = 42;
         sprites.draw(small, person, look.team, 0, 0);
-        const alpha = small.getContext('2d').getImageData(0, 0, 32, 42).data,
-          span = y => {
-            let a = 32,
-              b = -1;
-            for (let x = 0; x < 32; x++) if (alpha[(y * 32 + x) * 4 + 3]) [a, b] = [Math.min(a, x), Math.max(b, x)];
-            return b < 0 ? 0 : b - a + 1;
-          };
-        let top = 0;
-        while (top < 41 && !span(top)) top++;
-        // Below the face the outline narrows at the neck; the arms are the first rows wider than the head.
-        const head = Math.max(...Array.from({ length: 14 }, (_, i) => span(top + i)));
-        let bottom = top + 14;
-        while (bottom < 41 && span(bottom) <= head + 2) bottom++;
-        const size = bottom - top + 2,
-          left = 16 - Math.round(size / 2);
-        canvas.width = canvas.height = size * 4;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(small, left, top - 1, size, size, 0, 0, size * 4, size * 4);
+        ctx.drawImage(small, 5, 4, 22, 22, 0, 0, 88, 88);
       })
       .catch(() => canvas.remove());
     return canvas;
