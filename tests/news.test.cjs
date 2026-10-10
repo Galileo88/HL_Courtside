@@ -305,3 +305,51 @@ test('option headlines name the move and coach stories carry the coach for a pre
   const hire = N.candidates({ ...l, season: { ...l.season, news: [event(26, { pid: 91 })] } })[0];
   assert.equal(hire.context.coachScene, 'hire');
 });
+test('coaching changes carry what the desk can argue over, and nothing the save does not know', () => {
+  const B = require('../js/broadcast/broadcast-content.js');
+  const season = (tid, W, L, L10 = []) => ({ tid, GP: W + L, W, L, L10 });
+  const talk = (type, career) => {
+    const l = fixture();
+    l.teams[0].season = [{ yr: 7, seasonStats: { W: 9, L: 21, GP: 30 } }];
+    const coach = l.teams[0].frontOffice.staff[0];
+    coach.career = career;
+    if (type !== 26) {
+      l.teams[0].frontOffice.staff = [];
+      l.coaches.push({ ...coach, tid: -1 });
+    }
+    l.season.news = [event(type, { pid: 91 })];
+    const story = N.candidates(l).find(x => x.story.type === 'Coaching change').story;
+    return { story, lines: B.script(story).map(t => [t.speaker, t.text]) };
+  };
+  const fired = talk(28, {
+    season: { W: 52, L: 57 },
+    teamHistory: [
+      { yr: 6, season: [season(1, 18, 12)] },
+      { yr: 7, season: [season(1, 16, 14)] },
+      { yr: 8, season: [season(1, 4, 9, [0, 0, 1, 0, 0, 0, 1, 0, 0, 1])] },
+    ],
+  });
+  assert.deepEqual(fired.story.seasonSnapshot.coaching.recent, { W: 3, G: 10 });
+  assert.deepEqual(fired.lines.slice(2, 4), [
+    [2, "You could see it coming. They'd lost seven of their last ten."],
+    [3, 'To be fair, Coach had two winning seasons there.'],
+  ]);
+  assert.deepEqual(new Set(fired.lines.map(x => x[0])).size, 4);
+  const hired = talk(26, {
+    season: { W: 70, L: 50 },
+    teamHistory: [
+      { yr: 6, season: [season(2, 46, 14)] },
+      { yr: 7, season: [season(2, 24, 36)] },
+    ],
+  });
+  assert.deepEqual(
+    hired.lines.slice(2, 4).map(x => x[1]),
+    [
+      "Nobody takes that job thinking it's easy. They went 9-21 last season.",
+      'Coach has done it before. That 70-50 came with the Moons over two seasons.',
+    ]
+  );
+  // A coach the save knows nothing about gets the plain segment, not filler.
+  const unknown = talk(28, undefined);
+  assert.equal(unknown.lines.length, 3);
+});

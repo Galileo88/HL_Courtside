@@ -2245,6 +2245,78 @@
       body
     );
   }
+  // After the take on a coaching change, the desk argues it out, but only with what the save backs up:
+  // how the last stretch went, how the coach did there, the job a new coach walks into and their last stop.
+  // A point the save can't support is left out rather than filled with a stat that doesn't fit.
+  function coachingTalk(story, detailed) {
+    const f = story.seasonSnapshot?.coaching;
+    if (!f) return [];
+    const lines = [],
+      pct = r => r.W / Math.max(1, r.W + r.L),
+      count = g => (g === 10 ? 'ten' : C.num(g));
+    if (f.change === 'hired') {
+      const p = f.prior;
+      // The article's second paragraph already says when it's one of the best jobs in the league.
+      if (p && pct(p) >= 0.6 && !detailed)
+        lines.push(turn(2, `It's a good job to walk into, though. They went ${p.W}-${p.L} last season.`));
+      else if (p && pct(p) <= 0.4)
+        lines.push(turn(2, `Nobody takes that job thinking it's easy. They went ${p.W}-${p.L} last season.`));
+      const s = f.lastStop;
+      // When the last stop was the whole career, the anchor already read that record.
+      const whole = s && f.career && s.W === f.career.W && s.L === f.career.L,
+        where = s && `with the ${s.team}${s.seasons > 1 ? ` over ${C.num(s.seasons)} seasons` : ''}`;
+      if (s && pct(s) >= 0.55)
+        lines.push(
+          turn(
+            3,
+            whole
+              ? `${f.last} has done it before. That ${s.W}-${s.L} came ${where}.`
+              : `${f.last} has won before, too. ${s.W}-${s.L} ${where}.`
+          )
+        );
+      else if (s && pct(s) <= 0.45)
+        lines.push(
+          turn(
+            3,
+            whole
+              ? `For what it's worth, that ${s.W}-${s.L} all came ${where}.`
+              : `${possessive(f.last)} last stop didn't go great, for what it's worth. ${s.W}-${s.L} ${where}.`
+          )
+        );
+      return lines;
+    }
+    const r = f.recent,
+      slide = r && r.G - r.W >= Math.ceil(r.G * 0.6),
+      hot = r && r.W >= Math.ceil(r.G * 0.6);
+    if (slide)
+      lines.push(turn(2, `You could see it coming. They'd lost ${C.num(r.G - r.W)} of their last ${count(r.G)}.`));
+    else if (hot)
+      lines.push(
+        turn(2, `Now? They'd won ${C.num(r.W)} of their last ${count(r.G)}. That's a strange time to make a change.`)
+      );
+    // The counterpoint answers whatever came before it.
+    if (f.seasons >= 2) {
+      const record =
+        f.winningSeasons === f.seasons
+          ? `${f.last} had a winning record every season there`
+          : f.winningSeasons
+            ? `${f.last} had ${C.plural(f.winningSeasons, 'winning season')} there`
+            : null;
+      lines.push(
+        turn(
+          3,
+          record
+            ? `${hot ? 'And' : 'To be fair,'} ${record}.`
+            : slide
+              ? `And it wasn't just this year. ${f.last} never had a winning season there.`
+              : hot
+                ? `Still, ${f.last} never had a winning season there.`
+                : `For what it's worth, ${f.last} never had a winning season there.`
+        )
+      );
+    }
+    return lines;
+  }
   function genericScript(story, n = first()) {
     const headline = sentence(String(story.headline || 'More news from around the league'));
     const paragraphs = (story.paragraphs || []).filter(
@@ -2443,7 +2515,7 @@
     const body = detail
       ? [turn(2, detail), turn(1, pick(story, take, 'brief:take'))]
       : [turn(1, pick(story, take, 'brief:take'))];
-    return frame(story, 'brief', openings, closings, body.slice(0, 2));
+    return frame(story, 'brief', openings, closings, [...body.slice(0, 2), ...coachingTalk(story, !!detail)]);
   }
   // Offseason roundups: the desk argues about the names at the top.
   function roundupScript(story, n = first()) {

@@ -89,6 +89,47 @@
     return accepted ? `${name} opts in with ${T.nickname}` : `${name} opts out, heads to free agency`;
   }
   // A coach for a press-conference image: the staff record's look, marked as a coach.
+  // What the save knows about a coaching change, for the TV desk to argue over: how the coach did with
+  // this team, how the last stretch went, and, for a hire, the job and the coach's last stop.
+  function coachingFacts(event, coach, team, lookup, year) {
+    if (![26, 27, 28].includes(event.type) || !coach || !team) return null;
+    const head = event.type !== 26 || (team.frontOffice?.staff || []).find(c => c.id === coach.id)?.pos === 1;
+    if (!head) return null;
+    const seasons = (coach.career?.teamHistory || [])
+      .flatMap(h => (h.season || []).map(s => ({ ...s, yr: h.yr })))
+      .filter(s => s.GP > 0)
+      .sort((a, b) => a.yr - b.yr);
+    const here = seasons.filter(s => s.tid === team.id && (event.type === 26 ? s.yr < year : true)),
+      latest = here.at(-1),
+      ten = (latest?.L10 || []).filter(x => x === 0 || x === 1);
+    const before = seasons.filter(s => s.tid !== team.id && s.yr <= year).at(-1),
+      stop = before && seasons.filter(s => s.tid === before.tid && s.yr <= before.yr),
+      stopTeam = before && lookup.teams.get(before.tid);
+    const prior = (team.season || [])
+      .filter(r => r.yr < year && r.seasonStats?.W + r.seasonStats?.L > 0)
+      .sort((a, b) => b.yr - a.yr)[0]?.seasonStats;
+    return {
+      change: event.type === 26 ? 'hired' : event.type === 28 ? 'fired' : 'released',
+      name: C.playerDisplay(coach),
+      last: coach.ln || C.surname(C.playerDisplay(coach)),
+      pronoun: C.pronoun(coach) || null,
+      team: C.teamDisplay(team),
+      career: { W: coach.career?.season?.W || 0, L: coach.career?.season?.L || 0 },
+      seasons: event.type === 26 ? 0 : here.length,
+      winningSeasons: event.type === 26 ? 0 : here.filter(s => s.W > s.L).length,
+      recent: event.type !== 26 && ten.length >= 5 ? { W: ten.filter(x => x === 1).length, G: ten.length } : null,
+      prior: event.type === 26 && prior ? { W: prior.W, L: prior.L } : null,
+      lastStop:
+        event.type === 26 && stopTeam
+          ? {
+              team: C.teamDisplay(stopTeam),
+              W: stop.reduce((n, s) => n + s.W, 0),
+              L: stop.reduce((n, s) => n + s.L, 0),
+              seasons: stop.length,
+            }
+          : null,
+    };
+  }
   function coachSubject(c) {
     return c
       ? structuredClone({
@@ -935,6 +976,7 @@
                                 : event.type === 31
                                   ? Math.min(120, 60 + 2.5 * size)
                                   : 50;
+      const coaching = coachEvent ? coachingFacts(event, player, team, lookup, year) : null;
       const story = {
         id: `${fp}:${year}:season:${key}`,
         eventKey: key,
@@ -957,6 +999,7 @@
           headers: event.type === 7 ? ['From', 'Asset', 'To'] : ['Category', 'Value', 'Context'],
           rows,
           newsEvent: structuredClone(event),
+          ...(coaching ? { coaching } : {}),
           source: 'season.news',
         },
       };
