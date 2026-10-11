@@ -30,6 +30,9 @@
     'injured-leg-arms',
     'running',
     'running-arms',
+    'dunk-released',
+    'dunk-released-arms',
+    'one-hand-dunk',
   ];
   const images = {};
   const flightBall = new Image();
@@ -58,6 +61,9 @@
         'injured-leg-arms',
         'running',
         'running-arms',
+        'dunk-released',
+        'dunk-released-arms',
+        'one-hand-dunk',
       ].includes(file)
         ? './assets/scene/'
         : root) +
@@ -370,13 +376,23 @@
               : -8)
     );
     // Back views: the second and fourth rows of the four-column atlases, the second frame of a sitting strip.
+    // The game's one-hand dunk sheet is one column: front left, back left, front right, back right.
     const back =
-        pose === 'dunking'
-          ? frame >= 4
-          : pose === 'sitting'
-            ? frame % 2 === 1
-            : ['idle', 'celebrate', 'bench-idle', 'bench-celebrate', 'suit-standing', 'running'].includes(pose) &&
-              Math.floor(frame / 4) % 2 === 1,
+        pose === 'one-hand-dunk'
+          ? frame % 4 === 2
+          : pose === 'dunking'
+            ? frame >= 4
+            : pose === 'sitting'
+              ? frame % 2 === 1
+              : [
+                  'idle',
+                  'celebrate',
+                  'bench-idle',
+                  'bench-celebrate',
+                  'suit-standing',
+                  'running',
+                  'dunk-released',
+                ].includes(pose) && Math.floor(frame / 4) % 2 === 1,
       headX = back ? 32 : 0;
     // The injured sprite keeps its own pained face; only the hair goes on it.
     if (pose !== 'injured-leg') {
@@ -398,6 +414,8 @@
       dunking: 'dunking-arms',
       'injured-leg': 'injured-leg-arms',
       running: 'running-arms',
+      // The game's hanging-on-the-rim, letting-go and landing frames after a dunk.
+      'dunk-released': 'dunk-released-arms',
     }[pose];
     // The arms are their own layer so they can go over the jersey number, which is drawn later at
     // the final size; an arm across the chest covers the number, as it does in the game.

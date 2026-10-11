@@ -230,7 +230,7 @@ const server = http.createServer((req, res) => {
       return HoopWireBroadcastContent.chunkDialogue(text).map(c => Math.max(2800, Math.min(9800, c.length * 52)));
     });
     await page.locator('#tvStagePlay').click();
-    await page.evaluate(() => testAudio.onended());
+    await page.evaluate(() => HoopWireBroadcast.audio().theme.onended());
     await page.clock.runFor(1000);
     await page.locator('#tvStage').click({ position: { x: 100, y: 100 } });
     const frozen = await page.locator('.tv-speech').textContent();
@@ -264,19 +264,22 @@ const server = http.createServer((req, res) => {
       HoopWireBroadcast.mount({ headline: 'Voice pace' }, null);
     });
     await page.locator('#tvStagePlay').click();
-    await page.evaluate(() => testAudio.onended());
-    await page.waitForFunction(() => testAudio.src.startsWith('data:'));
-    assert.equal(await page.evaluate(() => testAudio.playbackRate), 0.9);
-    assert.equal(await page.evaluate(() => testAudio.preservesPitch), true);
+    await page.evaluate(() => HoopWireBroadcast.audio().theme.onended());
+    // The hosts share one voice player, so a tap that started the show keeps unlocking every line.
+    await page.waitForFunction(() => HoopWireBroadcast.audio().voice.playbackRate === 0.9);
+    assert.equal(await page.evaluate(() => HoopWireBroadcast.audio().voice.src.startsWith('data:')), true);
+    assert.equal(await page.evaluate(() => HoopWireBroadcast.audio().voice.preservesPitch), true);
     await page.evaluate(() => {
-      window.speechAudio = testAudio;
+      window.speechAudio = HoopWireBroadcast.audio().voice;
       speechAudio.currentTime = 1.25;
     });
     await page.locator('#tvStage').click({ position: { x: 100, y: 100 } });
     assert.equal(await page.evaluate(() => speechAudio.paused), true);
     await page.locator('#tvStagePlay').click();
     assert.equal(
-      await page.evaluate(() => testAudio === speechAudio && speechAudio.currentTime === 1.25 && !speechAudio.paused),
+      await page.evaluate(
+        () => HoopWireBroadcast.audio().voice === speechAudio && speechAudio.currentTime === 1.25 && !speechAudio.paused
+      ),
       true
     );
     await page.locator('#tvMute span').click();

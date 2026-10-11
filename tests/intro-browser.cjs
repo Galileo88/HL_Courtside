@@ -198,8 +198,11 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#tvStagePlay').isVisible(), false);
     assert.equal(await page.locator('#tvIntro.is-outro').count(), 0);
     assert.equal(await page.locator('.tv-speech').count(), 0);
-    await page.waitForFunction(() => testTheme !== closingTheme && testTheme.currentTime > 0 && !testTheme.paused);
-    assert.equal(await page.evaluate(() => closingTheme.paused), true);
+    // The show keeps one theme player (so the closing theme plays without another tap); replaying starts it
+    // over from the top for the opening.
+    await page.waitForFunction(
+      () => testTheme.currentTime > 0 && testTheme.currentTime < testTheme.duration / 2 && !testTheme.paused
+    );
     assert.equal(await page.locator('#tvIntro').evaluate(e => e.classList.contains('is-outro')), false);
     assert.equal(await page.locator('.tv-speech').count(), 0);
     assert.deepEqual(errors, []);

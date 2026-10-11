@@ -57,13 +57,27 @@ test('a jumper goes up from its spot and drops through the rim', () => {
   }
 });
 
-test('a dunk hangs on the rim, then lands', () => {
+test('a dunk faces the basket from takeoff to landing', () => {
   const clip = { kind: 'dunk', side: 'right', start: [640, 340], pts: 2, duration: 4 };
-  const slam = R.frameAt(clip, 1.7),
-    end = R.frameAt(clip, 4);
-  assert.equal(slam.shooter.pose, 'dunking');
-  assert.ok(slam.shooter.lift > 50);
-  assert.ok(slam.shake > 0);
+  for (const t of [1.3, 1.64, 1.85, 2.2, 2.45]) assert.equal(R.frameAt(clip, t).shooter.facing, 'right', `at ${t}`);
+  // Rising with the ball held out toward the rim: the one-hand dunk, its ball (pixel 26, 9 facing right) at the rim.
+  const apex = R.frameAt(clip, 1.64),
+    ball = [apex.shooter.x + 10, apex.shooter.foot - apex.shooter.lift - 24];
+  assert.equal(apex.shooter.pose, 'one-hand-dunk');
+  assert.ok(Math.abs(ball[0] - R.RIM[0]) <= 8 && Math.abs(ball[1] - R.RIM[1]) <= 8, `ball at ${ball}`);
+  // Then hanging on the rim, its hand (pixel 23, 11 facing right) on the front of the rim.
+  const slam = R.frameAt(clip, 1.85),
+    hand = [slam.shooter.x + 7, slam.shooter.foot - slam.shooter.lift - 22];
+  assert.equal(slam.shooter.pose, 'dunk-released');
+  assert.equal(slam.shooter.frame, 0);
+  assert.ok(Math.abs(hand[0] - (R.RIM[0] - 6)) <= 3 && Math.abs(hand[1] - R.RIM[1]) <= 3, `hand at ${hand}`);
+  assert.ok(R.frameAt(clip, 1.7).shake > 0);
+  // Letting go (frames 1 and 2), the landing with arms up (frame 3), then the celebration.
+  assert.deepEqual(
+    [2.18, 2.26, 2.45].map(t => R.frameAt(clip, t).shooter.frame),
+    [1, 2, 3]
+  );
+  const end = R.frameAt(clip, 4);
   assert.equal(end.shooter.lift, 0);
   assert.equal(end.shooter.pose, 'celebrate');
 });
@@ -120,4 +134,24 @@ test('the net swishes and the rim bends with the game’s own timing', () => {
   const wobble = [0.1, 0.2, 0.3].map(u => R.frameAt(dunk, 2.15 + u).hoop.tilt);
   assert.deepEqual(wobble, [1, -0.75, 0.25]);
   assert.equal(R.frameAt(dunk, 3).hoop.tilt, 0);
+});
+
+test('the camera never jumps between frames', () => {
+  for (const clip of [
+    { kind: 'jumper', side: 'right', spot: R.SPOTS['corner-three'].shot, pts: 3, duration: 4.4 },
+    { kind: 'jumper', side: 'left', spot: R.SPOTS['top-three'].shot, pts: 3, duration: 4.4 },
+    { kind: 'dunk', side: 'right', start: [596, 262], pts: 2, duration: 4 },
+  ]) {
+    let a = R.frameAt(clip, 0).camera,
+      b = R.frameAt(clip, 1 / 60).camera;
+    for (let t = 2 / 60; t <= clip.duration; t += 1 / 60) {
+      const c = R.frameAt(clip, t).camera;
+      // At 60 frames a second it can move quickly with the ball, but never lurches: its speed changes by
+      // under a court pixel from one frame to the next.
+      assert.ok(Math.hypot(c.x - b.x, c.y - b.y) < 6, `${clip.kind} races at ${t.toFixed(2)}`);
+      assert.ok(Math.hypot(c.x - 2 * b.x + a.x, c.y - 2 * b.y + a.y) < 1, `${clip.kind} lurches at ${t.toFixed(2)}`);
+      a = b;
+      b = c;
+    }
+  }
 });
