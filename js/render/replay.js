@@ -6,8 +6,10 @@
   // left one. The save's shot spots use game units: 32 pixels each, from center court (512, 256).
   const RIM = [802, 189],
     BASKET = [802, 256],
-    // Where the dunk layout in scenes.js puts a player at the rim, and the floor under them.
-    DUNK = { x: 778, foot: 216, ground: 276, takeoff: 748 };
+    // A dunk takes off from the floor in front of the basket, rises with the ball cocked back, then hangs on
+    // the rim: the game's hanging frame holds the rim at pixel (8, 11) of its 32-pixel cell, so a player facing
+    // right at hang.x, hang.lift off the floor, has that hand on the front of the rim.
+    DUNK = { ground: 276, takeoff: 748, apex: { x: 782, lift: 62 }, hang: { x: 789, lift: 65 } };
   const SPOTS = {
     'corner-three': { shot: [786, 402], pts: 3, label: 'hits a corner three' },
     'wing-three': { shot: [684, 380], pts: 3, label: 'hits a three from the wing' },
@@ -269,29 +271,35 @@
         facing: toward(px, DUNK.takeoff),
       });
     } else if (t < slam) {
+      // The game's two-hand dunk, facing the rim with the ball cocked back.
       const u = (t - rise) / (slam - rise);
       Object.assign(shooter, {
-        x: lerp(DUNK.takeoff, DUNK.x, u),
-        lift: (DUNK.ground - DUNK.foot) * Math.sin((Math.PI / 2) * u),
+        x: lerp(DUNK.takeoff, DUNK.apex.x, u),
+        lift: DUNK.apex.lift * Math.sin((Math.PI / 2) * u),
         pose: 'dunking',
         frame: 0,
       });
-    } else if (t < land) {
-      const hang = DUNK.ground - DUNK.foot,
-        u = phase(t, drop, land);
+    } else if (t < drop)
+      // Hanging on the rim (the game's dunk_hanging), dipping a pixel as the rim gives.
       Object.assign(shooter, {
-        x: DUNK.x,
-        lift: t < drop ? hang - Math.sin(Math.PI * phase(t, slam, slam + 0.2)) * 2 : hang * (1 - u * u),
-        pose: 'dunking',
-        frame: 1,
+        x: DUNK.hang.x,
+        lift: DUNK.hang.lift - Math.sin(Math.PI * phase(t, slam, slam + 0.2)) * 1.5,
+        pose: 'dunk-released',
+        frame: 0,
       });
-    } else
+    else if (t < land) {
+      // Letting go (dunk_released: frames 0, 1, 2, 0) and dropping to the floor.
+      const u = phase(t, drop, land);
       Object.assign(shooter, {
-        x: DUNK.x,
-        pose: t < land + 0.15 ? 'idle' : 'celebrate',
-        frame: t < land + 0.15 ? 0 : step(t, 8, 4),
-        facing: 'left',
+        x: DUNK.hang.x,
+        lift: DUNK.hang.lift * (1 - u * u),
+        pose: 'dunk-released',
+        frame: t - drop < 0.08 ? 1 : t - drop < 0.16 ? 2 : 0,
       });
+    } else if (t < land + 0.2)
+      // The landing, arms up (dunk_landing), before the celebration.
+      Object.assign(shooter, { x: DUNK.hang.x, pose: 'dunk-released', frame: 3 });
+    else Object.assign(shooter, { x: DUNK.hang.x, pose: 'celebrate', frame: step(t, 8, 4), facing: 'left' });
     const ball = t >= slam ? ballAfterMake(t, slam) : null;
     // A trailing defender who gets there a step late.
     const chase = smooth(phase(t, 0.15, 1.5)),
@@ -363,28 +371,39 @@
   // The camera works like a broadcast replay: on the shooter for the move, with the basket's side of the
   // floor in view, then up with the ball to the rim, then back to the shooter for the celebration.
   // A dunk is close enough to the rim to keep both in the shot.
+  // Each hand-off between those is a blend over a few tenths of a second, so the target never jumps.
   function focus(clip, t) {
     const state = playAt(clip, t),
       p = state.shooter,
       body = [p.x, p.foot - p.lift - 22],
-      rim = [RIM[0] - 18, RIM[1] + 22];
-    if (clip.kind === 'dunk') return [lerp(body[0], rim[0], 0.45), lerp(p.foot - 22, RIM[1] - 8, 0.45)];
-    const lead = [lerp(body[0], rim[0], 0.22), lerp(body[1], rim[1], 0.22)];
-    if (t < state.release) return lead;
-    if (t < state.made + 0.55)
-      return state.ball ? [lerp(state.ball.x, rim[0], 0.35), lerp(state.ball.y, rim[1], 0.35)] : rim;
-    return [lerp(body[0], rim[0], 0.15), lerp(body[1], rim[1], 0.15)];
+      rim = [RIM[0] - 18, RIM[1] + 22],
+      mix = (a, b, u) => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
+    if (clip.kind === 'dunk') return [lerp(p.x, rim[0], 0.45), lerp(p.foot - 22, RIM[1] - 8, 0.45)];
+    // The ball starts in the shooter's hands and ends at the rim, so following it is continuous too.
+    const ball = state.ball && t < state.made ? [state.ball.x, state.ball.y] : t < state.release ? body : RIM,
+      lead = mix(body, rim, 0.22),
+      flight = mix(ball, rim, 0.35),
+      after = mix(body, rim, 0.15);
+    const up = smooth(phase(t, state.release - 0.2, state.release + 0.25)),
+      back = smooth(phase(t, state.made + 0.3, state.made + 1));
+    return mix(mix(lead, flight, up), after, back);
   }
   function camera(clip, t) {
-    // Eased by averaging where it wanted to be over the last half second, so it pans instead of cutting.
+    // Eased by a weighted average of where it wanted to be over the last 0.6 seconds, heaviest in the middle,
+    // so it pans instead of cutting and starts and stops gently.
     let x = 0,
-      y = 0;
-    const samples = 8;
+      y = 0,
+      total = 0;
+    const samples = 24;
     for (let i = 0; i < samples; i++) {
-      const [a, b] = focus(clip, Math.max(0, t - (0.5 * i) / samples));
-      x += a / samples;
-      y += b / samples;
+      const weight = Math.sin((Math.PI * (i + 0.5)) / samples),
+        [a, b] = focus(clip, Math.max(0, t - (0.6 * i) / samples));
+      x += a * weight;
+      y += b * weight;
+      total += weight;
     }
+    x /= total;
+    y /= total;
     const late = smooth(phase(t, clip.kind === 'dunk' ? 1.0 : 1.9, clip.kind === 'dunk' ? 1.6 : 2.7)),
       w = clip.kind === 'dunk' ? lerp(272, 232, late) : lerp(272, 248, late);
     return { x, y, w, h: (w * 9) / 16 };
@@ -409,8 +428,33 @@
     const ball = document.createElement('canvas');
     ball.width = ball.height = 16;
     window.HoopWirePlayer.drawBall(ball, scene.ball);
-    return { scene, clip, label, floor: floor.canvas, hoops, rim, net, ball, tiles: new Map() };
+    const assets = { scene, clip, label, floor: floor.canvas, hoops, rim, net, ball, tiles: new Map() };
+    // Recolor every sprite the clip will show before it plays, so no frame waits on one.
+    for (let t = 0; t <= clip.duration; t += 1 / 30)
+      for (const [key, data, team, uniform, p] of castOf(scene, playAt(clip, t)))
+        tile(assets, key, data, team, uniform, p.pose, p.frame, facing(clip, p.facing));
+    return assets;
   }
+  // Who is on the floor: the cache key, the player, their team and uniform, and where they are this frame.
+  function castOf(scene, state) {
+    return [
+      ['player', scene.player, scene.team, scene.uniformIndex, state.shooter],
+      [
+        'opp0',
+        scene.opponents?.[0] || scene.opponentPlayer,
+        scene.opponent,
+        scene.opponentUniformIndex,
+        state.defender,
+      ],
+      ['mate0', scene.teammates?.[0], scene.team, scene.uniformIndex, state.teammates[0]],
+      ['mate1', scene.teammates?.[1], scene.team, scene.uniformIndex, state.teammates[1]],
+      ['opp1', scene.opponents?.[1], scene.opponent, scene.opponentUniformIndex, state.opponents[0]],
+      ['opp2', scene.opponents?.[2], scene.opponent, scene.opponentUniformIndex, state.opponents[1]],
+    ].filter(a => a[1] && a[4]);
+  }
+  // Every sheet is drawn facing left, as the game's *_front_left frames; the renderer mirrors it for right.
+  // A clip at the left basket mirrors the whole play.
+  const facing = (clip, f) => (clip.side === 'left' ? (f === 'right' ? 'left' : 'right') : f);
   function tile(assets, key, data, team, uniform, pose, frame, facing) {
     const id = `${key}|${pose}|${frame}|${facing}`;
     let canvas = assets.tiles.get(id);
@@ -450,11 +494,7 @@
       ctx = canvas.getContext('2d'),
       mirror = clip.side === 'left',
       X = x => (mirror ? 1024 - x : x),
-      // The dunking sheet is drawn facing right; the game's other sheets face left.
-      face = (f, pose) => {
-        if (pose === 'dunking') f = f === 'right' ? 'left' : 'right';
-        return mirror ? (f === 'right' ? 'left' : 'right') : f;
-      };
+      face = f => facing(clip, f);
     const cam = state.camera,
       w = cam.w,
       h = cam.h,
@@ -468,20 +508,7 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(scale, 0, 0, scale, Math.round((-left + shake) * scale), Math.round((-top + shake * 0.5) * scale));
     ctx.drawImage(assets.floor, 0, 0, 1024, 512);
-    const cast = [
-      ['player', scene.player, scene.team, scene.uniformIndex, state.shooter],
-      [
-        'opp0',
-        scene.opponents?.[0] || scene.opponentPlayer,
-        scene.opponent,
-        scene.opponentUniformIndex,
-        state.defender,
-      ],
-      ['mate0', scene.teammates?.[0], scene.team, scene.uniformIndex, state.teammates[0]],
-      ['mate1', scene.teammates?.[1], scene.team, scene.uniformIndex, state.teammates[1]],
-      ['opp1', scene.opponents?.[1], scene.opponent, scene.opponentUniformIndex, state.opponents[0]],
-      ['opp2', scene.opponents?.[2], scene.opponent, scene.opponentUniformIndex, state.opponents[1]],
-    ].filter(a => a[1] && a[4]);
+    const cast = castOf(scene, state);
     // Shadows stay on the floor, under the ground point of anyone in the air.
     ctx.fillStyle = '#00000033';
     for (const [, , , , p] of cast) {
@@ -501,7 +528,7 @@
       order: 0,
       draw: () =>
         ctx.drawImage(
-          tile(assets, key, data, team, uniform, p.pose, p.frame, face(p.facing, p.pose)),
+          tile(assets, key, data, team, uniform, p.pose, p.frame, face(p.facing)),
           Math.round(X(p.x) - 16),
           Math.round(p.foot - 42 - p.lift),
           32,

@@ -46,6 +46,56 @@
   sweepPanel.setAttribute('aria-hidden', 'true');
   el.tvStage.appendChild(sweepPanel);
   const stillMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // One player for the hosts' voices and one for the theme, reused all episode. Browsers that want a tap before
+  // a player makes sound (Safari, iOS, stricter autoplay settings) only ask once per player, so both are unlocked
+  // on the tap that starts the show. A new player per line would need a fresh tap, and after a quiet stretch
+  // such as the highlights the voices would stop until the viewer touched the controls again.
+  // Both are made on first use, from inside a tap.
+  let voicePlayer = null,
+    themePlayer = null;
+  const unlocked = new WeakSet();
+  function silence() {
+    const samples = 800,
+      bytes = new Uint8Array(44 + samples).fill(128),
+      view = new DataView(bytes.buffer),
+      text = (at, value) => [...value].forEach((c, i) => (bytes[at + i] = c.charCodeAt(0)));
+    text(0, 'RIFF');
+    view.setUint32(4, 36 + samples, true);
+    text(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 8000, true);
+    view.setUint32(28, 8000, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    text(36, 'data');
+    view.setUint32(40, samples, true);
+    return 'data:audio/wav;base64,' + btoa(String.fromCharCode(...bytes));
+  }
+  // Call from a tap or key press. The theme unlocks by playing the opening right away; the voice player plays
+  // a moment of silence. A player already in use is left alone.
+  function unlockAudio() {
+    voicePlayer ||= new Audio();
+    themePlayer ||= new Audio(introSrc);
+    // Only a fresh player: one holding a paused line must keep it for the resume.
+    if (unlocked.has(voicePlayer) || voicePlayer.src) return;
+    unlocked.add(voicePlayer);
+    const player = voicePlayer,
+      quiet = (player.src = silence());
+    // A line loaded straight away cancels this, which is fine: the tap still unlocked the player. Only a
+    // refusal means it needs another tap.
+    Promise.resolve(player.play()).then(
+      () => player.src === quiet && player.pause(),
+      error => error?.name === 'NotAllowedError' && unlocked.delete(player)
+    );
+  }
+  // Loads a source into one of the shared players, from the start.
+  function cue(player, src) {
+    player.onended = player.onerror = null;
+    player.src = src;
+    return player;
+  }
   // Highlights: a few seconds of the story's play (HoopWireReplay), between the opening and the desk.
   // Maya calls for them in the discussion (HoopWireBroadcastContent.withHighlight); they run after that line,
   // before highlightLine.
@@ -385,7 +435,7 @@
     animateIntro();
     el.tvDiscussionStatus.textContent = 'Opening theme…';
     try {
-      introAudio ||= new Audio(introSrc);
+      introAudio ||= cue((themePlayer ||= new Audio(introSrc)), introSrc);
       const media = introAudio;
       introAudio.volume = 0.55;
       introAudio.muted = !el.tvVoice.checked;
@@ -424,7 +474,7 @@
   }
   async function playOutro() {
     const token = epoch,
-      media = outroAudio || new Audio(introSrc);
+      media = outroAudio || cue((themePlayer ||= new Audio(introSrc)), introSrc);
     outroActive = true;
     updateStagePlay();
     outroCard();
@@ -458,6 +508,7 @@
   }
   function startPlayback() {
     if (!turns.length) return;
+    unlockAudio();
     paused = false;
     if (completed && outroActive) {
       playOutro();
@@ -550,7 +601,7 @@
           const synth = await voiceSamples();
           if (token !== epoch || !running) return;
           const wav = synth.Animalese(spoken(turn.text), true, pitches[turn.speaker]);
-          audio = new Audio(wav.dataURI);
+          audio = cue((voicePlayer ||= new Audio()), wav.dataURI);
           audio.volume = 0.38;
           audio.playbackRate = 0.9;
           audio.preservesPitch = true;
@@ -689,6 +740,7 @@
   }
   el.tvMute.addEventListener('click', event => {
     event.stopPropagation();
+    unlockAudio();
     el.tvVoice.checked = !el.tvVoice.checked;
     try {
       localStorage.setItem('hoopwire.voices.muted', String(!el.tvVoice.checked));
@@ -725,5 +777,7 @@
     discussion,
     voiceSamples,
     voicePitches: [...pitches],
+    // The shared voice and theme players, once made.
+    audio: () => ({ voice: voicePlayer, theme: themePlayer }),
   };
 })();

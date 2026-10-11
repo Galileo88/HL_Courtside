@@ -30,6 +30,8 @@
     'injured-leg-arms',
     'running',
     'running-arms',
+    'dunk-released',
+    'dunk-released-arms',
   ];
   const images = {};
   const flightBall = new Image();
@@ -58,6 +60,8 @@
         'injured-leg-arms',
         'running',
         'running-arms',
+        'dunk-released',
+        'dunk-released-arms',
       ].includes(file)
         ? './assets/scene/'
         : root) +
@@ -375,8 +379,15 @@
           ? frame >= 4
           : pose === 'sitting'
             ? frame % 2 === 1
-            : ['idle', 'celebrate', 'bench-idle', 'bench-celebrate', 'suit-standing', 'running'].includes(pose) &&
-              Math.floor(frame / 4) % 2 === 1,
+            : [
+                'idle',
+                'celebrate',
+                'bench-idle',
+                'bench-celebrate',
+                'suit-standing',
+                'running',
+                'dunk-released',
+              ].includes(pose) && Math.floor(frame / 4) % 2 === 1,
       headX = back ? 32 : 0;
     // The injured sprite keeps its own pained face; only the hair goes on it.
     if (pose !== 'injured-leg') {
@@ -398,6 +409,8 @@
       dunking: 'dunking-arms',
       'injured-leg': 'injured-leg-arms',
       running: 'running-arms',
+      // The game's hanging-on-the-rim, letting-go and landing frames after a dunk.
+      'dunk-released': 'dunk-released-arms',
     }[pose];
     // The arms are their own layer so they can go over the jersey number, which is drawn later at
     // the final size; an arm across the chest covers the number, as it does in the game.
