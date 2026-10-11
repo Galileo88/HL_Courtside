@@ -6,10 +6,11 @@
   // left one. The save's shot spots use game units: 32 pixels each, from center court (512, 256).
   const RIM = [802, 189],
     BASKET = [802, 256],
-    // A dunk takes off from the floor in front of the basket, rises with the ball cocked back, then hangs on
-    // the rim: the game's hanging frame holds the rim at pixel (8, 11) of its 32-pixel cell, so a player facing
-    // right at hang.x, hang.lift off the floor, has that hand on the front of the rim.
-    DUNK = { ground: 276, takeoff: 748, apex: { x: 782, lift: 62 }, hang: { x: 789, lift: 65 } };
+    // A dunk takes off from the floor in front of the basket and rises with the ball up on the basket side, then
+    // hangs under the rim. Both use the unmirrored (left-facing) frames at the right basket: the dunk frame holds
+    // the ball near pixel (25, 5) of its 32-pixel cell, at the rim from apex, and the hanging frame grips the rim at pixel (8, 11), so a
+    // player at hang.x, hang.lift off the floor, has that hand on the front of the rim.
+    DUNK = { ground: 276, takeoff: 748, apex: { x: 788, lift: 64 }, hang: { x: 804, lift: 65 } };
   const SPOTS = {
     'corner-three': { shot: [786, 402], pts: 3, label: 'hits a corner three' },
     'wing-three': { shot: [684, 380], pts: 3, label: 'hits a three from the wing' },
@@ -271,21 +272,24 @@
         facing: toward(px, DUNK.takeoff),
       });
     } else if (t < slam) {
-      // The game's two-hand dunk, facing the rim with the ball cocked back.
+      // The game's two-hand dunk, the ball raised toward the rim.
       const u = (t - rise) / (slam - rise);
       Object.assign(shooter, {
         x: lerp(DUNK.takeoff, DUNK.apex.x, u),
         lift: DUNK.apex.lift * Math.sin((Math.PI / 2) * u),
         pose: 'dunking',
         frame: 0,
+        facing: 'left',
       });
     } else if (t < drop)
       // Hanging on the rim (the game's dunk_hanging), dipping a pixel as the rim gives.
       Object.assign(shooter, {
-        x: DUNK.hang.x,
+        // Carried the last few pixels under the rim as the dunk goes down.
+        x: lerp(DUNK.apex.x, DUNK.hang.x, smooth(phase(t, slam, slam + 0.1))),
         lift: DUNK.hang.lift - Math.sin(Math.PI * phase(t, slam, slam + 0.2)) * 1.5,
         pose: 'dunk-released',
         frame: 0,
+        facing: 'left',
       });
     else if (t < land) {
       // Letting go (dunk_released: frames 0, 1, 2, 0) and dropping to the floor.
@@ -295,10 +299,11 @@
         lift: DUNK.hang.lift * (1 - u * u),
         pose: 'dunk-released',
         frame: t - drop < 0.08 ? 1 : t - drop < 0.16 ? 2 : 0,
+        facing: 'left',
       });
     } else if (t < land + 0.2)
       // The landing, arms up (dunk_landing), before the celebration.
-      Object.assign(shooter, { x: DUNK.hang.x, pose: 'dunk-released', frame: 3 });
+      Object.assign(shooter, { x: DUNK.hang.x, pose: 'dunk-released', frame: 3, facing: 'left' });
     else Object.assign(shooter, { x: DUNK.hang.x, pose: 'celebrate', frame: step(t, 8, 4), facing: 'left' });
     const ball = t >= slam ? ballAfterMake(t, slam) : null;
     // A trailing defender who gets there a step late.

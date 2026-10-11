@@ -59,18 +59,20 @@ test('a jumper goes up from its spot and drops through the rim', () => {
 
 test('a dunk hangs on the rim, then lands', () => {
   const clip = { kind: 'dunk', side: 'right', start: [640, 340], pts: 2, duration: 4 };
-  // Rising toward the basket with the ball cocked back, facing it.
-  const rise = R.frameAt(clip, 1.5);
-  assert.equal(rise.shooter.pose, 'dunking');
-  assert.equal(rise.shooter.facing, 'right');
-  // Then the game's hanging frame, its hand (pixel 8, 11 of the left-facing cell) on the front of the rim.
-  const slam = R.frameAt(clip, 1.7),
-    hand = [slam.shooter.x + 7, slam.shooter.foot - slam.shooter.lift - 22];
+  // Rising with the ball up on the basket side: the unmirrored dunk frame, its ball (pixel 25, 5) at the rim.
+  const apex = R.frameAt(clip, 1.64),
+    ball = [apex.shooter.x + 9, apex.shooter.foot - apex.shooter.lift - 28];
+  assert.equal(apex.shooter.pose, 'dunking');
+  assert.equal(apex.shooter.facing, 'left');
+  assert.ok(Math.abs(ball[0] - R.RIM[0]) <= 8 && Math.abs(ball[1] - R.RIM[1]) <= 8, `ball at ${ball}`);
+  // Then hanging under the rim, its hand (pixel 8, 11) on the front of the rim.
+  const slam = R.frameAt(clip, 1.85),
+    hand = [slam.shooter.x - 8, slam.shooter.foot - slam.shooter.lift - 22];
   assert.equal(slam.shooter.pose, 'dunk-released');
   assert.equal(slam.shooter.frame, 0);
-  assert.equal(slam.shooter.facing, 'right');
+  assert.equal(slam.shooter.facing, 'left');
   assert.ok(Math.abs(hand[0] - (R.RIM[0] - 6)) <= 3 && Math.abs(hand[1] - R.RIM[1]) <= 3, `hand at ${hand}`);
-  assert.ok(slam.shake > 0);
+  assert.ok(R.frameAt(clip, 1.7).shake > 0);
   // Letting go (frames 1 and 2), the landing with arms up (frame 3), then the celebration.
   assert.deepEqual(
     [2.18, 2.26, 2.45].map(t => R.frameAt(clip, t).shooter.frame),
