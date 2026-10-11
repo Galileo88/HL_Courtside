@@ -125,7 +125,13 @@
         ctx.scale(-1, 1);
       }
       images.forEach((image, i) => {
-        if ((part === 'shadow' && i !== 0) || (part === 'structure' && i === 0)) return;
+        // 'frame' is the structure without the rim and net, for replays that animate those.
+        if (
+          (part === 'shadow' && i !== 0) ||
+          (part === 'structure' && i === 0) ||
+          (part === 'frame' && (i === 0 || i >= 5))
+        )
+          return;
         ctx.globalAlpha = i === 0 ? 0.25 : 1;
         ctx.drawImage(i === 0 || i >= 5 ? image : recolor(image, null, colors), ...positions[i]);
       });
@@ -207,6 +213,7 @@
     return {
       canvas,
       hoopLayers: [{ depth: 256, draw: target => drawHoops(target, images.slice(9), court, team, 'structure') }],
+      hoopFrame: target => drawHoops(target, images.slice(9), court, team, 'frame'),
       customCourt: {
         url: court.overlayURL || null,
         status: overlay ? 'loaded' : court.overlayURL ? 'unavailable' : 'none',
@@ -215,5 +222,8 @@
       },
     };
   }
-  window.HoopWireCourt = { render, validURL, loadImage: load };
+  // The left hoop's rim and net, as drawHoops places them; the right hoop mirrors them across center court.
+  // The game tilts the rim and net together about the rim's edge at the backboard.
+  const rimLayout = { rim: positions[5], net: positions[6], pivot: [positions[5][0], positions[5][1] + 8] };
+  window.HoopWireCourt = { render, validURL, loadImage: load, rimLayout };
 })();

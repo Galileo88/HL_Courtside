@@ -2067,3 +2067,18 @@ a[aria-disabled='true']:hover {
     font-size: 12px;
   }
 }
+
+/* HoopWire TV highlights fill the screen, under the wipe and the play button. */
+.tv-stage > .tv-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 17;
+  width: 100%;
+  height: 100%;
+  background: #162b49;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.tv-stage > .tv-highlight[hidden] {
+  display: none;
+}

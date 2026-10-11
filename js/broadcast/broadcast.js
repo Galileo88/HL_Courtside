@@ -46,6 +46,28 @@
   sweepPanel.setAttribute('aria-hidden', 'true');
   el.tvStage.appendChild(sweepPanel);
   const stillMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Highlights: a few seconds of the story's play (HoopWireReplay), between the opening and the desk.
+  // They run once the hosts have introduced themselves, before highlightLine, the first line about the story.
+  // highlightDue says the episode has yet to show them; highlightAt is how far in a paused clip got.
+  let highlight = null,
+    highlightLine = 0,
+    highlightDue = false,
+    highlightAt = 0,
+    highlightPlayer = null;
+  const highlightCanvas = document.createElement('canvas');
+  highlightCanvas.className = 'tv-highlight';
+  highlightCanvas.width = 768;
+  highlightCanvas.height = 432;
+  highlightCanvas.hidden = true;
+  highlightCanvas.setAttribute('role', 'img');
+  el.tvStage.appendChild(highlightCanvas);
+  function highlightAssets() {
+    highlight.assets ||= window.HoopWireReplay.prepare(highlight.scene, highlight.clip, { label: 'HIGHLIGHTS' });
+    return highlight.assets;
+  }
+  function hideHighlight() {
+    highlightCanvas.hidden = true;
+  }
   function sweep(phase) {
     sweepAnimation?.cancel();
     sweepAnimation = null;
@@ -180,7 +202,9 @@
     const result = [];
     for (const turn of scripted) {
       const chunks = window.HoopWireBroadcastContent?.chunkDialogue(turn.text) || [turn.text];
-      chunks.forEach((text, i) => result.push({ speaker: turn.speaker, text, continuation: i > 0 }));
+      chunks.forEach((text, i) =>
+        result.push({ speaker: turn.speaker, text, continuation: i > 0, ...(turn.intro ? { intro: true } : {}) })
+      );
     }
     return result;
   }
@@ -288,6 +312,17 @@
         introAudio = null;
       }
     }
+    if (highlightPlayer) {
+      highlightAt = highlightPlayer.elapsed();
+      highlightPlayer.stop();
+      highlightPlayer = null;
+    }
+    if (resetIntro) {
+      highlightDue = !!highlight;
+      highlightAt = 0;
+    }
+    // A paused clip stays up under the play button; otherwise the desk shows.
+    if (resetIntro || !highlightDue) hideHighlight();
     clearSweep();
     if (resetIntro) clearIntro();
     talking(false);
@@ -305,6 +340,31 @@
     sweep('reveal');
     clearIntro();
     needsIntro = false;
+    if (highlightDue && line === highlightLine) return playHighlight(token);
+    show();
+    playLine();
+  }
+  // The highlights run full screen, then the same wipe takes the show back to the desk.
+  async function playHighlight(token) {
+    highlightCanvas.hidden = false;
+    show();
+    try {
+      const assets = await highlightAssets();
+      if (token !== epoch || !running) return;
+      const player = (highlightPlayer = window.HoopWireReplay.play(highlightCanvas, assets, { from: highlightAt }));
+      const finished = await player.done;
+      if (highlightPlayer === player) highlightPlayer = null;
+      if (!finished) return;
+    } catch {
+      // Without the clip the episode goes straight to the desk.
+    }
+    if (token !== epoch || !running) return;
+    highlightDue = false;
+    highlightAt = 0;
+    await sweep('cover');
+    if (token !== epoch || !running) return;
+    hideHighlight();
+    sweep('reveal');
     show();
     playLine();
   }
@@ -403,11 +463,12 @@
     updateStagePlay();
     show();
     if (needsIntro) playIntro();
+    else if (highlightDue && line === highlightLine) playHighlight(epoch);
     else playLine();
   }
   function show() {
     el.tvBubbles.replaceChildren();
-    el.tvBubbles.hidden = needsIntro || completed;
+    el.tvBubbles.hidden = needsIntro || completed || (highlightDue && !highlightCanvas.hidden);
     const turn = turns[line];
     if (turn) {
       if (!needsIntro && !completed) {
@@ -429,6 +490,8 @@
         : introElapsed > 0
           ? 'Opening theme paused.'
           : 'Play episode to start the show.';
+    if (highlightDue && !highlightCanvas.hidden)
+      el.tvDiscussionStatus.textContent = running ? highlightCanvas.getAttribute('aria-label') : 'Highlights paused.';
     if (completed) el.tvDiscussionStatus.textContent = 'Episode complete. Replay or choose the next story.';
     for (const [i, p] of [...el.tvTranscript.children].entries()) p.classList.toggle('current-line', i === line);
     updateStagePlay();
@@ -460,6 +523,7 @@
       () => {
         if (token !== epoch || !running) return;
         line++;
+        if (highlightDue && line === highlightLine) return playHighlight(token);
         show();
         playLine();
       },
@@ -512,13 +576,26 @@
     talking(true);
     timer = setTimeout(() => advance(token), delay);
   }
-  function mount(story, studio, autoplay = false, context) {
+  // options.shots: the featured player's made shots from the save, for highlights of the real play.
+  function mount(story, studio, autoplay = false, context, options = {}) {
+    highlight = null;
+    const R = window.HoopWireReplay,
+      scene = story?.sceneInputs,
+      clip = R?.available(scene) && !stillMotion() ? R.plan(scene, story, options.shots || []) : null;
+    if (clip) {
+      highlight = { scene, clip, assets: null };
+      highlightCanvas.setAttribute('aria-label', R.caption(scene, clip).replace(/^Replay:/, 'Highlights:'));
+    }
     stop();
     line = 0;
     needsIntro = true;
     completed = false;
     hosts = studio?.inputs.announcers || HoopWireTV.inputs({ teams: [] }).announcers;
     turns = discussion(story, context);
+    highlightLine = Math.max(
+      0,
+      turns.findIndex(turn => !turn.intro)
+    );
     el.tvLiveHosts.replaceChildren();
     el.tvTranscript.replaceChildren();
     if (studio?.backdropBlob)
@@ -584,6 +661,8 @@
     completed = false;
     needsIntro = false;
     line = Math.min(turns.length - 1, line + 1);
+    // Stepping past the story's first line skips the highlights.
+    highlightDue &&= line <= highlightLine;
     show();
   });
   function muteLabel() {

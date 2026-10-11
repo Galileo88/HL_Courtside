@@ -99,3 +99,25 @@ test('the save’s last game supplies real made shots for its own story only', (
   const rim = R.plan(scene('pass'), { id: 'real' }, [{ x: 790, y: 258, type: 0, pts: 2 }]);
   assert.equal(rim.kind, 'dunk');
 });
+
+test('the net swishes and the rim bends with the game’s own timing', () => {
+  // Hoop Land's net_swish: frames 0, 1, 2, 3, 2, 1, 0 over 0.35 seconds.
+  assert.deepEqual(
+    [-0.01, 0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 1].map(R.netFrame),
+    [0, 0, 1, 2, 3, 3, 2, 1, 0, 0]
+  );
+  const jumper = { kind: 'jumper', side: 'right', spot: R.SPOTS.elbow.shot, pts: 2, duration: 4.4 },
+    made = R.frameAt(jumper, 0).made;
+  assert.equal(R.frameAt(jumper, made - 0.1).hoop.net, 0);
+  assert.equal(R.frameAt(jumper, made + 0.16).hoop.net, 3);
+  assert.equal(R.frameAt(jumper, made + 0.16).hoop.tilt, 0, 'a swish leaves the rim still');
+  // A dunk pulls the rim down while the dunker hangs and wobbles it back on release.
+  const dunk = { kind: 'dunk', side: 'right', start: [640, 340], pts: 2, duration: 4 },
+    slam = R.frameAt(dunk, 0).made;
+  assert.equal(R.frameAt(dunk, slam - 0.05).hoop.tilt, 0);
+  assert.equal(R.frameAt(dunk, slam + 0.1).hoop.tilt, -2);
+  assert.equal(R.frameAt(dunk, slam + 0.4).hoop.tilt, -1.5);
+  const wobble = [0.1, 0.2, 0.3].map(u => R.frameAt(dunk, 2.15 + u).hoop.tilt);
+  assert.deepEqual(wobble, [1, -0.75, 0.25]);
+  assert.equal(R.frameAt(dunk, 3).hoop.tilt, 0);
+});

@@ -49,6 +49,9 @@ test('episodes welcome viewers, introduce all four hosts and close after the rep
   assert.match(intro, /HoopWire TV/);
   for (const name of ['Maya Brooks', 'Jordan Price', 'Andre Cole', 'Nina Reyes']) assert.ok(intro.includes(name));
   assert.match(turns[4].text, /Stars.*Moons/);
+  // The introductions are marked so the show can cut to highlights before the story.
+  assert.deepEqual(turns.map(t => !!t.intro).slice(0, 5), [true, true, true, true, false]);
+  assert.equal(turns.filter(t => t.intro).length, 4);
   assert.match(turns.at(-1).text, /Thanks for watching HoopWire TV/);
   assert.deepEqual(B.episode(null), []);
   // The show opens and closes a few different ways, each the same every time that episode plays.

@@ -3612,7 +3612,8 @@
       'episode:outro'
     );
     return [
-      ...intro.map((text, i) => turn(i, text)),
+      // The hosts' introductions are marked, so the show knows where the story starts (and cuts to highlights).
+      ...intro.map((text, i) => ({ ...turn(i, text), intro: true })),
       ...script(story, context, names),
       ...outro.map(([speaker, text]) => turn(speaker, text)),
     ];

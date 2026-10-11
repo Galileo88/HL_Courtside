@@ -15,6 +15,32 @@
     elbow: { shot: [702, 306], pts: 2, label: 'hits a jumper from the elbow' },
     baseline: { shot: [784, 344], pts: 2, label: 'hits a baseline jumper' },
   };
+  // The game's hoop animations (Hoop Land's net_swish, hoop_dunked and hoop_released clips): the net steps through
+  // its four frames as the ball goes through, and a dunk pulls the rim and net down a couple of degrees, holding
+  // them there while the dunker hangs, then wobbles them back when the dunker lets go. Times are seconds;
+  // tilts are degrees, negative pulling the rim down.
+  const NET_SWISH = [
+      [0, 0],
+      [0.05, 1],
+      [0.1, 2],
+      [0.15, 3],
+      [0.25, 2],
+      [0.3, 1],
+      [0.35, 0],
+    ],
+    HOOP_DUNKED = [
+      [0, 0],
+      [0.1, -2],
+      [0.2, -1.5],
+      [0.4, -1.5],
+    ],
+    HOOP_RELEASED = [
+      [0, -1.5],
+      [0.1, 1],
+      [0.2, -0.75],
+      [0.3, 0.25],
+      [0.4, 0],
+    ];
   // Dunks start from one of these and dribble in to the takeoff spot.
   const LANES = { wing: [640, 340], top: [596, 262], baseline: [700, 392] };
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)),
@@ -121,6 +147,23 @@
     return { ...playAt(clip, t), camera: camera(clip, t) };
   }
   const playAt = (clip, t) => (clip.kind === 'dunk' ? dunkAt(clip, t) : jumperAt(clip, t));
+  // The net frame u seconds into a swish, and a hoop tilt eased between the clip's keys.
+  function netFrame(u) {
+    if (!(u >= 0)) return 0;
+    let frame = 0;
+    for (const [time, value] of NET_SWISH) if (u >= time) frame = value;
+    return frame;
+  }
+  function tiltAt(keys, u) {
+    if (!(u > 0)) return keys[0][1];
+    for (let i = 1; i < keys.length; i++)
+      if (u < keys[i][0]) {
+        const [a, from] = keys[i - 1],
+          [b, to] = keys[i];
+        return lerp(from, to, smooth((u - a) / (b - a)));
+      }
+    return keys.at(-1)[1];
+  }
   const step = (t, fps, n) => Math.floor(t * fps) % n;
   const toward = (from, to) => (to >= from ? 'right' : 'left');
 
@@ -206,7 +249,7 @@
     if (t >= 1.45 && t < 2.1)
       Object.assign(defender, { pose: 'celebrate', frame: 2, lift: Math.sin((Math.PI * (t - 1.45)) / 0.65) * 6 });
     const spread = support(clip, t, made);
-    return { shooter, defender, ...spread, ball, made, release, shake: 0 };
+    return { shooter, defender, ...spread, ball, made, release, shake: 0, hoop: { net: netFrame(t - made), tilt: 0 } };
   }
 
   function dunkAt(clip, t) {
@@ -270,6 +313,10 @@
       ball,
       made: slam,
       release: rise,
+      hoop: {
+        net: netFrame(t - slam),
+        tilt: t < drop ? tiltAt(HOOP_DUNKED, t - slam) : tiltAt(HOOP_RELEASED, t - drop),
+      },
       shake: t >= slam && t < slam + 0.18 ? (1 - (t - slam) / 0.18) * 2 : 0,
     };
   }
@@ -344,7 +391,8 @@
   }
 
   // Drawing. Sprites are cached per pose, frame and facing, since the game's art is recolored per player.
-  async function prepare(scene, clip) {
+  // label is the corner tag: REPLAY on a story, HIGHLIGHTS on HoopWire TV.
+  async function prepare(scene, clip, { label = 'REPLAY' } = {}) {
     await window.HoopWirePlayer.ready();
     const floor = await window.HoopWireCourt.render(scene.home || scene.team, { includeHoops: false });
     const hoops = document.createElement('canvas');
@@ -353,11 +401,15 @@
     const h = hoops.getContext('2d');
     h.imageSmoothingEnabled = false;
     h.scale(2, 2);
-    for (const layer of floor.hoopLayers) layer.draw(h);
+    // The rim and net are drawn each frame, so they can swish and tilt; the rest of the hoop is fixed.
+    floor.hoopFrame(h);
+    const [rim, net] = await Promise.all(
+      ['rim', 'net-swish'].map(name => window.HoopWireCourt.loadImage(`assets/court/${name}.png`))
+    );
     const ball = document.createElement('canvas');
     ball.width = ball.height = 16;
     window.HoopWirePlayer.drawBall(ball, scene.ball);
-    return { scene, clip, floor: floor.canvas, hoops, ball, tiles: new Map() };
+    return { scene, clip, label, floor: floor.canvas, hoops, rim, net, ball, tiles: new Map() };
   }
   function tile(assets, key, data, team, uniform, pose, frame, facing) {
     const id = `${key}|${pose}|${frame}|${facing}`;
@@ -370,6 +422,27 @@
       assets.tiles.set(id, canvas);
     }
     return canvas;
+  }
+  // Both rims and nets, placed as the court renderer places them; only the basket in play moves.
+  function rims(ctx, assets, hoop, mirror) {
+    const { rim, net, pivot } = window.HoopWireCourt.rimLayout;
+    for (const right of [false, true]) {
+      const live = right !== mirror,
+        tilt = live ? hoop.tilt : 0,
+        frame = live ? hoop.net : 0;
+      ctx.save();
+      if (right) {
+        ctx.translate(1024, 0);
+        ctx.scale(-1, 1);
+      }
+      // Drawn as the left hoop: a negative tilt turns the free end of the rim down, clockwise on screen.
+      ctx.translate(pivot[0], pivot[1]);
+      ctx.rotate((-tilt * Math.PI) / 180);
+      ctx.translate(-pivot[0], -pivot[1]);
+      ctx.drawImage(assets.rim, rim[0], rim[1]);
+      ctx.drawImage(assets.net, frame * 32, 0, 32, 32, net[0], net[1], 32, 32);
+      ctx.restore();
+    }
   }
   function draw(canvas, assets, t) {
     const { scene, clip } = assets,
@@ -435,9 +508,13 @@
           42
         ),
     }));
-    layers.push({ depth: BASKET[1], order: 1, draw: () => ctx.drawImage(assets.hoops, 0, 0, 1024, 512) });
+    layers.push(
+      { depth: BASKET[1], order: 1, draw: () => ctx.drawImage(assets.hoops, 0, 0, 1024, 512) },
+      { depth: BASKET[1], order: 3, draw: () => rims(ctx, assets, state.hoop, mirror) }
+    );
     const ballLayer = ball && {
-      depth: ball.behind ? BASKET[1] - 0.5 : (ball.foot ?? 1e6),
+      // Going through the hoop, the ball is in front of the backboard and behind the rim and net.
+      depth: ball.behind ? BASKET[1] : (ball.foot ?? 1e6),
       order: 2,
       draw: () => ctx.drawImage(assets.ball, Math.round(X(ball.x) - 4), Math.round(ball.y - 4), 8, 8),
     };
@@ -447,7 +524,7 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.font = '700 22px "Segoe UI", Arial, Helvetica, sans-serif';
     ctx.textBaseline = 'middle';
-    const label = 'REPLAY',
+    const label = assets.label || 'REPLAY',
       width = ctx.measureText(label).width + 28;
     ctx.fillStyle = '#081829d9';
     ctx.fillRect(18, 18, width, 38);
@@ -472,18 +549,20 @@
     }
   }
 
-  // Plays a clip into the canvas; resolves when it ends or is stopped.
-  function play(canvas, assets, { onFrame } = {}) {
+  // Plays a clip into the canvas, from a point in it when resuming; done resolves true when it ends and false
+  // when it is stopped, and elapsed() says how far it got.
+  function play(canvas, assets, { onFrame, from = 0 } = {}) {
     let stopped = false,
       frame = 0,
       resolve;
     const done = new Promise(r => (resolve = r));
-    const started = performance.now(),
+    let t = from;
+    const started = performance.now() - from * 1000,
       tick = now => {
         if (stopped) return;
-        const t = (now - started) / 1000;
+        t = Math.max(from, (now - started) / 1000);
         // The feed redraws its articles; a replay taken off the page stops with it.
-        if (t > 0.1 && !canvas.isConnected) {
+        if (t > from + 0.1 && !canvas.isConnected) {
           stopped = true;
           return resolve(false);
         }
@@ -497,6 +576,7 @@
     frame = requestAnimationFrame(tick);
     return {
       done,
+      elapsed: () => t,
       stop() {
         if (stopped) return;
         stopped = true;
@@ -511,5 +591,18 @@
     return `Replay: ${window.HoopWireCore.playerDisplay(scene.player)} ${clip.label}.`;
   }
 
-  window.HoopWireReplay = { available, madeShots, plan, frameAt, prepare, draw, play, caption, SPOTS, RIM, BASKET };
+  window.HoopWireReplay = {
+    available,
+    madeShots,
+    plan,
+    frameAt,
+    netFrame,
+    prepare,
+    draw,
+    play,
+    caption,
+    SPOTS,
+    RIM,
+    BASKET,
+  };
 })();

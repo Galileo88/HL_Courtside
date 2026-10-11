@@ -2060,7 +2060,11 @@
           snapshots: [...state.snapshots.values()],
         })
       : {};
-    window.HoopWireBroadcast?.mount(tvStory, studio, false, context);
+    window.HoopWireBroadcast?.mount(tvStory, studio, false, context, {
+      shots: tvStory
+        ? window.HoopWireReplay?.madeShots(currentLeagueForStory(tvStory), tvStory, tvStory.sceneInputs?.player?.id)
+        : [],
+    });
     if (tvStory) {
       const panel = tvStoryPanel(tvStory);
       linkBoardNames(panel, tvStory.fingerprint);
