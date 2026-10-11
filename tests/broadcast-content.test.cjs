@@ -49,9 +49,9 @@ test('episodes welcome viewers, introduce all four hosts and close after the rep
   assert.match(intro, /HoopWire TV/);
   for (const name of ['Maya Brooks', 'Jordan Price', 'Andre Cole', 'Nina Reyes']) assert.ok(intro.includes(name));
   assert.match(turns[4].text, /Stars.*Moons/);
-  // The introductions are marked so the show can cut to highlights before the story.
-  assert.deepEqual(turns.map(t => !!t.intro).slice(0, 5), [true, true, true, true, false]);
+  // The introductions and sign-off are marked, so highlights stay in the discussion between them.
   assert.equal(turns.filter(t => t.intro).length, 4);
+  assert.equal(turns.filter(t => t.outro).length, 3);
   assert.match(turns.at(-1).text, /Thanks for watching HoopWire TV/);
   assert.deepEqual(B.episode(null), []);
   // The show opens and closes a few different ways, each the same every time that episode plays.
@@ -447,4 +447,30 @@ test('news segments end on the story, not a promise of more, and coaching hires 
     firing = lines('Coaching change', 28);
   assert.ok(hire.takes.concat(hire.ends).every(t => !/search|next hire|answer for the results/.test(t)));
   assert.ok(firing.ends.every(t => /search|next|bring in|locker room/.test(t)));
+});
+
+test('highlights come up in the conversation once the desk has talked about the player', () => {
+  const player = { fn: 'Alex', ln: 'Star' },
+    turns = B.episode(game),
+    clip = { kind: 'jumper', pts: 3, spotName: 'corner-three' },
+    shown = B.withHighlight(turns, game, clip, player),
+    at = shown.findIndex(t => t.cue === 'highlight');
+  assert.equal(shown.length, turns.length + 2);
+  // Maya calls for it by name, after the player has come up, and never during the introductions or sign-off.
+  assert.ok(at > 0);
+  assert.equal(shown[at].speaker, 0);
+  assert.match(shown[at].text, /Star from the corner/);
+  const named = shown.findIndex(t => !t.intro && t.text.includes('Star'));
+  assert.ok(named >= 0 && named < at);
+  assert.ok(!shown[at - 1].intro && !shown[at + 1].outro);
+  // A host other than Maya, and other than whoever just spoke, reacts; then the show picks up where it was.
+  assert.notEqual(shown[at + 1].speaker, 0);
+  assert.notEqual(shown[at + 1].speaker, shown[at - 1].speaker);
+  assert.deepEqual(shown.slice(at + 2), turns.slice(at));
+  assert.equal(shown[at + 2].speaker, 0, "the cut sits just ahead of Maya's next line");
+  assert.deepEqual(B.withHighlight(turns, game, clip, player), shown);
+  assert.match(B.withHighlight(turns, game, { kind: 'dunk', pts: 2 }, player)[at].text, /Star/);
+  // No mention of the player, no call for the tape.
+  assert.equal(B.withHighlight(turns, game, clip, { fn: 'Pat', ln: 'Nobody' }), turns);
+  assert.equal(B.withHighlight(turns, game, null, player), turns);
 });

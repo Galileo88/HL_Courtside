@@ -3612,15 +3612,117 @@
       'episode:outro'
     );
     return [
-      // The hosts' introductions are marked, so the show knows where the story starts (and cuts to highlights).
+      // The introductions and sign-off are marked, so highlights land in the discussion between them.
       ...intro.map((text, i) => ({ ...turn(i, text), intro: true })),
       ...script(story, context, names),
-      ...outro.map(([speaker, text]) => turn(speaker, text)),
+      ...outro.map(([speaker, text]) => ({ ...turn(speaker, text), outro: true })),
+    ];
+  }
+  // Highlights come up the way they would on a studio show: once the desk has talked about the player, Maya
+  // calls for the tape before moving on, the clip runs, and a host reacts. The cut goes after the first exchange
+  // about the player, ahead of Maya's next question, so no back-and-forth is interrupted. The call is marked
+  // cue: 'highlight'. clip is HoopWireReplay's plan: { kind: 'dunk' | 'jumper', pts, spotName }.
+  function withHighlight(turns, story, clip, player) {
+    const name = C.playerDisplay(player || {}),
+      last = player?.ln || (name ? C.surname(name) : '');
+    if (!clip || !last) return turns;
+    const mentions = t => t.text.includes(last);
+    const named = turns.findIndex(t => !t.intro && !t.outro && mentions(t));
+    if (named < 0) return turns;
+    let at = turns.findIndex((t, i) => i > named && t.speaker === 0 && !t.intro);
+    if (at < 0) return turns;
+    // With no question left before the sign-off, the tape runs just ahead of it.
+    if (turns[at].outro) at = turns.findIndex(t => t.outro);
+    const spot = {
+      'corner-three': 'from the corner',
+      'wing-three': 'from the wing',
+      'top-three': 'from the top of the key',
+      elbow: 'from the elbow',
+      baseline: 'along the baseline',
+    }[clip.spotName];
+    const lead =
+      clip.kind === 'dunk'
+        ? pick(
+            story,
+            [
+              `Before we move on, let's see it. Roll the tape on ${last}.`,
+              `We've got the highlight. Here's ${last} at the rim.`,
+              `Let's go to the tape. Watch ${last} attack the basket.`,
+            ],
+            'highlight:lead'
+          )
+        : clip.pts === 3
+          ? pick(
+              story,
+              [
+                `Let's go to the tape. Here's ${last} ${spot || 'from deep'}.`,
+                `We've got the highlight. ${last}, ${spot ? `three ${spot}` : 'from three'}.`,
+                `Roll it. Watch ${last} let this one fly ${spot || 'from deep'}.`,
+              ],
+              'highlight:lead'
+            )
+          : pick(
+              story,
+              [
+                `Let's go to the tape. Here's ${last} pulling up ${spot || 'for two'}.`,
+                `We've got the highlight. Watch ${last} rise up ${spot || 'for the jumper'}.`,
+              ],
+              'highlight:lead'
+            );
+    const reaction =
+      clip.kind === 'dunk'
+        ? pick(
+            story,
+            [
+              'No hesitation. Straight to the rim and through it.',
+              "Look at the rim shake! That's emphatic.",
+              "Oh, that's a grown-up dunk. Nobody's stopping that.",
+              "The defense saw it coming and still couldn't do a thing.",
+              'Hang on that rim as long as you want after one like that.',
+            ],
+            `highlight:reaction:${clip.kind}`
+          )
+        : clip.pts === 3
+          ? pick(
+              story,
+              [
+                "Cash. Hand in the face and it didn't matter.",
+                'Catch, rise, splash. The net barely moved.',
+                "That's range. You have to respect that shot now.",
+                "Watch the net. That's all string.",
+                "Didn't hesitate. Let it go like it was practice.",
+              ],
+              `highlight:reaction:${clip.spotName || clip.pts}`
+            )
+          : pick(
+              story,
+              [
+                'Smooth. Rise and fire, nothing but net.',
+                "That's a contested look, and it's money anyway.",
+                'Mid-range is not dead. Not on that shot.',
+                'Pull-up, square, splash. Textbook.',
+                "You can play that defense perfectly and it's still two points.",
+              ],
+              `highlight:reaction:${clip.spotName || clip.pts}`
+            );
+    // Whoever reacts is a different host from the one who just spoke, and never Maya, who called for it.
+    const before = turns[at - 1]?.speaker,
+      speaker = pick(
+        story,
+        [1, 2, 3].filter(n => n !== before),
+        'highlight:speaker'
+      );
+    return [
+      ...turns.slice(0, at),
+      { speaker: 0, text: lead, cue: 'highlight' },
+      { speaker, text: reaction },
+      ...turns.slice(at),
     ];
   }
   return {
     script,
     episode,
+    withHighlight,
     chunkDialogue,
     selectEvidence,
     selectAngle,

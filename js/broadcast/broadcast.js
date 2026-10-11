@@ -47,7 +47,8 @@
   el.tvStage.appendChild(sweepPanel);
   const stillMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Highlights: a few seconds of the story's play (HoopWireReplay), between the opening and the desk.
-  // They run once the hosts have introduced themselves, before highlightLine, the first line about the story.
+  // Maya calls for them in the discussion (HoopWireBroadcastContent.withHighlight); they run after that line,
+  // before highlightLine.
   // highlightDue says the episode has yet to show them; highlightAt is how far in a paused clip got.
   let highlight = null,
     highlightLine = 0,
@@ -192,18 +193,27 @@
     };
     tick();
   }
-  function discussion(story, context) {
+  // clip: the episode's highlight, which adds Maya's call for the tape and a host's reaction to the script.
+  function discussion(story, context, clip = null) {
     if (!story) return [];
-    const scripted = window.HoopWireBroadcastContent?.episode(
+    const B = window.HoopWireBroadcastContent;
+    let scripted = B?.episode(
       story,
       hosts.length ? hosts.map(h => HoopWireCore.playerDisplay(h)) : undefined,
       context
     ) || [{ speaker: 0, text: story.headline }];
+    if (clip && B?.withHighlight) scripted = B.withHighlight(scripted, story, clip, story.sceneInputs?.player);
     const result = [];
     for (const turn of scripted) {
-      const chunks = window.HoopWireBroadcastContent?.chunkDialogue(turn.text) || [turn.text];
+      const chunks = B?.chunkDialogue(turn.text) || [turn.text];
+      // The cut follows the whole call, so the cue rides on its last chunk.
       chunks.forEach((text, i) =>
-        result.push({ speaker: turn.speaker, text, continuation: i > 0, ...(turn.intro ? { intro: true } : {}) })
+        result.push({
+          speaker: turn.speaker,
+          text,
+          continuation: i > 0,
+          ...(turn.cue && i === chunks.length - 1 ? { cue: turn.cue } : {}),
+        })
       );
     }
     return result;
@@ -591,11 +601,13 @@
     needsIntro = true;
     completed = false;
     hosts = studio?.inputs.announcers || HoopWireTV.inputs({ teams: [] }).announcers;
-    turns = discussion(story, context);
-    highlightLine = Math.max(
-      0,
-      turns.findIndex(turn => !turn.intro)
-    );
+    turns = discussion(story, context, clip);
+    // A story that never names the player gets no call for the tape, and so no highlights.
+    highlightLine = turns.findIndex(turn => turn.cue === 'highlight') + 1;
+    if (!highlightLine) {
+      highlight = null;
+      highlightDue = false;
+    }
     el.tvLiveHosts.replaceChildren();
     el.tvTranscript.replaceChildren();
     if (studio?.backdropBlob)
