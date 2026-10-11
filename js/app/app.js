@@ -754,6 +754,7 @@
         image.src = url;
         image.alt = caption;
         figure.querySelector('figcaption').textContent = caption;
+        replayControl(figure, story);
       } else figure.remove();
       const paragraphs = window.HoopWireSeason.articleParagraphs(story);
       const reviewLists = story.type === 'Regular-season review' ? window.HoopWireSeason.seasonReviewLists(story) : [];
@@ -1218,6 +1219,58 @@
         p.append(a);
       }
       return p;
+    });
+  }
+  // A replay button on action pictures: a few seconds of the featured play on the story's court. When the
+  // story is about the save's last game, the clip uses one of the player's real made shots.
+  function replayControl(figure, story) {
+    const R = window.HoopWireReplay,
+      scene = story.sceneInputs;
+    if (!R?.available(scene)) return;
+    const clip = R.plan(scene, story, R.madeShots(currentLeagueForStory(story), story, scene.player?.id));
+    if (!clip) return;
+    const image = figure.querySelector('img'),
+      frame = document.createElement('div'),
+      button = document.createElement('button');
+    frame.className = 'article-image-frame';
+    image.replaceWith(frame);
+    frame.append(image, button);
+    button.type = 'button';
+    button.className = 'replay-button';
+    const idle = () => {
+      button.textContent = 'Replay';
+      button.setAttribute('aria-label', R.caption(scene, clip).replace(/^Replay:/, 'Play replay:'));
+      button.removeAttribute('aria-pressed');
+    };
+    idle();
+    let running = null;
+    button.addEventListener('click', async () => {
+      if (running) return running.stop();
+      button.disabled = true;
+      button.textContent = 'Loading';
+      const canvas = document.createElement('canvas');
+      try {
+        const assets = await R.prepare(scene, clip);
+        canvas.width = 768;
+        canvas.height = 432;
+        canvas.className = 'replay-canvas';
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', R.caption(scene, clip));
+        frame.insertBefore(canvas, button);
+        running = R.play(canvas, assets);
+        button.disabled = false;
+        button.textContent = 'Stop';
+        button.setAttribute('aria-label', 'Stop replay');
+        button.setAttribute('aria-pressed', 'true');
+        await running.done;
+      } catch (error) {
+        console.warn('Replay unavailable', error);
+      } finally {
+        canvas.remove();
+        running = null;
+        button.disabled = false;
+        idle();
+      }
     });
   }
   function currentLeagueForStory(story) {

@@ -23,7 +23,7 @@
   // A copy of the article laid out like a page: picture first, links as plain text, no buttons.
   function sheet(article) {
     const card = article.cloneNode(true);
-    card.querySelectorAll('.article-share, .article-back').forEach(n => n.remove());
+    card.querySelectorAll('.article-share, .article-back, .replay-button, .replay-canvas').forEach(n => n.remove());
     card.querySelectorAll('a').forEach(a => {
       const span = document.createElement('span');
       span.className = a.className.replace(/\b(entity-link|board-link)\b/g, '').trim();
